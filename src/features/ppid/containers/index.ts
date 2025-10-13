@@ -1,2 +1,2 @@
-export * from "./admin-table";
+export * from "./ppid-main";
 export * from "./admin-creation-form";

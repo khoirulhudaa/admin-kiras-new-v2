@@ -1,2 +1,2 @@
-export * from "./admin-landing";
+export * from "./ppid-landing";
 export * from "./admin-edit";
