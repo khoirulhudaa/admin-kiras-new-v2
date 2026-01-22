@@ -169,6 +169,8 @@ export const LoginPage = () => {
         throw new Error('Account needs activation');
       }
 
+      console.log('res login', res?.data)
+
       const token = res?.data?.token;
       if (token) {
         localStorage.setItem('token', token);

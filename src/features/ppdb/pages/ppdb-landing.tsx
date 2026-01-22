@@ -1,7 +1,7 @@
 import { APP_CONFIG } from "@/core/configs";
 import { lang } from "@/core/libs";
 import { DashboardPageLayout } from "@/features/_global";
-import { PPDBMain } from "../containers";
+import PPDBManager from "../containers/ppdb-main";
 
 export const PPDBLanding = () => {
   return (
@@ -15,7 +15,7 @@ export const PPDBLanding = () => {
       ]}
       title={lang.text("ppdb")}
     >
-      <PPDBMain />
+      <PPDBManager />
       <div className="pb-16 sm:pb-0" />
     </DashboardPageLayout>
   );

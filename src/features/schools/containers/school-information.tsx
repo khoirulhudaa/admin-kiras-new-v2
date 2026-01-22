@@ -216,7 +216,7 @@ export const SchoolInformation = (props: UseSchoolDetailProps) => {
           lng: Number(school.data?.[0]?.longitude) || 0,
         },
         active: school.data?.[0]?.active ?? 0,
-        visiMisi: school.data?.[0]?.visiMisi || "",
+        visiMisi: school.data?.[0]?.visiMisiLegacy || "",
       };
       form.reset(newValues);
       setInitialValues(newValues);
@@ -352,7 +352,7 @@ export const SchoolInformation = (props: UseSchoolDetailProps) => {
         formData.append("ttdKepalaSekolah", "");
         hasChanges = true;
       }
-      if (data.visiMisi && data.visiMisi !== school.data?.[0]?.visiMisi) {
+      if (data.visiMisi && data.visiMisi !== school.data?.[0]?.visiMisiLegacy) {
         formData.append("visiMisi", data.visiMisi);
         hasChanges = true;
       }
@@ -397,7 +397,7 @@ export const SchoolInformation = (props: UseSchoolDetailProps) => {
     }
   }
 
-  const safeHTML = DOMPurify.sanitize(school.data?.[0]?.visiMisi);
+  const safeHTML = DOMPurify.sanitize(school.data?.[0]?.visiMisiLegacy);
   // const isBase64 = (str) => {
   //   if (!str || typeof str !== 'string') return false;
   //   // Basic base64 regex: allows alphanumeric, +, /, and = (padding)
@@ -426,7 +426,7 @@ export const SchoolInformation = (props: UseSchoolDetailProps) => {
         >
          
           <div className="md:col-span-2 lg:col-span-3">
-            <Card className="w-full">
+            <Card className="w-full bg-transparent">
               <CardHeader className="border-b border-white/10 mb-6 flex flex-row items-center justify-between">
                 <div className="relative pt-2 flex gap-2">
                   {isEditMode ? (
@@ -707,7 +707,7 @@ export const SchoolInformation = (props: UseSchoolDetailProps) => {
                         control={form.control}
                         icon={<Globe size={24} />}
                         label={lang.text("visionMission")}
-                        value={school.data?.[0]?.visiMisi}
+                        value={school.data?.[0]?.visiMisiLegacy}
                         name="visiMisi"
                         type="editor"
                         isEditMode={isEditMode}

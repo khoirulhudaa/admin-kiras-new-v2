@@ -106,7 +106,7 @@ export const Brand = React.memo(({ isCollapsed }: BrandProps) => {
   return (
     <div
       className={cn(
-        "sidebar-brand w-full flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6",
+        "sidebar-brand w-full flex h-14 items-center border-b px-2 lg:h-[60px] lg:px-4",
         isCollapsed && "justify-center",
       )}
     >

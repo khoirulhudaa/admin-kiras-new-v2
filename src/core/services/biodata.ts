@@ -5,20 +5,6 @@
 // import { BiodataSiswa } from "../models/biodata";
 // import { BiodataGuru } from "../models/biodata-guru";
 
-// export interface any {
-//   id: number;
-//   jamMasuk: string;
-//   jamPulang: string | null;
-//   status: number;
-//   statusKehadiran: string;
-//   createdAt: string;
-//   siswa: {
-//     nama: string;
-//     nis: string;
-//   };
-//   guru: null;
-// }
-
 // export const biodataService = {
 //   attendanceDaily: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
 //     http.get<BaseResponse<any[]>>(
@@ -29,7 +15,7 @@
 //         page,
 //         limit,
 //         filter: 'harian',
-//         ...(namaKelas && { namaKelas }), // Tambahkan namaKelas jika ada
+//         ...(namaKelas && { namaKelas }),
 //       },
 //     }),
 //   attedanceMonth: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
@@ -41,7 +27,7 @@
 //         page,
 //         limit,
 //         filter: 'bulanan',
-//         ...(namaKelas && { namaKelas }), // Tambahkan namaKelas jika ada
+//         ...(namaKelas && { namaKelas }),
 //       },
 //     }),
 //   attedanceYear: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
@@ -53,10 +39,21 @@
 //         page,
 //         limit,
 //         filter: 'tahunan',
-//         ...(namaKelas && { namaKelas }), // Tambahkan namaKelas jika ada
+//         ...(namaKelas && { namaKelas }),
 //       },
 //     }),
-//   // Fungsi lainnya tetap sama
+//   absensiByUserId: (
+//     id: number,
+//     filter: 'harian' | 'bulanan' | 'tahunan' = 'bulanan',
+//     page: number = 1,
+//     limit: number = 10
+//   ) =>
+//     http.get<BaseResponse<any[]>>(
+//       `${API_CONFIG.baseUrlOld}/api/riwayat-absensi`,
+//       getInitialOptions
+//     )({
+//       params: { filter, page, limit, targetUserId: id },
+//     }),
 //   siswa: http.get<BaseResponse<BiodataSiswa[]>>(
 //     API_CONFIG.baseUrlOld + SERVICE_ENDPOINTS.biodata.siswa,
 //     getInitialOptions,
@@ -70,11 +67,6 @@
 //       API_CONFIG.baseUrlOld + SERVICE_ENDPOINTS.biodata.siswa,
 //       getInitialOptions
 //     )({ path: String(id) }),
-//   absensiByUserId: (id: number) =>
-//     http.get<BaseResponse<any[]>>(
-//       `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.absensiById}${id}`,
-//       getInitialOptions
-//     )(),
 //   guru: http.get<BaseResponse<BiodataGuru[]>>(
 //     `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.guru}`,
 //     getInitialOptions
@@ -106,7 +98,43 @@ import { BiodataSiswa } from "../models/biodata";
 import { BiodataGuru } from "../models/biodata-guru";
 
 export const biodataService = {
-  attendanceDaily: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
+  // attendanceDaily: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
+  //   http.get<BaseResponse<any[]>>(
+  //     `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.attendanceNew}`,
+  //     getInitialOptions
+  //   )({
+  //     params: {
+  //       page,
+  //       limit,
+  //       filter: 'harian',
+  //       ...(namaKelas && { namaKelas }),
+  //     },
+  //   }),
+  // attedanceMonth: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
+  //   http.get<BaseResponse<any[]>>(
+  //     `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.attendanceNew}`,
+  //     getInitialOptions
+  //   )({
+  //     params: {
+  //       page,
+  //       limit,
+  //       filter: 'bulanan',
+  //       ...(namaKelas && { namaKelas }),
+  //     },
+  //   }),
+  // attedanceYear: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
+  //   http.get<BaseResponse<any[]>>(
+  //     `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.attendanceNew}`,
+  //     getInitialOptions
+  //   )({
+  //     params: {
+  //       page,
+  //       limit,
+  //       filter: 'tahunan',
+  //       ...(namaKelas && { namaKelas }),
+  //     },
+  //   }),
+  attendanceDaily: ({ page = 1, limit = 20, kelasId, namaKelas }: { page?: number; limit?: number; kelasId?: string; namaKelas?: string }) =>
     http.get<BaseResponse<any[]>>(
       `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.attendanceNew}`,
       getInitialOptions
@@ -115,10 +143,12 @@ export const biodataService = {
         page,
         limit,
         filter: 'harian',
+        ...(kelasId && { kelasId }),
         ...(namaKelas && { namaKelas }),
       },
     }),
-  attedanceMonth: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
+
+  attedanceMonth: ({ page = 1, limit = 20, kelasId, namaKelas }: { page?: number; limit?: number; kelasId?: string; namaKelas?: string }) =>
     http.get<BaseResponse<any[]>>(
       `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.attendanceNew}`,
       getInitialOptions
@@ -127,10 +157,12 @@ export const biodataService = {
         page,
         limit,
         filter: 'bulanan',
+        ...(kelasId && { kelasId }),
         ...(namaKelas && { namaKelas }),
       },
     }),
-  attedanceYear: ({ page = 1, limit = 20, namaKelas }: { page?: number; limit?: number; namaKelas?: string }) =>
+
+  attedanceYear: ({ page = 1, limit = 20, kelasId, namaKelas }: { page?: number; limit?: number; kelasId?: string; namaKelas?: string }) =>
     http.get<BaseResponse<any[]>>(
       `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.biodata.attendanceNew}`,
       getInitialOptions
@@ -139,6 +171,7 @@ export const biodataService = {
         page,
         limit,
         filter: 'tahunan',
+        ...(kelasId && { kelasId }),
         ...(namaKelas && { namaKelas }),
       },
     }),

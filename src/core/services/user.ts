@@ -7,7 +7,7 @@ import { Profile } from "../models/profile";
 
 export const userService = {
   getProfile: http.get<BaseResponse<Profile>>(
-    `${API_CONFIG.baseUrl}${SERVICE_ENDPOINTS.user.profile}`,
+    `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.user.profile}`,
     getInitialOptions,
   ),
   updateProfile: http.post(

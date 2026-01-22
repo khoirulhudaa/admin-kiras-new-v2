@@ -1,529 +1,509 @@
-import React, { useEffect, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
 
-/****************************
- * PPID Sekolah — Admin Dashboard (Fixed)
- * - Dokumen (CRUD)
- * - Inbox (Permohonan, Pengaduan)
- * - Pengaturan (Identitas, Kontak)
- * - API Panel (Koneksi)
- *
- * Notes (debug):
- * - Rewrote helpers to avoid TSX generic arrow fn parsing issues.
- * - Completed previously truncated JSX string/className.
- * - Added lightweight self-tests (run in dev via console).
- ****************************/
+// Theme Tokens (tetap dipertahankan)
+const THEME_TOKENS = {
+  smkn13: {
+    "--brand-primary": "#10b981",
+    "--brand-primaryText": "#ffffff",
+    "--brand-accent": "#f59e0b",
+    "--brand-bg": "#0a0a0a",
+    "--brand-surface": "rgba(24,24,27,0.8)",
+    "--brand-surfaceText": "#f3f4f6",
+    "--brand-subtle": "#27272a",
+    "--brand-pop": "#3b82f6",
+  },
+};
 
-/*********** STORAGE KEYS ***********/
-const PPID_KEYS = {
-  docs: "ppid:docs",
-  inboxReq: "ppid:inbox:req",
-  inboxComplain: "ppid:inbox:complain",
-  settings: "ppid:settings",
-  api: "ppid:api",
-} as const;
-
-/*********** HELPERS (safe JSON + array upsert) ***********/
-function jget<T>(k: string, fb: T): T {
-  try {
-    const raw = localStorage.getItem(k);
-    return raw ? (JSON.parse(raw) as T) : fb;
-  } catch {
-    return fb;
-  }
-}
-function jset(k: string, v: any): void {
-  try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-}
-function upsert(arr: any[], item: any, idKey: string = "id") {
-  const i = arr.findIndex((x) => x[idKey] === item[idKey]);
-  if (i >= 0) { const n = [...arr]; n[i] = item; return n; }
-  return [item, ...arr];
+if (typeof document !== 'undefined') {
+  document.documentElement.style.cssText = Object.entries(THEME_TOKENS.smkn13)
+    .map(([k, v]) => `${k}: ${v};`)
+    .join('');
 }
 
-/*********** KONSTAN: KATEGORI ***********/
-const KATEGORI_OPTIONS = [
-  "Regulasi & SOP",
-  "Informasi Berkala",
-  "Informasi Setiap Saat",
-  "Informasi Serta-merta",
-  "Laporan Keuangan",
-  "Laporan Kinerja",
-] as const;
+const clsx = (...args) => args.filter(Boolean).join(" ");
 
-/*********** UI ATOMS ***********/
-const Field = ({ label, hint, children }: { label?: string; hint?: string; children: React.ReactNode }) => (
-  <label className="block text-sm">
+const useAlert = () => {
+  const [alert, setAlert] = useState({ message: "", isVisible: false });
+
+  const showAlert = useCallback((message) => {
+    setAlert({ message, isVisible: true });
+  }, []);
+
+  const hideAlert = useCallback(() => {
+    setAlert({ message: "", isVisible: false });
+  }, []);
+
+  return { alert, showAlert, hideAlert };
+};
+
+const Alert = ({ message, onClose }) => {
+  const isSuccess = message.toLowerCase().includes("berhasil") || message.includes("successfully");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className={clsx(
+        "mb-4 rounded-xl border p-4 text-sm",
+        isSuccess
+          ? "border-green-500/30 bg-green-500/10 text-green-300"
+          : "border-red-500/30 bg-red-500/10 text-red-300"
+      )}
+    >
+      <div className="flex items-start justify-between">
+        <div className="whitespace-pre-line">{message}</div>
+        <button
+          type="button"
+          onClick={onClose}
+          className={clsx(
+            "ml-4",
+            isSuccess ? "text-green-300 hover:text-green-400" : "text-red-300 hover:text-red-400"
+          )}
+        >
+          ✕
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+const Icon = ({ label }) => (
+  <span
+    aria-hidden
+    className="inline-block align-middle select-none"
+    style={{ width: 16, display: "inline-flex", justifyContent: "center" }}
+  >
+    {label}
+  </span>
+);
+const ISave = () => <Icon label="💾" />;
+const IEdit = () => <Icon label="✏️" />;
+const IDelete = () => <Icon label="🗑️" />;
+const IAdd = () => <Icon label="➕" />;
+
+const Field = ({ label, hint, children, className }) => (
+  <label className={clsx("block", className)}>
     {label && <div className="mb-1 text-xs font-medium text-white/70">{label}</div>}
     {children}
     {hint && <div className="mt-1 text-[10px] text-white/50">{hint}</div>}
   </label>
 );
-const Input = (props: any) => (
+
+const Input = ({ className, ...props }) => (
   <input
     {...props}
-    className={[
-      "w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none",
-      props.className || "",
-    ].join(" ")}
+    className={clsx(
+      "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none",
+      className
+    )}
   />
 );
-const TextArea = (props: any) => (
+
+const TextArea = ({ className, ...props }) => (
   <textarea
     {...props}
-    className={[
-      "w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none",
-      props.className || "",
-    ].join(" ")}
+    className={clsx(
+      "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none",
+      className
+    )}
   />
 );
 
-/*********** API PANEL ***********/
-function ApiPanel() {
-  const [cfg, setCfg] = useState(() => jget(PPID_KEYS.api, { baseUrl: "", token: "" }));
-  const [status, setStatus] = useState<{ ok?: boolean; msg?: string }>({});
-  useEffect(() => jset(PPID_KEYS.api, cfg), [cfg]);
-
-  const test = async () => {
-    setStatus({ ok: undefined, msg: "Menguji..." });
-    try {
-      if (!cfg.baseUrl) throw new Error("Base URL kosong");
-      const url = cfg.baseUrl.replace(/\/$/, "") + "/health";
-      const res = await fetch(url, {
-        headers: cfg.token ? { Authorization: `Bearer ${cfg.token}` } : undefined,
-      });
-      setStatus({ ok: res.ok, msg: res.ok ? "Terhubung" : `HTTP ${res.status}` });
-    } catch (e: any) {
-      setStatus({ ok: false, msg: e?.message || "Gagal" });
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border border-white/20 p-4 mb-4">
-      <div className="mb-2 text-sm font-semibold text-white/90">Koneksi API PPID</div>
-      <div className="grid gap-2 md:grid-cols-2">
-        <Field label="Base URL">
-          <Input
-            value={cfg.baseUrl}
-            onChange={(e: any) => setCfg((p: any) => ({ ...p, baseUrl: e.target.value }))}
-            placeholder="https://api.sekolah.sch.id/v1"
-          />
-        </Field>
-        <Field label="Token (Bearer)" hint="Opsional bila API publik">
-          <Input
-            value={cfg.token}
-            onChange={(e: any) => setCfg((p: any) => ({ ...p, token: e.target.value }))}
-            placeholder="xxxx.yyyy.zzzz"
-          />
-        </Field>
-        <div className="flex items-end">
-          <button
-            onClick={test}
-            className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
-          >
-            Uji Koneksi
-          </button>
-        </div>
-      </div>
-      {typeof status.ok !== "undefined" && (
-        <div
-          className={`mt-2 text-xs inline-flex items-center gap-2 rounded-lg px-2 py-1 ${
-            status.ok
-              ? "bg-emerald-500/10 text-emerald-300"
-              : status.ok === undefined
-              ? "bg-white/10 text-white/70"
-              : "bg-red-500/10 text-red-300"
-          }`}
-        >
-          {status.msg}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/*********** ADMIN: DOKUMEN ***********/
-function AdminDokumen() {
-  const [docs, setDocs] = useState(() => jget(PPID_KEYS.docs, [] as any[]));
-  useEffect(() => jset(PPID_KEYS.docs, docs), [docs]);
-
-  const empty = {
-    id: "",
-    judul: "",
-    kategori: KATEGORI_OPTIONS[1],
-    tahun: new Date().getFullYear(),
-    tipe: "PDF",
-    url: "",
-  };
-  const [form, setForm] = useState<any>(empty);
-
-  const save = () => {
-    if (!form.judul) return;
-    const id = form.id || "DOC-" + Date.now();
-    const item = { ...form, id };
-    setDocs((arr) => upsert(arr, item));
-    setForm(empty);
-  };
-  const edit = (d: any) => setForm(d);
-  const del = (id: string) => setDocs((arr) => arr.filter((x) => x.id !== id));
-
-  return (
-    <div className="space-y-4">
-      <ApiPanel />
-
-      <div className="rounded-2xl border border-white/20 p-4">
-        <div className="mb-2 text-sm font-semibold text-white/90">Tambah / Ubah Dokumen</div>
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Judul">
-            <Input
-              value={form.judul}
-              onChange={(e: any) => setForm((p: any) => ({ ...p, judul: e.target.value }))}
-            />
-          </Field>
-          <Field label="Kategori">
-            <select
-              className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
-              value={form.kategori}
-              onChange={(e: any) => setForm((p: any) => ({ ...p, kategori: e.target.value }))}
-            >
-              {KATEGORI_OPTIONS.map((k) => (
-                <option key={k}>{k}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Tahun">
-            <Input
-              type="number"
-              value={form.tahun}
-              onChange={(e: any) =>
-                setForm((p: any) => ({ ...p, tahun: Number(e.target.value) || "" }))
-              }
-            />
-          </Field>
-          <Field label="Tipe">
-            <Input
-              value={form.tipe}
-              onChange={(e: any) => setForm((p: any) => ({ ...p, tipe: e.target.value }))}
-              placeholder="PDF/XLSX/IMG"
-            />
-          </Field>
-          <Field label="URL Dokumen">
-            <Input
-              value={form.url}
-              onChange={(e: any) => setForm((p: any) => ({ ...p, url: e.target.value }))}
-              placeholder="https://..."
-            />
-          </Field>
-          <div className="flex items-end">
-            <button
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
-              onClick={save}
-            >
-              {form.id ? "Simpan Perubahan" : "Tambah Dokumen"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-white/20 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-white/10 text-white">
-            <tr>
-              <th className="px-3 py-2 text-left">Judul</th>
-              <th className="px-3 py-2 text-left">Kategori</th>
-              <th className="px-3 py-2 text-left">Tahun</th>
-              <th className="px-3 py-2">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {docs.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-4 text-center text-white/60">
-                  Belum ada dokumen admin.
-                </td>
-              </tr>
-            )}
-            {docs.map((d: any) => (
-              <tr key={d.id} className="border-t border-white/20">
-                <td className="px-3 py-2 text-white">{d.judul}</td>
-                <td className="px-3 py-2 text-white/80">{d.kategori}</td>
-                <td className="px-3 py-2 text-white/80">{d.tahun}</td>
-                <td className="px-3 py-2 text-right">
-                  <div className="inline-flex gap-2">
-                    <button
-                      className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs text-white"
-                      onClick={() => edit(d)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300"
-                      onClick={() => del(d.id)}
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/*********** ADMIN: INBOX ***********/
-function AdminInbox() {
-  const [tab, setTab] = useState<'permohonan' | 'pengaduan'>("permohonan");
-  const [req, setReq] = useState(() => jget(PPID_KEYS.inboxReq, [] as any[]));
-  const [com, setCom] = useState(() => jget(PPID_KEYS.inboxComplain, [] as any[]));
-  useEffect(() => {
-    const onStorage = () => {
-      setReq(jget(PPID_KEYS.inboxReq, []));
-      setCom(jget(PPID_KEYS.inboxComplain, []));
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  return (
-    <div className="space-y-3">
-      <div className="inline-flex rounded-xl border border-white/20 overflow-hidden">
-        <button
-          className={`px-3 py-1.5 text-sm ${
-            tab === "permohonan" ? "bg-white/20 text-white" : "bg-white/10 text-white/80"
-          }`}
-          onClick={() => setTab("permohonan")}
-        >
-          Permohonan
-        </button>
-        <button
-          className={`px-3 py-1.5 text-sm ${
-            tab === "pengaduan" ? "bg-white/20 text-white" : "bg-white/10 text-white/80"
-          }`}
-          onClick={() => setTab("pengaduan")}
-        >
-          Pengaduan
-        </button>
-      </div>
-
-      {tab === "permohonan" ? (
-        <div className="rounded-2xl border border-white/20 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-white/10 text-white">
-              <tr>
-                <th className="px-3 py-2 text-left">Waktu</th>
-                <th className="px-3 py-2 text-left">Nama</th>
-                <th className="px-3 py-2 text-left">Email</th>
-                <th className="px-3 py-2 text-left">Rincian</th>
-              </tr>
-            </thead>
-            <tbody>
-              {req.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-white/60">
-                    Belum ada permohonan.
-                  </td>
-                </tr>
-              )}
-              {req.map((r: any) => (
-                <tr key={r.id} className="border-t border-white/20">
-                  <td className="px-3 py-2 text-white/80">{new Date(r.waktu).toLocaleString()}</td>
-                  <td className="px-3 py-2 text-white">{r.nama}</td>
-                  <td className="px-3 py-2 text-white/80">{r.email || "-"}</td>
-                  <td className="px-3 py-2 text-white/80">{r.rincian}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-white/20 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-white/10 text-white">
-              <tr>
-                <th className="px-3 py-2 text-left">Waktu</th>
-                <th className="px-3 py-2 text-left">Nama</th>
-                <th className="px-3 py-2 text-left">Topik</th>
-                <th className="px-3 py-2 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {com.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-white/60">
-                    Belum ada pengaduan.
-                  </td>
-                </tr>
-              )}
-              {com.map((c: any) => (
-                <tr key={c.id} className="border-t border-white/20">
-                  <td className="px-3 py-2 text-white/80">{new Date(c.waktu).toLocaleString()}</td>
-                  <td className="px-3 py-2 text-white">{c.nama}</td>
-                  <td className="px-3 py-2 text-white/80">{c.topik}</td>
-                  <td className="px-3 py-2 text-white/80">{c.status || "baru"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/*********** ADMIN: SETTINGS ***********/
-function AdminSettings() {
-  const [settings, setSettings] = useState(() =>
-    jget(PPID_KEYS.settings, {
-      identitas: { npsn: "", akreditasi: "", alamat: "" },
-      jam: "Senin–Jumat 08.00–15.00 WIB",
-      kontak: { email: "ppid@sekolah.sch.id", tel: "(021) 123456" },
-    })
-  );
-  useEffect(() => jset(PPID_KEYS.settings, settings), [settings]);
-  const setAt = (patch: any) => setSettings((s: any) => ({ ...s, ...patch }));
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-white/20 p-4">
-        <div className="mb-2 text-sm font-semibold text-white/90">Identitas & Kontak PPID</div>
-        <div className="grid md:grid-cols-3 gap-3">
-          <Field label="NPSN">
-            <Input
-              value={settings.identitas.npsn}
-              onChange={(e: any) => setAt({ identitas: { ...settings.identitas, npsn: e.target.value } })}
-            />
-          </Field>
-          <Field label="Akreditasi">
-            <Input
-              value={settings.identitas.akreditasi}
-              onChange={(e: any) => setAt({ identitas: { ...settings.identitas, akreditasi: e.target.value } })}
-            />
-          </Field>
-          <Field label="Alamat">
-            <Input
-              value={settings.identitas.alamat}
-              onChange={(e: any) => setAt({ identitas: { ...settings.identitas, alamat: e.target.value } })}
-            />
-          </Field>
-          <Field label="Jam Layanan">
-            <Input value={settings.jam} onChange={(e: any) => setAt({ jam: e.target.value })} />
-          </Field>
-          <Field label="Email PPID">
-            <Input
-              value={settings.kontak.email}
-              onChange={(e: any) => setAt({ kontak: { ...settings.kontak, email: e.target.value } })}
-            />
-          </Field>
-          <Field label="Telepon PPID">
-            <Input
-              value={settings.kontak.tel}
-              onChange={(e: any) => setAt({ kontak: { ...settings.kontak, tel: e.target.value } })}
-            />
-          </Field>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/*********** ADMIN DASHBOARD ***********/
-const Sidebar = ({
-  current,
-  setCurrent,
-}: {
-  current: string;
-  setCurrent: (s: string) => void;
-}) => (
-  <aside className="w-60 border-r pr-4 border-white/20 space-y-2">
-    {/* <div className="font-semibold text-white/80 mb-2">Admin PPID</div> */}
-    {["Dokumen", "Inbox", "Pengaturan"].map((m) => (
-      <button
-        key={m}
-        onClick={() => setCurrent(m)}
-        className={
-          "w-full text-left rounded-lg px-3 py-2 text-sm " +
-          (current === m
-            ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
-            : "bg-white/5 text-white/90 border border-white/20")
-        }
-      >
-        {m}
-      </button>
-    ))}
-  </aside>
+const Select = ({ className, ...props }) => (
+  <select
+    {...props}
+    className={clsx(
+      "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none",
+      className
+    )}
+  />
 );
 
+const DEFAULT_DOCUMENT = {
+  title: "",
+  category: "",
+  description: "",
+  publishedDate: "",
+  documentUrl: "",
+};
+
 export function PPIDMain() {
-  const [current, setCurrent] = useState<string>("Dokumen");
-  useEffect(() => {
-    // Seed minimal settings jika kosong
-    const s = jget(PPID_KEYS.settings, null as any);
-    if (!s) {
-      jset(PPID_KEYS.settings, {
-        identitas: { npsn: "12345678", akreditasi: "A", alamat: "Jl. Contoh No.1, Jakarta" },
-        jam: "Senin–Jumat 08.00–15.00 WIB",
-        kontak: { email: "ppid@sekolah.sch.id", tel: "(021) 123456" },
+  const [documents, setDocuments] = useState([]);
+  const [formData, setFormData] = useState(DEFAULT_DOCUMENT);
+  const [editingId, setEditingId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { alert, showAlert, hideAlert } = useAlert();
+
+  const BASE_URL = "https://be-school.kiraproject.id/ppid";
+  const SCHOOL_ID = 88;
+
+  const getToken = () => localStorage.getItem("token");
+
+  const getHeaders = () => {
+    const token = getToken();
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}?schoolId=${SCHOOL_ID}`, {
+        headers: getHeaders(),
       });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal memuat dokumen PPID");
+      }
+      const result = await response.json();
+      if (result.success) {
+        setDocuments(result.data || []);
+      } else {
+        throw new Error(result.message || "Response tidak valid");
+      }
+    } catch (err) {
+      showAlert(`Gagal memuat dokumen: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
   }, []);
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const payload = {
+        title: formData.title,
+        category: formData.category,
+        description: formData.description || "",
+        publishedDate: formData.publishedDate || "",
+        documentUrl: formData.documentUrl || "",
+        schoolId: SCHOOL_ID,
+      };
+
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId ? `${BASE_URL}/${editingId}` : BASE_URL;
+
+      const response = await fetch(url, {
+        method,
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `Gagal ${editingId ? "update" : "tambah"} dokumen`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        showAlert(`Dokumen berhasil ${editingId ? "diperbarui" : "ditambahkan"}`);
+        setFormData(DEFAULT_DOCUMENT);
+        setEditingId(null);
+        setIsModalOpen(false);
+        await fetchDocuments();
+      } else {
+        throw new Error(result.message || "Response tidak valid");
+      }
+    } catch (err) {
+      showAlert(`Gagal menyimpan dokumen: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Yakin ingin menghapus dokumen ini?")) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghapus dokumen");
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        showAlert("Dokumen berhasil dihapus");
+        await fetchDocuments();
+      } else {
+        throw new Error(result.message || "Response tidak valid");
+      }
+    } catch (err) {
+      showAlert(`Gagal menghapus: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenModal = (item = null) => {
+    if (item) {
+      setFormData({
+        title: item.title || "",
+        category: item.category || "",
+        description: item.description || "",
+        publishedDate: item.publishedDate ? new Date(item.publishedDate).toISOString().split("T")[0] : "",
+        documentUrl: item.documentUrl || "",
+      });
+      setEditingId(item.id);
+    } else {
+      setFormData(DEFAULT_DOCUMENT);
+      setEditingId(null);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setFormData(DEFAULT_DOCUMENT);
+    setEditingId(null);
+    setIsModalOpen(false);
+  };
+
   return (
-    <div className="min-h-screen text-white">
-      <div className="flex min-h-screen">
-        <Sidebar current={current} setCurrent={setCurrent} />
-        <main className="flex-1 px-4 space-y-4">
-          {/* <h1 className="text-xl font-semibold">Admin — PPID</h1> */}
-          {current === "Dokumen" && <AdminDokumen />}
-          {current === "Inbox" && <AdminInbox />}
-          {current === "Pengaturan" && <AdminSettings />}
-        </main>
+    <div className="space-y-6 py-4 mb-10">
+      <AnimatePresence>
+        {alert.isVisible && <Alert message={alert.message} onClose={hideAlert} />}
+      </AnimatePresence>
+
+      <div className="flex justify-between items-center">
+        <button
+          onClick={() => handleOpenModal()}
+          className="inline-flex items-center gap-2 text-sm rounded-md bg-blue-500 px-3 py-2 font-semibold hover:bg-blue-600 disabled:opacity-50"
+          disabled={loading}
+        >
+          <ISave /> Tambah Dokumen
+        </button>
       </div>
+
+      {loading && (
+        <div className="text-center py-8 text-white/70">Memuat data...</div>
+      )}
+
+      {!loading && documents.length === 0 && (
+        <div className="text-center py-8 text-white/70 border border-white/20 rounded-xl">
+          Belum ada dokumen PPID yang tersedia
+        </div>
+      )}
+
+      {!loading && documents.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-white/20">
+          <table className="w-full text-sm text-white/80">
+            <thead className="bg-white/5">
+              <tr>
+                <th className="py-3 px-4 text-left">Judul</th>
+                <th className="py-3 px-4 text-left">Kategori</th>
+                <th className="py-3 px-4 text-left">Tahun/Tanggal</th>
+                <th className="py-3 px-4 text-left">Deskripsi</th>
+                <th className="py-3 px-4 text-left">File</th>
+                <th className="py-3 px-4 text-left">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documents.map((doc) => (
+                <tr key={doc.id} className="border-t border-white/10 hover:bg-white/5">
+                  <td className="py-3 px-4">{doc.title}</td>
+                  <td className="py-3 px-4">{doc.category}</td>
+                  <td className="py-3 px-4">
+                    {doc.publishedDate
+                      ? new Date(doc.publishedDate).toLocaleDateString("id-ID")
+                      : "—"}
+                  </td>
+                  <td className="py-3 px-4 max-w-xs truncate">{doc.description || "—"}</td>
+                  <td className="py-3 px-4">
+                    {doc.documentUrl ? (
+                      <a
+                        href={doc.documentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline"
+                      >
+                        Lihat Dokumen
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="py-3 px-4 flex gap-2">
+                    <button
+                      onClick={() => handleOpenModal(doc)}
+                      className="rounded-lg border w-max flex gap-2 items-center border-blue-500/30 bg-blue-500/10 px-3 p2-1 text-xs text-blue-300 hover:bg-blue-500/20"
+                      disabled={loading}
+                    >
+                      <IEdit />
+                      <p>
+                         Edit
+                      </p>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      className="rounded-lg border w-max flex gap-2 border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 hover:bg-red-500/20"
+                      disabled={loading}
+                    >
+                      <IDelete /> 
+                      <p>
+                        Hapus
+                      </p>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Transition appear show={isModalOpen} as={React.Fragment}>
+        <Dialog as="div" className="relative z-[999999]" onClose={handleCloseModal}>
+          <Transition.Child
+            as={React.Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed top-0 right-0 inset-0 bg-black/70" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={React.Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="bg-black/70 absolute top-0 right-0 border border-white/30 h-screen w-full max-w-md overflow-auto">
+                  <div className="p-6 border-b border-white/20 flex justify-between items-center">
+                    <h2 className="text-xl font-semibold text-white">
+                      {editingId ? "Edit Dokumen PPID" : "Tambah Dokumen PPID"}
+                    </h2>
+                    <button onClick={() => setIsModalOpen(!isModalOpen)} className="text-gray-400 hover:text-white">
+                      <X size={24} />
+                    </button>
+                  </div>
+                  <form onSubmit={handleSubmit} className="space-y-5 p-6">
+                    <Field label="Judul Dokumen">
+                      <Input
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        placeholder="Contoh: Laporan Keuangan BOS 2025"
+                        required
+                        disabled={loading}
+                      />
+                    </Field>
+
+                    <Field label="Kategori">
+                      <Select
+                        name="category"
+                        value={formData.category}
+                        onChange={handleInputChange}
+                        required
+                        disabled={loading}
+                      >
+                        <option className="text-black" value="">Pilih Kategori</option>
+                        <option className="text-black" value="berkala">Informasi Berkala</option>
+                        <option className="text-black" value="serta-merta">Informasi Serta Merta</option>
+                        <option className="text-black" value="setiap-saat">Informasi Setiap Saat</option>
+                        <option className="text-black" value="keuangan">Keuangan</option>
+                        <option className="text-black" value="kegiatan">Kegiatan</option>
+                        <option className="text-black" value="profil">Profil Sekolah</option>
+                        <option className="text-black" value="ppdb">PPDB</option>
+                        <option className="text-black" value="lainnya">Lainnya</option>
+                      </Select>
+                    </Field>
+
+                    <Field label="Deskripsi">
+                      <TextArea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        placeholder="Deskripsi singkat dokumen..."
+                        rows={3}
+                        disabled={loading}
+                      />
+                    </Field>
+
+                    <Field label="Tanggal Publikasi">
+                      <Input
+                        type="date"
+                        name="publishedDate"
+                        value={formData.publishedDate}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                    </Field>
+
+                    <Field label="Link Dokumen">
+                      <Input
+                        type="url"
+                        name="documentUrl"
+                        value={formData.documentUrl}
+                        onChange={handleInputChange}
+                        placeholder="https://drive.google.com/... atau link lainnya"
+                        disabled={loading}
+                      />
+                      {editingId && formData.documentUrl && (
+                        <div className="mt-1 text-xs text-white/50 break-all">
+                          Saat ini: {formData.documentUrl}
+                        </div>
+                      )}
+                    </Field>
+
+                    <div className="w-full grid grid-cols-2 justify-end border-t border-white/20 pt-5 gap-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="rounded-xl border border-white/20 px-5 py-2 text-sm text-white/80 hover:text-white disabled:opacity-50"
+                        disabled={loading}
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        className="inline-flex justify-center items-center gap-2 rounded-xl bg-blue-500/90 px-5 py-2 text-sm font-normal hover:bg-blue-500 disabled:opacity-50"
+                        disabled={loading}
+                      >
+                        <ISave /> {editingId ? "Update Dokumen" : "Simpan Dokumen"}
+                      </button>
+                    </div>
+                  </form>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
-}
-
-/***********************
- * SELF TESTS (dev-only) — simple assertions via console
- ***********************/
-function runSelfTests() {
-  try {
-    const prevDocs = jget(PPID_KEYS.docs, [] as any[]);
-
-    // Test jset/jget round-trip
-    const sample = { a: 1, b: { c: 2 } };
-    jset("__ppid:test:obj", sample);
-    const got = jget("__ppid:test:obj", {} as any);
-    console.assert(JSON.stringify(got) === JSON.stringify(sample), "jget/jset round-trip failed");
-
-    // Test upsert: update existing & insert new
-    let arr: any[] = [{ id: "1", v: 1 }];
-    arr = upsert(arr, { id: "1", v: 2 });
-    console.assert(arr.length === 1 && arr[0].v === 2, "upsert update failed");
-    arr = upsert(arr, { id: "2", v: 3 });
-    console.assert(arr.length === 2, "upsert insert failed");
-
-    // Test inbox write/read (simulate FE submit)
-    const req0 = jget(PPID_KEYS.inboxReq, [] as any[]);
-    jset(PPID_KEYS.inboxReq, [{ id: "REQ-test", waktu: new Date().toISOString(), nama: "Tester", rincian: "Cek" }, ...req0]);
-    const req1 = jget(PPID_KEYS.inboxReq, [] as any[]);
-    console.assert(req1.length >= req0.length + 1, "inbox permohonan write failed");
-
-    // Restore
-    jset(PPID_KEYS.docs, prevDocs);
-
-    console.log("✅ PPID Admin self-tests passed");
-  } catch (e) {
-    console.error("❌ PPID Admin self-tests failed:", e);
-  }
-}
-
-if (typeof window !== "undefined") {
-  const w = window as any;
-  if (!w.__PPID_ADMIN_TESTED__) {
-    w.__PPID_ADMIN_TESTED__ = true;
-    // Run after initial paint
-    setTimeout(runSelfTests, 0);
-  }
 }

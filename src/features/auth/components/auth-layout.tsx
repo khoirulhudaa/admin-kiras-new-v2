@@ -50,13 +50,16 @@ export const AuthLayout = ({
             {children}
           </div>
         </div>
-        <div className="hidden bg-muted lg:block">
+        <div className="relative hidden bg-muted lg:block h-screen">
+          <div className="absolute top-0 left-0 w-full h-full bg-black/40 z-[33]">
+
+          </div>
           <img
             src={image || bg}
             alt="Image"
             width="1920"
             height="1080"
-            className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+            className="h-auto w-full object-cover relative top-[-20%]"
           />
         </div>
       </div>

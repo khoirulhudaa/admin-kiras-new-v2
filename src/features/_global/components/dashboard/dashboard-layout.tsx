@@ -579,7 +579,7 @@ export const DashboardLayout = React.memo(({ menus = [], usermenus, children, ..
 
 
                 {/* Tombol toggle untuk chatbot */}
-                {
+                {/* {
                   profile?.user?.role !== 'Superadmin' && (
                     <>
                       <button
@@ -604,7 +604,7 @@ export const DashboardLayout = React.memo(({ menus = [], usermenus, children, ..
                       />
                     </>
                   )
-                }
+                } */}
               </div>
             </div>
           </div>

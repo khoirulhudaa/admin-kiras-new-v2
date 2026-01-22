@@ -299,7 +299,7 @@ export const BaseDataTable = ({
               }
 
               return (
-                <TableCell key={cell.id}>
+                <TableCell key={cell.id} className="border-t border-white/30">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               );
@@ -475,7 +475,7 @@ export const BaseDataTable = ({
           </>
         )}
 
-        <div className="rounded-md border">
+        <div className="rounded-md border border-white/30">
           <Table>
             {renderTableHeader()}
             {renderTableBody()}

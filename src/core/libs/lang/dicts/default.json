@@ -1,7 +1,7 @@
 {
   "dashboard": {
-    "en": "Dashboard",
-    "id": "Dashboard"
+    "en": "HALAMAN UTAMA",
+    "id": "HALAMAN UTAMA"
   },
   "updateSchool": {
     "en": "Update School",
@@ -136,8 +136,8 @@
     "id": "Unduh (harian)"
   },
   "visionMission": {
-    "en": "Visi & Misi",
-    "id": "Visi dan Misi"
+    "en": "VISION AND MISSION",
+    "id": "VISI DAN MISI"
   },
   "downloadAttedanceMonthly": {
     "en": "Download attedance (month)",
@@ -984,8 +984,8 @@
     "en": "Loading schedule data"
   },
   "employee": {
-    "id": "Pegawai",
-    "en": "Employee"
+    "id": "PEGAWAI",
+    "en": "EMPLOYEE"
   },
   "wfa": {
     "id": "WFA/WFH (Remote)",
@@ -1704,8 +1704,8 @@
     "en": "Doesn't have a school logo yet"
   },
   "adminManagement": {
-    "id": "Manajemen Admin (demo)",
-    "en": "Admin Management (demo)"
+    "id": "PENGGUNA AKUN",
+    "en": "ACCOUNT MANAGEMENT"
   },
   "formatManagement": {
     "id": "Manajemen Format",
@@ -2187,17 +2187,29 @@
     "id": "Xpresensi lainnya",
     "en": "Other Xpresensi"
   },
+  "profileSchool": {
+    "id": "PROFIL SEKOLAH",
+    "en": "PROFILE SCHOOL"
+  },
   "osis": {
-    "id": "Pemilihan OSIS",
-    "en": "OSIS Vote"
+    "id": "ORGANISASI OSIS",
+    "en": "OSIS ORAGANIZATION"
+  },
+  "rating": {
+    "id": "Peringkat dan saran",
+    "en": "Ratings and suggestions"
   },
   "ppdb": {
     "id": "PPDB",
     "en": "PPDB"
   },
+  "permohonan": {
+    "id": "Permohonan",
+    "en": "Application"
+  },
   "websiteSchool": {
-    "id": "Website sekolah",
-    "en": "School website"
+    "id": "WEBSITE SEKOLAH",
+    "en": "SCHOOL WEBSITE"
   },
   "slider": {
     "id": "Slide",
@@ -2220,56 +2232,68 @@
     "en": "Web theme"
   },
   "galeri": {
-    "id": "Galeri",
-    "en": "Gallery"
+    "id": "GALERI",
+    "en": "GALLERY"
   },
   "layanan": {
-    "id": "Layanan",
-    "en": "Service"
+    "id": "LAYANAN",
+    "en": "SERVICES"
+  },
+  "program": {
+    "id": "PROGRAM",
+    "en": "PROGRAM"
   },
   "beranda": {
-    "id": "Beranda",
-    "en": "Homepage"
+    "id": "BERANDA",
+    "en": "HOMEPAGE"
   },
   "infoPramuka": {
-    "id": "Info pramuka",
-    "en": "Scout information"
+    "id": "INFO PRAMUKA",
+    "en": "SCOUT INFORMATION"
   },
   "cardPramuka": {
     "id": "Kartu anggota",
     "en": "Member card"
   },
   "pramuka": {
-    "id": "Pramuka",
-    "en": "Scout"
+    "id": "PRAMUKA",
+    "en": "SCOUT"
   },
   "anggota": {
     "id": "Anggota",
     "en": "Member"
   },
   "galeriPramuka": {
-    "id": "Galeri",
-    "en": "Gallery"
+    "id": "GALERI PRAMUKA",
+    "en": "GALLERY PRAMUKA"
   },
   "visiMisi": {
-    "id": "Visi & Misi",
-    "en": "Vision & Mission"
+    "id": "VISI & MISI",
+    "en": "VISSION & MISSION"
   },
   "kurikulum": {
-    "id": "Kurikulum",
-    "en": "Curriculum"
+    "id": "KURIKULUM",
+    "en": "CURRICULUM"
   },
   "kalender": {
-    "id": "Kalender",
-    "en": "Calendar"
+    "id": "KALENDER",
+    "en": "CALENDAR"
   },
   "jadwal": {
-    "id": "Jadwal",
-    "en": "Schedule"
+    "id": "JADWAL",
+    "en": "SCHEDULE"
+  },
+  "pengumuman": {
+    "id": "PENGUMUMAN",
+    "en": "ANNOUNTMENT"
+  },
+  "berita": {
+    "id": "BERITA",
+    "en": "NEWS"
   },
   "guruTendik": {
-    "id": "Guru & tendik",
-    "en": "Vision & Mission"
+    "id": "GURU & TENDIK",
+    "en": "TEACHER & STAFF"
   },
   "toolsOtherTitle": {
     "id": "Aplikasi Xpresensi dan manual penggunaan",
@@ -2278,6 +2302,22 @@
   "xpresensiList": {
     "id": "Daftar aplikasi",
     "en": "Application list"
+  },
+  "ekstra": {
+    "id": "EKSTRAKURIKULER",
+    "en": "EXTRACURRICULAR"
+  },
+  "alumni": {
+    "id": "BUKU ALUMNI",
+    "en": "BOOK ALUMNI"
+  },
+  "sejarah": {
+    "id": "SEJARAH",
+    "en": "HISTORY"
+  },
+  "prestasi": {
+    "id": "PRESTASI",
+    "en": "PERFORMANCES"
   },
   "NotFoundValid": {
     "id": "Nama mapel/kelas tidak ada yang valid",

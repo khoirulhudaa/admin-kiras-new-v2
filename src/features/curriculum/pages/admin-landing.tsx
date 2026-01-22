@@ -1,7 +1,7 @@
 import { APP_CONFIG } from "@/core/configs";
 import { lang } from "@/core/libs";
 import { DashboardPageLayout } from "@/features/_global";
-import { Kurikulum } from "../containers";
+import Kurikulum from "../containers/admin-table";
 
 export const CurriculumLanding = () => {
   return (

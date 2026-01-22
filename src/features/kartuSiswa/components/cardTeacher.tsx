@@ -50,6 +50,8 @@ export const MultiCardForTeacher = ({
     refetch: schoolRefetch,
   } = useSchoolForCard();
 
+  console.log('schoolDetail?.[0]?', schoolDetail)
+
   const printRef = useRef<HTMLDivElement>(null);
   const allDataRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -226,11 +228,11 @@ export const MultiCardForTeacher = ({
             }}
           >
             {filteredTeachers.map((teacher) => {
-              const logoSekolah = schoolDetail?.[0]?.file?.includes('uploads/assets')
+             const logoSekolah = schoolDetail?.[0]?.file
+              ? schoolDetail[0].file.includes('uploads/assets')
                 ? `https://dev.kiraproject.id${schoolDetail[0].file}`
-                : !schoolDetail?.[0]?.file?.includes('uploads/assets')
-                ? getStaticFile(schoolDetail[0].file)
-                : '/default-school-logo.png';
+                : getStaticFile(schoolDetail[0].file)
+              : '/default-school-logo.png';
 
               return (
                 <div key={teacher.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
@@ -253,7 +255,7 @@ export const MultiCardForTeacher = ({
                     }}
                     background={selectedBackgroundBack}
                     orientation={orientation}
-                    visiMisi={schoolDetail?.[0]?.visiMisi}
+                    visiMisi={schoolDetail?.[0]?.visiMisiLegacy}
                     fontSize={visiMisiFontSize}
                     namaKepalaSekolah={school?.data?.[0]?.namaKepalaSekolah || ""}
                     ttdKepalaSekolah={school?.data?.[0]?.ttdKepalaSekolah || ""}

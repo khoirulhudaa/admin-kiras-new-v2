@@ -15,6 +15,7 @@ export const SchoolDistribution = () => {
   const schools = useSchool()
 
   const ROLE = profile.user?.role
+  console.log('IDENTITAS', profile?.user)
 
   return (
     <React.Fragment>

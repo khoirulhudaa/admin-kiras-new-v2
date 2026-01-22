@@ -1,2 +1,2 @@
-export * from "./admin-landing";
+export * from "./layanan-landing";
 export * from "./admin-edit";

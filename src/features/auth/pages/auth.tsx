@@ -19,7 +19,7 @@ export const AuthPage = () => {
   return (
     <AuthLayout
       logo={Images.logo}
-      image="https://democms.byito.dev/assets/a0bee8fb-070f-4337-911e-4e8a33351494"
+      image="/login.jpg"
       title={APP_CONFIG.appName}
       description={lang.text("loginDesc")}
     >

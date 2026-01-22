@@ -12,7 +12,7 @@ import { authService } from "./auth";
 
 export const schoolService = {
   all: http.get<BaseResponse<SchoolDataModel[]>>(
-    API_CONFIG.baseUrl + SERVICE_ENDPOINTS.school.schools,
+    API_CONFIG.baseUrlOld + SERVICE_ENDPOINTS.school.schools,
     getInitialOptions,
   ),
   get: (id: number) =>

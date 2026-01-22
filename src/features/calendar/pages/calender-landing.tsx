@@ -1,7 +1,7 @@
 import { APP_CONFIG } from "@/core/configs";
 import { lang } from "@/core/libs";
 import { DashboardPageLayout } from "@/features/_global";
-import { Kalender } from "../containers";
+import Kalender from "../containers/calender-main";
 
 export const CalendarLanding = () => {
   return (

@@ -1,2 +1,2 @@
-export * from "./admin-table";
+export * from "./layanan-main";
 export * from "./admin-creation-form";

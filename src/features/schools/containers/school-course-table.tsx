@@ -14,12 +14,14 @@ export interface SchoolCourseTableProps {
 export const SchoolCourseTable = (props: SchoolCourseTableProps) => {
   const resource = useCourse();
 
+  
   const datas = useMemo(() => {
     return resource.data?.filter(
       (d) => Number(d.sekolahId) === Number(props.id),
     );
   }, [props.id, resource.data]);
-
+  
+  console.log('course', resource)
   return (
     <BaseDataTable
       columns={courseColumns({})}

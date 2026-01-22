@@ -1,7 +1,7 @@
 import { APP_CONFIG } from "@/core/configs";
 import { lang } from "@/core/libs";
 import { DashboardPageLayout } from "@/features/_global";
-import { Jadwal } from "../containers";
+import Jadwal from "../containers/jadwal-main";
 
 export const JadwalLanding = () => {
   return (

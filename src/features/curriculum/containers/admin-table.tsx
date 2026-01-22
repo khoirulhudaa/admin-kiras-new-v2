@@ -1,471 +1,445 @@
-import React, { useState, useEffect } from "react";
+import { Edit, Trash2, X, Plus, Save, Loader2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSchool } from "@/features/schools";
 
-// Theme Tokens
-const THEME_TOKENS: Record<string, React.CSSProperties> = {
-  smkn13: {
-    "--brand-primary": "#10b981",
-    "--brand-primaryText": "#ffffff",
-    "--brand-accent": "#f59e0b",
-    "--brand-bg": "#0a0a0a",
-    "--brand-surface": "rgba(24,24,27,0.8)",
-    "--brand-surfaceText": "#f3f4f6",
-    "--brand-subtle": "#27272a",
-    "--brand-pop": "#3b82f6",
-  },
+const THEME = {
+  bg: "#0B1220",
+  surface: "#111827",
+  primary: "#065F46",
+  accent: "#10B981",
+  text: "#F9FAFB",
+  textSecondary: "#E5E7EB",
+  border: "#374151",
+  danger: "#EF4444",
 };
 
-// Utility: clsx
-const clsx = (...args: Array<string | false | null | undefined>): string =>
-  args.filter(Boolean).join(" ");
+const BASE_URL = "https://be-school.kiraproject.id/kurikulum";
 
-// Mini Icons
-const Icon = ({ label }: { label: string }) => (
+interface AlertState {
+  message: string;
+  type: "success" | "error";
+  visible: boolean;
+}
+
+const Alert = ({ alert, onClose }: { alert: AlertState; onClose: () => void }) => {
+  if (!alert.visible) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className={`mb-6 p-4 rounded-xl border ${
+        alert.type === "success" ? "bg-green-900/30 border-green-500/40 text-green-300" : "bg-red-900/30 border-red-500/40 text-red-300"
+      }`}
+    >
+      <div className="flex justify-between items-start">
+        <span>{alert.message}</span>
+        <button onClick={onClose} className="text-lg ml-3">×</button>
+      </div>
+    </motion.div>
+  );
+};
+
+const KurikulumModal = ({
+  open,
+  onClose,
+  title,
+  initialData = {},
+  onSubmit,
+  schoolId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  initialData?: any;
+  onSubmit: (data: any) => Promise<void>;
+  schoolId: number | null;
+}) => {
+  const [form, setForm] = useState({
+    name: initialData?.name || "",
+    year: initialData?.year || new Date().getFullYear(),
+    type: initialData?.type || "Kurikulum Merdeka",
+    description: initialData?.description || "",
+    documentUrl: initialData?.documentUrl || "",
+  });
+
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: initialData?.name || "",
+        year: initialData?.year || new Date().getFullYear(),
+        type: initialData?.type || "Kurikulum Merdeka",
+        description: initialData?.description || "",
+        documentUrl: initialData?.documentUrl || "",
+      });
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!form.name.trim() || !form.year || !form.type.trim()) {
+      alert("Nama Kurikulum, Tahun, dan Tipe wajib diisi");
+      return;
+    }
+
+    if (!Number.isInteger(form.year) || form.year < 2000 || form.year > 2100) {
+      alert("Tahun harus angka antara 2000-2100");
+      return;
+    }
+
+    if (!schoolId) {
+      alert("School ID tidak ditemukan");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const payload = { ...form, schoolId, year: parseInt(form.year as any) };
+      await onSubmit(payload);
+      onClose();
+    } catch (err: any) {
+      alert("Gagal menyimpan: " + (err.message || "Terjadi kesalahan"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed top-0 right-0 inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4">
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        className="bg-black/70 absolute top-0 right-0 border border-white/30 w-full max-w-md h-screen overflow-auto"
+      >
+        <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-white">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Nama Kurikulum *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Contoh: Kurikulum Merdeka 2024"
+              required
+              className="w-full px-4 py-2.5 bg-white/10 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Tahun Penerapan *</label>
+            <input
+              type="number"
+              value={form.year}
+              onChange={(e) => setForm({ ...form, year: e.target.value })}
+              placeholder="2024"
+              min="2000"
+              max="2100"
+              required
+              className="w-full px-4 py-2.5 bg-white/10 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Tipe Kurikulum *</label>
+            <select
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value })}
+              className="w-full px-4 py-2.5 bg-white/10 border border-gray-600 rounded-lg text-white focus:border-blue-500 outline-none"
+            >
+              <option className="text-black" value="Kurikulum Merdeka">Kurikulum Merdeka</option>
+              <option className="text-black" value="K13">K13</option>
+              <option className="text-black" value="KTSP">KTSP</option>
+              <option className="text-black" value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Deskripsi</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Penjelasan singkat tentang kurikulum ini..."
+              rows={4}
+              className="w-full px-4 py-2.5 bg-white/10 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 outline-none resize-y"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Link Dokumen (opsional)</label>
+            <input
+              type="url"
+              value={form.documentUrl}
+              onChange={(e) => setForm({ ...form, documentUrl: e.target.value })}
+              placeholder="https://drive.google.com/... atau situs resmi"
+              className="w-full px-4 py-2.5 bg-white/10 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          <div className="w-full grid grid-cols-2 justify-end gap-4 pt-4 border-t border-gray-700">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2.5 justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {saving ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+export default function Kurikulum() {
+  const [curriculums, setCurriculums] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [alert, setAlert] = useState<AlertState>({
+    message: "",
+    type: "success",
+    visible: false,
+  });
+
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedCurriculum, setSelectedCurriculum] = useState<any>(null);
+
+  const schoolQuery = useSchool();
+  const schoolId = schoolQuery?.data?.[0]?.id;
+
+  const showAlert = useCallback((msg: string, type: "success" | "error" = "success") => {
+    setAlert({ message: msg, type, visible: true });
+    setTimeout(() => setAlert((p) => ({ ...p, visible: false })), 6000);
+  }, []);
+
+  const fetchCurriculums = useCallback(async () => {
+    if (!schoolId) {
+      showAlert("School ID tidak ditemukan", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}?schoolId=${schoolId}`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const json = await res.json();
+      if (json.success) {
+        setCurriculums(json.data || []);
+      } else {
+        throw new Error(json.message || "Response tidak valid");
+      }
+    } catch (err: any) {
+      showAlert("Gagal memuat data kurikulum: " + err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [schoolId, showAlert]);
+
+  useEffect(() => {
+    fetchCurriculums();
+  }, [fetchCurriculums]);
+
+  const handleCreate = async (payload: any) => {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Gagal menambah kurikulum");
+    }
+
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || "Gagal menambah kurikulum");
+
+    showAlert("Kurikulum berhasil ditambahkan!");
+    fetchCurriculums();
+  };
+
+  const handleUpdate = async (payload: any) => {
+    if (!selectedCurriculum?.id) return;
+
+    const res = await fetch(`${BASE_URL}/${selectedCurriculum.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Gagal memperbarui kurikulum");
+    }
+
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || "Gagal memperbarui kurikulum");
+
+    showAlert("Kurikulum berhasil diperbarui!");
+    fetchCurriculums();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Yakin ingin menghapus kurikulum ini?")) return;
+
+    try {
+      const res = await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghapus");
+      }
+
+      showAlert("Kurikulum berhasil dihapus");
+      fetchCurriculums();
+    } catch (err: any) {
+      showAlert("Gagal menghapus: " + err.message, "error");
+    }
+  };
+
+  const Icon = ({ label }: { label: string }) => (
   <span
     aria-hidden
     className="inline-block align-middle select-none"
-    style={{ width: 16, display: "inline-flex", justifyContent: "center" }}
+    style={{ width: 16 }}
   >
     {label}
   </span>
 );
 const ISave = () => <Icon label="💾" />;
 
-// Utility Components
-interface FieldProps {
-  label?: string;
-  hint?: string;
-  children: React.ReactNode;
-  className?: string;
-}
-
-const Field: React.FC<FieldProps> = ({ label, hint, children, className }) => (
-  <label className={clsx("block", className)}>
-    {label && (
-      <div className="mb-1 text-xs font-medium text-white">{label}</div>
-    )}
-    {children}
-    {hint && <div className="mt-1 text-[10px] text-white/50">{hint}</div>}
-  </label>
-);
-
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  className?: string;
-}
-
-const Input: React.FC<InputProps> = ({ className, ...props }) => (
-  <input
-    {...props}
-    className={clsx(
-      "w-full rounded-xl border border-white/10 bg-white/20 px-3 py-2 text-sm text-white outline-none",
-      className
-    )}
-  />
-);
-
-interface TextAreaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  className?: string;
-}
-
-const TextArea: React.FC<TextAreaProps> = ({ className, ...props }) => (
-  <textarea
-    {...props}
-    className={clsx(
-      "w-full rounded-xl border border-white/10 bg-white/20 px-3 py-2 text-sm text-white outline-none",
-      className
-    )}
-  />
-);
-
-// Data Interfaces
-interface Mapel {
-  id: number;
-  namaMataPelajaran: string;
-  kode: string;
-  kurikulum: string;
-  kelompok: string;
-  isP5: boolean;
-  archived: boolean;
-}
-
-interface Dokumen {
-  id?: number;
-  title: string;
-  url: string;
-  order: number;
-}
-
-interface JP {
-  id?: number;
-  key: string;
-  start: string;
-  end: string;
-  order: number;
-}
-
-interface Kurikulum {
-  pengantar: string;
-  mapel: Mapel[];
-  dokumen: Dokumen[];
-  jp: JP[];
-}
-
-// Default Data
-const DEFAULT_KURIKULUM: Kurikulum = {
-  pengantar: "",
-  mapel: [],
-  dokumen: [],
-  jp: [],
-};
-
-// List Editor
-interface ListEditorProps {
-  items: string[];
-  onChange: (list: string[]) => void;
-  placeholder?: string;
-}
-
-const ListEditor: React.FC<ListEditorProps> = ({
-  items,
-  onChange,
-  placeholder = "Teks...",
-}) => {
-  const setAt = (index: number, value: string) => {
-    const copy = [...items];
-    copy[index] = value;
-    onChange(copy);
-  };
-
-  const add = () => onChange([...items, ""]);
-  const del = (index: number) => onChange(items.filter((_, idx) => idx !== index));
-  const up = (index: number) => {
-    if (index <= 0) return;
-    const copy = [...items];
-    [copy[index - 1], copy[index]] = [copy[index], copy[index - 1]];
-    onChange(copy);
-  };
-  const down = (index: number) => {
-    if (index >= items.length - 1) return;
-    const copy = [...items];
-    [copy[index + 1], copy[index]] = [copy[index], copy[index + 1]];
-    onChange(copy);
-  };
-
   return (
-    <div className="space-y-2">
-      {items.map((text, index) => (
-        <div key={index} className="flex items-center gap-2">
-          <Input
-            value={text}
-            onChange={(e) => setAt(index, e.target.value)}
-            placeholder={placeholder}
-          />
-          <button
-            type="button"
-            onClick={() => up(index)}
-            className="rounded-lg border border-white/10 px-2 py-1 text-xs"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            onClick={() => down(index)}
-            className="rounded-lg border border-white/10 px-2 py-1 text-xs"
-          >
-            ↓
-          </button>
-          <button
-            type="button"
-            onClick={() => del(index)}
-            className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300"
-          >
-            Hapus
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={add}
-        className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300"
-      >
-        Tambah
-      </button>
-    </div>
-  );
-};
-
-export function Kurikulum() {
-  const [v, setV] = useState<Kurikulum>(DEFAULT_KURIKULUM);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const BASE_URL = "https://dev.kiraproject.id/api";
-  const token = localStorage.getItem('token');
-
-  // Fetch data on mount
-  useEffect(() => {
-    const fetchKurikulum = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`${BASE_URL}/kurikulum`, {
-          method: "GET",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error("Failed to fetch kurikulum data");
-        const data: Kurikulum = await response.json();
-        setV(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (token) {
-      fetchKurikulum();
-    } else {
-      setError("No authentication token found");
-      setLoading(false);
-    }
-  }, []);
-
-  const setDoc = (i: number, patch: Partial<Dokumen>) =>
-    setV((p) => {
-      const a = [...p.dokumen];
-      a[i] = { ...a[i], ...patch };
-      return { ...p, dokumen: a };
-    });
-
-  const addDoc = () =>
-    setV((p) => ({
-      ...p,
-      dokumen: [...p.dokumen, { title: "", url: "", order: p.dokumen.length }],
-    }));
-
-  const delDoc = async (i: number) => {
-    try {
-      const docId = v.dokumen[i]?.id;
-      if (docId) {
-        const response = await fetch(`${BASE_URL}/kurikulum/dokumen/${i}`, {
-          method: "DELETE",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error("Failed to delete document");
-      }
-      setV((p) => ({
-        ...p,
-        dokumen: p.dokumen.filter((_, idx) => idx !== i),
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete document");
-    }
-  };
-
-  const setJP = (i: number, patch: Partial<JP>) =>
-    setV((p) => {
-      const a = [...p.jp];
-      a[i] = { ...a[i], ...patch };
-      return { ...p, jp: a };
-    });
-
-  const addJP = () =>
-    setV((p) => ({
-      ...p,
-      jp: [...p.jp, { key: "", start: "", end: "", order: p.jp.length }],
-    }));
-
-  const delJP = async (i: number) => {
-    try {
-      const jpId = v.jp[i]?.id;
-      if (jpId) {
-        const response = await fetch(`${BASE_URL}/kurikulum/jp/${i}`, {
-          method: "DELETE",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error("Failed to delete JP");
-      }
-      setV((p) => ({
-        ...p,
-        jp: p.jp.filter((_, idx) => idx !== i),
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete JP");
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) {
-      setError("No authentication token found");
-      return;
-    }
-    try {
-      const response = await fetch(`${BASE_URL}/kurikulum`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          pengantar: v.pengantar,
-          mapel: v.mapel,
-          dokumen: v.dokumen,
-          jp: v.jp,
-        }),
-      });
-
-      console.log('v', v)
-      if (!response.ok) throw new Error("Failed to save kurikulum");
-      console.log("Kurikulum data saved:", await response.json());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save kurikulum");
-    }
-  };
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <form
-      className="space-y-6"
-      onSubmit={handleSubmit}
-    >
-      <div className="rounded-2xl border border-white/20 p-4">
-        <Field label="Pengantar Kurikulum">
-          <TextArea
-            rows={3}
-            value={v.pengantar}
-            onChange={(e) => setV((p) => ({ ...p, pengantar: e.target.value }))}
-          />
-        </Field>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-white/20 p-4">
-          <div className="mb-2 text-sm font-semibold">Daftar Mapel</div>
-          <ListEditor
-            items={v.mapel.map((m) => m.namaMataPelajaran)}
-            onChange={(list) =>
-              setV((p) => ({
-                ...p,
-                mapel: list.map((nama, i) => ({
-                  id: v.mapel[i]?.id || i + 1,
-                  namaMataPelajaran: nama,
-                  kode: v.mapel[i]?.kode || "",
-                  kurikulum: v.mapel[i]?.kurikulum || "MERDEKA",
-                  kelompok: v.mapel[i]?.kelompok || "WAJIB",
-                  isP5: v.mapel[i]?.isP5 || false,
-                  archived: v.mapel[i]?.archived || false,
-                })),
-              }))
-            }
-            placeholder="Nama mata pelajaran"
-          />
-        </div>
-        <div className="rounded-2xl border border-white/20 p-4">
-          <div className="mb-2 text-sm font-semibold">Dokumen (label & URL)</div>
-          <div className="space-y-2">
-            {v.dokumen.map((d, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Input
-                  value={d.title}
-                  onChange={(e) => setDoc(i, { title: e.target.value })}
-                  placeholder="Label dokumen"
-                />
-                <Input
-                  value={d.url}
-                  onChange={(e) => setDoc(i, { url: e.target.value })}
-                  placeholder="https://..."
-                />
-                <button
-                  type="button"
-                  onClick={() => delDoc(i)}
-                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300"
-                >
-                  Hapus
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addDoc}
-              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300"
-            >
-              Tambah Dokumen
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="rounded-2xl border border-white/20 p-4">
-        <div className="mb-2 text-sm font-semibold">JP per Minggu</div>
-        <div className="space-y-2">
-          {v.jp.map((r, i) => (
-            <div key={i} className="grid gap-2 md:grid-cols-6">
-              <div className="md:col-span-2">
-                <Input
-                  value={r.key}
-                  onChange={(e) => setJP(i, { key: e.target.value })}
-                  placeholder="Kunci (e.g., SENIN-1)"
-                />
-              </div>
-              <div className="md:col-span-1">
-                <Input
-                  type="time"
-                  value={r.start}
-                  onChange={(e) => setJP(i, { start: e.target.value })}
-                  placeholder="Start"
-                />
-              </div>
-              <div className="md:col-span-1">
-                <Input
-                  type="time"
-                  value={r.end}
-                  onChange={(e) => setJP(i, { end: e.target.value })}
-                  placeholder="End"
-                />
-              </div>
-              <div className="md:col-span-1">
-                <Input
-                  type="number"
-                  value={r.order}
-                  onChange={(e) => setJP(i, { order: Number(e.target.value || 0) })}
-                  placeholder="Order"
-                />
-              </div>
-              <div className="md:col-span-1 flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => delJP(i)}
-                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addJP}
-            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300"
-          >
-            Tambah Baris
-          </button>
-        </div>
-      </div>
-      <div className="flex justify-end">
+    <div className="min-h-screen py-4" style={{ background: THEME.bg, color: THEME.text }}>
+      <header className="flex justify-between items-center mb-5">
         <button
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/90 px-4 py-2 text-sm font-semibold hover:bg-emerald-500"
+          onClick={() => {
+            setSelectedCurriculum(null);
+            setAddModalOpen(true);
+          }}
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 rounded-md text-white font-semibold shadow-md transition-colors"
         >
-          <ISave /> Simpan Kurikulum
+          <ISave /> Tambah Kurikulum
         </button>
-      </div>
-    </form>
+      </header>
+
+      <AnimatePresence>
+        {alert.visible && <Alert alert={alert} onClose={() => setAlert({ ...alert, visible: false })} />}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
+        </div>
+      ) : curriculums.length === 0 ? (
+        <div className="text-center py-20 text-gray-400">
+          Belum ada data kurikulum untuk sekolah ini
+        </div>
+      ) : (
+        <div className="overflow-x-auto bg-white/5 rounded-2xl">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead>
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Nama Kurikulum</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Tahun</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Tipe</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Deskripsi</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Dokumen</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {curriculums.map((cur) => (
+                <tr key={cur.id} className="hover:bg-white/10/30 transition-colors">
+                  <td className="px-6 py-4 font-medium">{cur.name}</td>
+                  <td className="px-6 py-4">{cur.year}</td>
+                  <td className="px-6 py-4">{cur.type}</td>
+                  <td className="px-6 py-4 text-gray-300 truncate max-w-xs">
+                    {cur.description || <span className="opacity-50">—</span>}
+                  </td>
+                  <td className="px-6 py-4">
+                    {cur.documentUrl ? (
+                      <a
+                        href={cur.documentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline"
+                      >
+                        Lihat Dokumen
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setSelectedCurriculum(cur);
+                          setEditModalOpen(true);
+                        }}
+                        className="p-2 bg-blue-900/40 hover:bg-blue-800/60 rounded-lg text-blue-300"
+                        title="Edit"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(cur.id)}
+                        className="p-2 bg-red-900/40 hover:bg-red-800/60 rounded-lg text-red-300"
+                        title="Hapus"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <KurikulumModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        title="Tambah Kurikulum Baru"
+        onSubmit={handleCreate}
+        schoolId={schoolId}
+      />
+
+      <KurikulumModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Kurikulum"
+        initialData={selectedCurriculum}
+        onSubmit={handleUpdate}
+        schoolId={schoolId}
+      />
+    </div>
   );
 }

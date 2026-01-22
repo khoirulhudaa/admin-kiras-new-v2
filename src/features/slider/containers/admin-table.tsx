@@ -1009,7 +1009,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           <img
             src={`https://dev.kiraproject.id${value}`}
             alt="preview"
-            className="max-h-36 rounded-lg border border-white/20"
+            className="max-h-36 min-w-[200px] rounded-lg border border-white/20"
           />
         </div>
       )}
@@ -1484,7 +1484,7 @@ export function Beranda() {
   }
 
   return (
-    <div className="space-y-6 mb-10">
+    <div className="space-y-6 py-4 mb-10">
       <AnimatePresence>
         {alert.isVisible && (
           <Alert message={alert.message} onClose={hideAlert} />

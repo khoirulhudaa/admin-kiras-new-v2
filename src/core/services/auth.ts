@@ -13,7 +13,7 @@ import { getInitialOptions } from "../utils/http";
 
 export const authService = {
   login: http.post<BaseResponse<LoginResponseDataModel>, LoginRequestModel>(
-    API_CONFIG.baseUrl + SERVICE_ENDPOINTS.auth.login,
+    API_CONFIG.baseUrlOld + SERVICE_ENDPOINTS.auth.login,
   ),
   logout: http.post(
     `${API_CONFIG.baseUrlOld}${SERVICE_ENDPOINTS.auth.logout}`,

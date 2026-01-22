@@ -49,9 +49,9 @@ export const DefaultSidebar = React.memo(({ visible, setVisible, menus, classNam
         )
       }
     >
-      <div className="sidebar-content flex h-full max-h-screen items-center flex-col gap-2">
+      <div className="sidebar-content flex h-screen overflow-auto items-center flex-col gap-2">
         <Brand isCollapsed={!visible} />
-        <div className="px-4 overflow-y-auto py-2">
+        <div className="w-full h-full px-4 overflow-y-auto py-2">
           <Nav items={menus} isCollapsed={!visible} />
         </div>
       </div>

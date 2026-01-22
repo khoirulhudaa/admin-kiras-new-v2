@@ -65,13 +65,18 @@ import {
 } from "@/features/teacher";
 import { AdminEdit, AdminLanding } from "@/features/user";
 import { TULanding } from "../administration";
+import { AlumniLanding } from "../alumni-new";
 import { ApplicationLanding } from "../applications/pages/application";
 import { AcrhiveLanding } from "../archive";
+import { BeritaLanding } from "../berita/pages/berita-landing.js";
 import { CalendarLanding } from "../calendar";
 import { CardPage } from "../card/pages";
 import { ChangePasswordFormPage } from "../changePassword/pages/form";
 import { CurriculumLanding } from "../curriculum";
+import { EkstraLanding } from "../ekstrakurikuler";
 import { GaleriLanding } from "../galeri";
+import { GalleryPramukaLanding } from "../galeriPramuka";
+import { GraduationNewLanding } from "../graduation-new";
 import { GraduationLanding } from "../graduation/pages";
 import { HealtBridgeLanding } from "../healtBridge";
 import { WorkHomeMainLanding } from "../homework/pages/taskLanding";
@@ -85,20 +90,27 @@ import { LibraryLanding } from "../library/pages/library-attedances";
 import { LicensingPage } from "../licensing/pages/licensing";
 import { LocationLanding } from "../locations/pages/location-landing";
 import { OsisLanding } from "../osis";
+import { PengumumanLanding } from "../pengumuman/pages/pengumuman-landing.js";
+import { PermohonanLanding } from "../permohonan";
 import { PPDBLanding } from "../ppdb";
 import { PPIDLanding } from "../ppid";
 import { ScoutLanding } from "../pramuka";
+import { PramukaLanding } from "../pramuka-new";
+import { PrestasiLanding } from "../prestasi";
+import { ProfileSekolahLanding } from "../profileSekolah.js";
+import { ProgramLanding } from "../program/pages/index.js";
+import { RatingLanding } from "../rating";
 import { ScheduleLanding } from "../schedules/pages/schedules-landing";
 import { SchoolDistribution } from "../schools/pages/school-distribution";
-import { SliderLanding } from "../slider";
+import { SejarahLanding } from "../sejarah";
 import { SPMBLanding } from "../spmb";
+import { StrukturORGLanding } from "../strukturOrg";
 import { StudentLandingManual } from "../student/pages/student-landing-manual";
 import { TeacherLandingManual } from "../student/pages/teacher-landing";
 import { GuruTendikLanding } from "../teacherAndStaff";
 import { TemaLanding } from "../tema";
 import { VisiMisiLanding } from "../visiMission";
 import { WelcomeLanding } from "../welcome";
-import { GalleryPramukaLanding } from "../galeriPramuka";
 const router = createBrowserRouter(
   [
     {
@@ -143,12 +155,16 @@ const router = createBrowserRouter(
           element: <AcrhiveLanding />,
         },
         {
-          path: "/osis-vote",
+          path: "/osis",
           element: <OsisLanding />,
         },
         {
           path: "/ppdb",
           element: <PPDBLanding />,
+        },
+        {
+          path: "/kelulusan",
+          element: <GraduationNewLanding />,
         },
         {
           path: "",
@@ -324,16 +340,24 @@ const router = createBrowserRouter(
           ],
         },
         {
-          path: "slider",
-          element: <SliderLanding />,
+          path: "profile-sekolah",
+          element: <ProfileSekolahLanding />,
         },
          {
           path: "welcome",
           element: <WelcomeLanding />,
         },
-         {
+        {
+          path: "program",
+          element: <ProgramLanding />,
+        },
+        {
           path: "visiMission",
           element: <VisiMisiLanding />,
+        },
+        {
+          path: "layanan",
+          element: <LayananLanding />,
         },
         {
           path: "curriculum",
@@ -346,6 +370,14 @@ const router = createBrowserRouter(
         {
           path: "schedule-teacher",
           element: <JadwalLanding />,
+        },
+        {
+          path: "pengumuman",
+          element: <PengumumanLanding />,
+        },
+        {
+          path: "berita",
+          element: <BeritaLanding />,
         },
         {
           path: "teacherAndStaff",
@@ -362,6 +394,30 @@ const router = createBrowserRouter(
         {
           path: "scout",
           element: <ScoutLanding />,
+        },
+        {
+          path: "prestasi",
+          element: <PrestasiLanding />,
+        },
+        {
+          path: "pramuka-sekolah",
+          element: <PramukaLanding />,
+        },
+        {
+          path: "sejarah",
+          element: <SejarahLanding />,
+        },
+        {
+          path: "struktur-pegawai",
+          element: <StrukturORGLanding />,
+        },
+        {
+          path: "buku-alumni",
+          element: <AlumniLanding />,
+        },
+        {
+          path: "ekstrakurikuler",
+          element: <EkstraLanding />,
         },
         {
           path: "scout/member",
@@ -382,10 +438,6 @@ const router = createBrowserRouter(
         {
           path: "galeri",
           element: <GaleriLanding />,
-        },
-        {
-          path: "layanan",
-          element: <LayananLanding />,
         },
         {
           path: "/applications-other",
@@ -416,8 +468,16 @@ const router = createBrowserRouter(
           element: <TULanding />,
         },
         {
+          path: "rating",
+          element: <RatingLanding />,
+        },
+        {
           path: "asset/school",
           element: <InfraLanding />,
+        },
+        {
+          path: "permohonan",
+          element: <PermohonanLanding />,
         },
         {
           path: "admin/users/edit/:id",

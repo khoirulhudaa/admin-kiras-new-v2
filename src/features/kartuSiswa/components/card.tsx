@@ -227,7 +227,7 @@ export const MultiCard = ({
       </div>
 
       <div ref={printRef} style={{ padding: hasStudents ? "30px" : "0px", textAlign: "left" }}>
-         {hasStudents ? (
+        {hasStudents ? (
           <div
             style={{
               display: "grid",
@@ -241,11 +241,12 @@ export const MultiCard = ({
             {(data.students || [])
               .filter((student) => (student.isActive ?? student.user?.isActive) !== 0)
               .map((student) => {
-              const logoSekolah = schoolDetail?.[0]?.file?.includes('uploads/assets')
-                ? `https://dev.kiraproject.id${schoolDetail[0].file}`
-                : !schoolDetail?.[0]?.file?.includes('uploads/assets')
-                ? getStaticFile(schoolDetail[0].file)
-                : '/default-school-logo.png';
+                // Safely determine the logoSekolah value
+                const logoSekolah = schoolDetail?.[0]?.file
+                  ? schoolDetail[0].file.includes('uploads/assets')
+                    ? `https://dev.kiraproject.id${schoolDetail[0].file}`
+                    : getStaticFile(schoolDetail[0].file)
+                  : '/default-school-logo.png';
 
                 return (
                   <div
@@ -276,7 +277,7 @@ export const MultiCard = ({
                       }}
                       background={selectedBackgroundBack}
                       orientation={orientation}
-                      visiMisi={schoolDetail?.[0]?.visiMisi}
+                      visiMisi={schoolDetail?.[0]?.visiMisiLegacy || ""}
                       fontSize={visiMisiFontSize}
                       lineHeight={visiMisiLineHeight}
                       namaKepalaSekolah={schoolData?.[0]?.namaKepalaSekolah || ""}
@@ -291,7 +292,7 @@ export const MultiCard = ({
             <p className="flex items-center w-full justify-center gap-2">{lang.text('studentNull')} <SearchSlash /></p>
           </div>
         )}
-        </div>
+      </div>
       {/* </div> */}
     </>
   );

@@ -87,7 +87,7 @@ export const CardCreationForm = () => {
     defaultValues: {
       namaSekolah: school.data?.[0]?.namaSekolah || "",
       alamatSekolah: school.data?.[0]?.alamatSekolah || "",
-      visiMisi: school.data?.[0]?.visiMisi || "",
+      visiMisi: school.data?.[0]?.visiMisiLegacy || "",
     },
   });
 
@@ -105,7 +105,7 @@ export const CardCreationForm = () => {
         formData.append("alamatSekolah", data.alamatSekolah);
       }
 
-      if (data.visiMisi && data.visiMisi !== school.data?.[0]?.visiMisi) {
+      if (data.visiMisi && data.visiMisi !== school.data?.[0]?.visiMisiLegacy) {
         formData.append("visiMisi", data.visiMisi);
       }
 
@@ -220,7 +220,7 @@ export const CardCreationForm = () => {
               className={`bg-white p-4 rounded-lg text-black visi-misi ${'horizontal'}`}
               style={{ fontSize: `${visiMisiFontSize}px` }}
             >
-              <p className="w-[80%]" dangerouslySetInnerHTML={{ __html: school.data?.[0]?.visiMisi || "Visi dan Misi tidak tersedia" }}></p>
+              <p className="w-[80%]" dangerouslySetInnerHTML={{ __html: school.data?.[0]?.visiMisiLegacy || "Visi dan Misi tidak tersedia" }}></p>
             </div>
             <div className={`qr-logo-section ${'horizontal'} absolute top-8 mr-2 right-12 mb-24 scale-[0.8]`}>
               <div className="qr-container">

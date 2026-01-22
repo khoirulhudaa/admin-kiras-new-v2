@@ -369,6 +369,9 @@ export const ClassroomTable = () => {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const schoolDetail = useSchool()
+  console.log('schoolDetail noew', schoolDetail)
+
   // API base URL
   const API_BASE_URL = "https://dev.kiraproject.id/api";
   const effectiveJenjang = jenjang === "Madrasah" ? madrasahType : jenjang;
@@ -429,11 +432,11 @@ export const ClassroomTable = () => {
         const params = new URLSearchParams({
           include: "all",
           page: String(currentPage),
-          sekolahId: activeTenant !== "ALL" ? activeTenant : "",
+          sekolahId: schoolDetail?.data?.[0].id.toString(),
           search: query,
         });
-        console.log('Fetch URL:', `${API_BASE_URL}/kelas-v2?${params}`);
-        const response = await fetch(`${API_BASE_URL}/kelas-v2?${params}`, {
+        console.log('Fetch URL:', `${API_BASE_URL}/kelas?sekolahId=55)`);
+        const response = await fetch(`${API_BASE_URL}/kelas?${params.toString()}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -457,12 +460,12 @@ export const ClassroomTable = () => {
           kapasitas: item.Kapasitas || undefined,
           shift: item.shift || undefined,
           status: item.deleteAt ? "Arsip" : "Aktif",
-          siswaCount: item._count.biodataSiswa || 0,
+          siswaCount: item.user?.biodataSiswa.length || 0,
         }));
         console.log('Mapped kelasData:', kelasData);
         setData(kelasData);
-        setTotalPages(result.pagination?.totalPages || 1);
-        setTotalItems(result.pagination?.total || 0);
+        setTotalPages(result.meta?.totalPages || 1);
+        setTotalItems(result.meta?.total || 0);
       } catch (error) {
         console.error("Error fetching kelas:", error);
         toast.error("Gagal memuat daftar kelas");
@@ -524,14 +527,15 @@ export const ClassroomTable = () => {
     async function validateKelas() {
       if (activeTenant === "ALL") return;
       try {
-        const response = await fetch(`${API_BASE_URL}/kelas/validate?sekolahId=${activeTenant}`, {
+        const response = await fetch(`${API_BASE_URL}/kelas?sekolahId=${activeTenant}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
         if (!response.ok) throw new Error("Failed to validate kelas");
         const result = await response.json();
-        setValidationIssues(result.issues || []);
+        console.log('result', result)
+        setValidationIssues(result.data || []);
       } catch (error) {
         console.error("Error validating kelas:", error);
         toast.error("Gagal memvalidasi kelas");
@@ -975,7 +979,7 @@ export const ClassroomTable = () => {
         }));
         allData = [...allData, ...pageData];
         if (currentPage === 1) {
-          totalPages = result.pagination?.totalPages || 1;
+          totalPages = result.meta?.totalPages || 1;
         }
         currentPage++;
       }
@@ -1115,7 +1119,7 @@ export const ClassroomTable = () => {
         jurusanId: editingKelas.jurusanId === "none" ? null : editingKelas.jurusanId,
         peminatan: editingKelas.peminatan === "none" ? null : editingKelas.peminatan,
         Kapasitas: editingKelas.kapasitas,
-        status: editingKelas.status === "Aktif" ? "active" : "archived",
+        // status: editingKelas.status === "Aktif" ? "active" : "archived",
       };
       if (!isValidCapacity(editingKelas.kapasitas)) {
         toast.error("Kapasitas harus antara 1 dan 60");
@@ -1737,7 +1741,7 @@ export const ClassroomTable = () => {
                     {effectiveShowSekolahCol && <TableHead>Sekolah</TableHead>}
                     <TableHead>Kapasitas</TableHead>
                     <TableHead>Siswa</TableHead>
-                    <TableHead>Status</TableHead>
+                    {/* <TableHead>Status</TableHead> */}
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1765,7 +1769,7 @@ export const ClassroomTable = () => {
                         {effectiveShowSekolahCol && <TableCell className="text-gray-800 dark:text-white">{row.sekolah || '—'}</TableCell>}
                         <TableCell className="text-gray-800 dark:text-white">{row.kapasitas ?? '—'}</TableCell>
                         <TableCell className="text-gray-800 dark:text-white">{row.siswaCount ?? '0'}</TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           <Badge
                             className={clsx(
                               'border-gray-200 dark:border-gray-700',
@@ -1777,7 +1781,7 @@ export const ClassroomTable = () => {
                           >
                             {row.status}
                           </Badge>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -1952,7 +1956,7 @@ export const ClassroomTable = () => {
                   className="border-gray-300 dark:border-white bg-white/10 text-gray-800 dark:text-white placeholder:text-white/70"
                 />
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="text-gray-800 dark:text-white">Status</Label>
                 <Select
                   value={editingKelas?.status || ''}
@@ -1971,7 +1975,7 @@ export const ClassroomTable = () => {
                     <SelectItem value="Arsip">Arsip</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
             </div>
             <DialogFooter className="mt-6">
               <Button
