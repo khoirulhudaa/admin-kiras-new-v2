@@ -299,12 +299,12 @@ export const MENU_STAFF: VokadashProps["menus"] = [
         icon: "Users", // For vision and mission (goals)
         main: false,
       },
-      {
-        title: lang.text("employee"),
-        url: "/struktur-pegawai",
-        icon: "Users", // For vision and mission (goals)
-        main: false,
-      },
+      // {
+      //   title: lang.text('organization'),
+      //   url: "/struktur-organisasi",
+      //   icon: "ListTree", // For vision and mission (goals)
+      //   main: false,
+      // },
       // {
         //   title: lang.text("permohonan"),
         //   url: "/permohonan",
@@ -327,6 +327,24 @@ export const MENU_STAFF: VokadashProps["menus"] = [
         title: lang.text("berita"),
         url: "/berita",
         icon: "Newspaper",
+        main: true
+      },
+      {
+        title: lang.text("partner"),
+        url: "/partner-dan-sponsor",
+        icon: "Handshake",
+        main: true
+      },
+      {
+        title: lang.text("facility"),
+        url: "/fasilitas",
+        icon: "Building2",
+        main: true
+      },
+      {
+        title: lang.text("rating"),
+        url: "/ulasan",
+        icon: "Star",
         main: true
       },
       {

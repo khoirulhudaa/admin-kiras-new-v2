@@ -13,8 +13,6 @@ interface AlertState {
   isVisible: boolean;
 }
 
-
-
 const Alert: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
   const isSuccess = message.toLowerCase().includes("berhasil");
   return (
@@ -72,6 +70,18 @@ const TextArea = ({ className, ...props }: React.TextareaHTMLAttributes<HTMLText
   />
 );
 
+const Select = ({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
+  <select
+    className={clsx(
+      "w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500/50 transition",
+      className
+    )}
+    {...props}
+  >
+    {props.children}
+  </select>
+);
+
 interface Announcement {
   id: number;
   title: string;
@@ -80,6 +90,8 @@ interface Announcement {
   publishDate: string;
   schoolId: number;
   isActive: boolean;
+  category?: string;
+  source?: string;
 }
 
 const DEFAULT_ANNOUNCEMENT: Announcement = {
@@ -90,17 +102,17 @@ const DEFAULT_ANNOUNCEMENT: Announcement = {
   publishDate: "",
   schoolId: 0,
   isActive: true,
+  category: "Umum",
+  source: "Sekolah",
 };
 
-const API_BASE = "http://localhost:5005/pengumuman"; // sesuaikan jika route berbeda
-// const API_BASE = "https://be-school.kiraproject.id/pengumuman"; // sesuaikan jika route berbeda
+// const API_BASE = "http://localhost:5005/pengumuman";
+const API_BASE = "https://be-school.kiraproject.id/pengumuman";
 
 const useAlert = () => {
   const [alert, setAlert] = useState<AlertState>({ message: "", isVisible: false });
-
   const showAlert = useCallback((message: string) => setAlert({ message, isVisible: true }), []);
   const hideAlert = useCallback(() => setAlert({ message: "", isVisible: false }), []);
-
   return { alert, showAlert, hideAlert };
 };
 
@@ -116,7 +128,6 @@ export default function PengumumanPage() {
   const schoolQuery = useSchool();
   const schoolId = schoolQuery?.data?.[0]?.id;
 
-  
   const { alert, showAlert, hideAlert } = useAlert();
 
   const fetchData = async () => {
@@ -143,7 +154,7 @@ export default function PengumumanPage() {
     if (schoolId) fetchData();
   }, [schoolId]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -176,9 +187,11 @@ export default function PengumumanPage() {
       formPayload.append("content", formData.content.trim());
       formPayload.append("schoolId", schoolId.toString());
       if (formData.publishDate) formPayload.append("publishDate", formData.publishDate);
-      if (selectedFile) formPayload.append("imageUrl", selectedFile);
+      if (formData.category) formPayload.append("category", formData.category);
+      if (formData.source) formPayload.append("source", formData.source);
+      if (selectedFile) formPayload.append("imageUrl", selectedFile); // sesuai multer di backend
 
-      const url = editingId ? `${API_BASE}/${editingId}` : API_BASE;      
+      const url = editingId ? `${API_BASE}/${editingId}` : API_BASE;
       const method = editingId ? "PUT" : "POST";
 
       const res = await fetch(url, { method, body: formPayload });
@@ -208,6 +221,8 @@ export default function PengumumanPage() {
     setFormData({
       ...item,
       publishDate: item.publishDate ? new Date(item.publishDate).toISOString().split("T")[0] : "",
+      category: item.category || "Umum",
+      source: item.source || "Sekolah",
     });
     setSelectedFile(null);
     setPreviewUrl(item.imageUrl || null);
@@ -268,12 +283,12 @@ export default function PengumumanPage() {
             <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
                 <Dialog.Panel className="absolute top-0 right-0 w-full max-w-md transform border border-white/10 bg-black/60 p-6 text-left h-screen overflow-auto align-middle shadow-2xl backdrop-blur-md">
-                    <div className="relative border-b border-white/10 flex justify-between items-center z-[99999] pb-5 pt-1 mb-6">
-                        <h2 className="text-xl font-semibold text-white">{editingId ? "Edit Pengumuman" : "Tambah Pengumuman Baru"}</h2>
-                        <button onClick={closeModal} className="text-gray-400 hover:text-white">
-                            <X size={24} />
-                        </button>
-                    </div>
+                  <div className="relative border-b border-white/10 flex justify-between items-center z-[99999] pb-5 pt-1 mb-6">
+                    <h2 className="text-xl font-semibold text-white">{editingId ? "Edit Pengumuman" : "Tambah Pengumuman Baru"}</h2>
+                    <button onClick={closeModal} className="text-gray-400 hover:text-white">
+                      <X size={24} />
+                    </button>
+                  </div>
 
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <Field label="Judul Pengumuman">
@@ -282,6 +297,24 @@ export default function PengumumanPage() {
 
                     <Field label="Tanggal Publish">
                       <Input type="date" name="publishDate" value={formData.publishDate} onChange={handleInputChange} disabled={loading} />
+                    </Field>
+
+                    <Field label="Kategori">
+                      <Select name="category" value={formData.category} onChange={handleInputChange} disabled={loading}>
+                        <option className="text-black" value="Umum">Umum</option>
+                        <option className="text-black" value="Kegiatan Sekolah">Kegiatan Sekolah</option>
+                        <option className="text-black" value="Prestasi">Prestasi</option>
+                        <option className="text-black" value="Pengumuman Dinas">Pengumuman Dinas</option>
+                        <option className="text-black" value="Lainnya">Lainnya</option>
+                      </Select>
+                    </Field>
+
+                    <Field label="Sumber">
+                      <Select name="source" value={formData.source} onChange={handleInputChange} disabled={loading}>
+                        <option className="text-black" value="Sekolah">Sekolah</option>
+                        <option className="text-black" value="Dinas">Dinas</option>
+                        <option className="text-black" value="Lainnya">Lainnya</option>
+                      </Select>
                     </Field>
 
                     <Field label="Isi Pengumuman">
@@ -327,16 +360,35 @@ export default function PengumumanPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {announcements.map((item) => (
               <div key={item.id} className="flex flex-col rounded-xl border border-white/10 bg-black/40 p-5 hover:border-blue-500/30 transition group">
-                <div className="font-semibold text-lg text-white group-hover:text-blue-300 transition line-clamp-2">{item.title}</div>
-                <div className="mt-1 text-xs text-gray-400">
-                  {new Date(item.publishDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-                </div>
+                {/* Tampilan gambar jika ada */}
                 {item.imageUrl && (
-                  <div className="mt-4 overflow-hidden rounded-lg border border-white/10 h-48">
+                  <div className="overflow-hidden rounded-lg border border-white/10 h-48 mb-4">
                     <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
                   </div>
                 )}
-                <p className="mt-4 text-sm text-white/80 line-clamp-4 flex-1">{item.content}</p>
+
+                <div className="font-semibold text-lg text-white group-hover:text-blue-300 transition line-clamp-2 mb-2">
+                  {item.title}
+                </div>
+
+                <div className="text-xs text-gray-400 mb-2">
+                  {new Date(item.publishDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                </div>
+
+                {/* Tampilkan category dan source */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-600/20 text-blue-300">
+                    {item.category || "Umum"}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-purple-600/20 text-purple-300">
+                    {item.source || "Sekolah"}
+                  </span>
+                </div>
+
+                <p className="text-sm text-white/80 line-clamp-4 flex-1">
+                  {item.content}
+                </p>
+
                 <div className="mt-5 grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
                   <button onClick={() => handleEdit(item)} disabled={loading} className="flex items-center justify-center gap-2 rounded-lg bg-blue-600/20 px-4 py-2 text-sm text-blue-300 hover:bg-blue-600/40 transition disabled:opacity-50">
                     <IEdit /> Edit

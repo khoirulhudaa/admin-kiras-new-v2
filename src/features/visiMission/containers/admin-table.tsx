@@ -196,7 +196,7 @@ export function VisiMisi() {
   const { alert, showAlert, hideAlert } = useAlert();
 
   // Ambil schoolData dari hook useSchool
-  const schoolData = useSchool(); // <-- hook kamu
+  const schoolData = useSchool();
   const schoolId = schoolData?.data[0]?.id;
 
   const BASE_URL = "https://be-school.kiraproject.id/visi-misi";

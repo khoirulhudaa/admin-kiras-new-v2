@@ -2195,9 +2195,21 @@
     "id": "ORGANISASI OSIS",
     "en": "OSIS ORAGANIZATION"
   },
+  "facility": {
+    "id": "FASILITAS",
+    "en": "FACILITY"
+  },
+  "partner": {
+    "id": "PARTNER",
+    "en": "PARTNER"
+  },
+  "organization": {
+    "id": "STRUKTUR ORGANISASI",
+    "en": "ORAGANIZATION ORGANIZATION"
+  },
   "rating": {
-    "id": "Peringkat dan saran",
-    "en": "Ratings and suggestions"
+    "id": "ULASAN",
+    "en": "RATINGS"
   },
   "ppdb": {
     "id": "PPDB",

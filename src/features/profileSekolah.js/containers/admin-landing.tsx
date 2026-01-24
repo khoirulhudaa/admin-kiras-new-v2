@@ -1,3 +1,5 @@
+// ProfileSekolahMain.tsx
+import { useSchool } from "@/features/schools";
 import { Dialog, Transition } from "@headlessui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin, Plus } from "lucide-react";
@@ -5,7 +7,7 @@ import { Fragment, useEffect, useState } from "react";
 import { FaTimes } from "react-icons/fa";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 
-// === THEME TOKENS (sama seperti Galeri) ===
+// === THEME TOKENS ===
 const THEME_TOKENS = {
   smkn13: {
     "--brand-primary": "#10b981",
@@ -19,7 +21,7 @@ const THEME_TOKENS = {
   },
 };
 
-// Apply theme (sama seperti Galeri)
+// Apply theme
 if (typeof document !== "undefined") {
   document.documentElement.style.cssText = Object.entries(THEME_TOKENS.smkn13)
     .map(([k, v]) => `${k}: ${v};`)
@@ -29,7 +31,7 @@ if (typeof document !== "undefined") {
 // === UTILITIES ===
 const clsx = (...args: any[]) => args.filter(Boolean).join(" ");
 
-// === ALERT HOOK & COMPONENT (copy dari Galeri) ===
+// === ALERT HOOK & COMPONENT ===
 const useAlert = () => {
   const [alert, setAlert] = useState({ message: "", isVisible: false });
 
@@ -54,7 +56,14 @@ const Alert = ({ message, onClose }: { message: string; onClose: () => void }) =
     >
       <div className="flex items-start justify-between">
         <div className="whitespace-pre-line">{message}</div>
-        <button type="button" onClick={onClose} className={clsx("ml-4 text-xl leading-none", isSuccess ? "text-green-300 hover:text-green-400" : "text-red-300 hover:text-red-400")}>
+        <button
+          type="button"
+          onClick={onClose}
+          className={clsx(
+            "ml-4 text-xl leading-none",
+            isSuccess ? "text-green-300 hover:text-green-400" : "text-red-300 hover:text-red-400"
+          )}
+        >
           ×
         </button>
       </div>
@@ -62,7 +71,7 @@ const Alert = ({ message, onClose }: { message: string; onClose: () => void }) =
   );
 };
 
-// === FORM COMPONENTS (sama) ===
+// === FORM COMPONENTS ===
 const Field = ({ label, children, className }: { label?: string; children: React.ReactNode; className?: string }) => (
   <label className={clsx("block", className)}>
     {label && <div className="mb-2 text-xs font-medium text-white/70">{label}</div>}
@@ -71,21 +80,32 @@ const Field = ({ label, children, className }: { label?: string; children: React
 );
 
 const Input = ({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input {...props} className={clsx("w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none placeholder-white/40", className)} />
+  <input
+    {...props}
+    className={clsx(
+      "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none placeholder-white/40",
+      className
+    )}
+  />
 );
 
 const TextArea = ({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea {...props} className={clsx("w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none placeholder-white/40", className)} />
+  <textarea
+    {...props}
+    className={clsx(
+      "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none placeholder-white/40",
+      className
+    )}
+  />
 );
 
 // === CONFIG ===
-const SCHOOL_ID = "25"; // ← GANTI SESUAI SEKOLAH ANDA
-const BASE_URL = "https://be-school.kiraproject.id"; 
-// const BASE_URL = "http://localhost:5005"; // atau localhost:5005
+const BASE_URL = "https://be-school.kiraproject.id";
+// const BASE_URL = "http://localhost:5005";
 
 const getJsonHeaders = () => ({
   "Content-Type": "application/json",
-  // Tambah Authorization kalau sudah pakai JWT: "Authorization": `Bearer ${localStorage.getItem("token")}`,
+  // "Authorization": `Bearer ${localStorage.getItem("token")}`,
 });
 
 const getFormDataHeaders = () => ({
@@ -107,13 +127,13 @@ const DEFAULT_PROFILE = {
   achievementCount: "",
   latitude: "",
   longitude: "",
-  address: "",          // ← baru
-  phoneNumber: "",      // ← baru
-  email: "",            // ← baru
+  address: "",
+  phoneNumber: "",
+  email: "",
   photoHeadmasterUrl: null as File | null,
 };
 
-// Komponen dummy untuk handle klik peta
+// Komponen untuk handle klik peta
 const LocationPicker = ({ onLocationChange }: { onLocationChange: (lat: number, lng: number) => void }) => {
   useMapEvents({
     click(e) {
@@ -124,6 +144,10 @@ const LocationPicker = ({ onLocationChange }: { onLocationChange: (lat: number, 
 };
 
 export function ProfileSekolahMain() {
+  // ── HOOKS DI DALAM COMPONENT ──
+  const { data: schoolData, isLoading: schoolLoading } = useSchool();
+  const SCHOOL_ID = schoolData?.[0]?.id;
+
   const [profile, setProfile] = useState<any>(null);
   const [formData, setFormData] = useState(DEFAULT_PROFILE);
   const [isEditing, setIsEditing] = useState(false);
@@ -131,12 +155,14 @@ export function ProfileSekolahMain() {
   const [loading, setLoading] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
 
-  // Untuk map preview
+  // Map preview state
   const [mapCenter, setMapCenter] = useState<[number, number]>([-6.2088, 106.8456]); // Default Jakarta
   const [markerPos, setMarkerPos] = useState<[number, number] | null>(null);
 
   // ── FETCH PROFILE ───────────────────────────────────────────────────────
   const fetchProfile = async () => {
+    if (!SCHOOL_ID) return;
+
     setLoading(true);
     try {
       const res = await fetch(`${BASE_URL}/profileSekolah?schoolId=${SCHOOL_ID}`, {
@@ -146,7 +172,6 @@ export function ProfileSekolahMain() {
       const json = await res.json();
       if (json.success && json.data) {
         setProfile(json.data);
-        // Pre-fill form untuk edit
         setFormData({
           heroTitle: json.data.heroTitle || "",
           heroSubTitle: json.data.heroSubTitle || "",
@@ -160,12 +185,12 @@ export function ProfileSekolahMain() {
           achievementCount: json.data.achievementCount?.toString() || "",
           latitude: json.data.latitude?.toString() || "",
           longitude: json.data.longitude?.toString() || "",
-          address: json.data.address || "",           // ← baru
-          phoneNumber: json.data.phoneNumber || "",   // ← baru
-          email: json.data.email || "",               // ← baru
+          address: json.data.address || "",
+          phoneNumber: json.data.phoneNumber || "",
+          email: json.data.email || "",
           photoHeadmasterUrl: null,
         });
-        // Update map preview
+
         if (json.data.latitude && json.data.longitude) {
           const lat = parseFloat(json.data.latitude);
           const lng = parseFloat(json.data.longitude);
@@ -176,19 +201,26 @@ export function ProfileSekolahMain() {
         setProfile(null);
       }
     } catch (err: any) {
-      showAlert("Gagal memuat profil: " + err.message);
+      showAlert("Gagal memuat profil: " + (err.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (SCHOOL_ID) {
+      fetchProfile();
+    }
+  }, [SCHOOL_ID]);
 
-  // ── HANDLE SUBMIT (Create / Update) ─────────────────────────────────────
+  // ── HANDLE SUBMIT ───────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SCHOOL_ID) {
+      showAlert("School ID tidak ditemukan");
+      return;
+    }
+
     setLoading(true);
 
     const form = new FormData();
@@ -208,7 +240,9 @@ export function ProfileSekolahMain() {
     form.append("address", formData.address || "");
     form.append("phoneNumber", formData.phoneNumber || "");
     form.append("email", formData.email || "");
-    if (formData.photoHeadmasterUrl) form.append("photoHeadmasterUrl", formData.photoHeadmasterUrl); // Field name sesuai backend (req.file)
+    if (formData.photoHeadmasterUrl) {
+      form.append("photoHeadmasterUrl", formData.photoHeadmasterUrl);
+    }
 
     try {
       const url = profile ? `${BASE_URL}/profileSekolah/${profile.id}` : `${BASE_URL}/profileSekolah`;
@@ -230,57 +264,70 @@ export function ProfileSekolahMain() {
 
       showAlert(profile ? "Profil sekolah berhasil diperbarui" : "Profil sekolah berhasil ditambahkan");
       setIsModalOpen(false);
-      fetchProfile(); // Refresh data
+      fetchProfile();
     } catch (err: any) {
-      showAlert(err.message);
+      showAlert(err.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
   };
 
   // ── HANDLE DELETE ───────────────────────────────────────────────────────
-  const handleDelete = async () => {
-    if (!profile || !confirm("Yakin ingin menghapus profil sekolah ini?")) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`${BASE_URL}/profileSekolah/${profile.id}`, {
-        method: "DELETE",
-        headers: getJsonHeaders(),
-      });
-      if (!res.ok) throw new Error("Gagal menghapus profil");
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message || "Gagal");
-      showAlert("Profil sekolah berhasil dihapus");
-      setProfile(null);
-      setFormData(DEFAULT_PROFILE);
-      setMarkerPos(null);
-    } catch (err: any) {
-      showAlert(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleDelete = async () => {
+  //   if (!profile || !confirm("Yakin ingin menghapus profil sekolah ini?")) return;
+  //   if (!SCHOOL_ID) return;
 
-  // ── HANDLE CLICK MAP ────────────────────────────────────────────────────
+  //   setLoading(true);
+  //   try {
+  //     const res = await fetch(`${BASE_URL}/profileSekolah/${profile.id}`, {
+  //       method: "DELETE",
+  //       headers: getJsonHeaders(),
+  //     });
+  //     if (!res.ok) throw new Error("Gagal menghapus profil");
+  //     const json = await res.json();
+  //     if (!json.success) throw new Error(json.message || "Gagal");
+  //     showAlert("Profil sekolah berhasil dihapus");
+  //     setProfile(null);
+  //     setFormData(DEFAULT_PROFILE);
+  //     setMarkerPos(null);
+  //   } catch (err: any) {
+  //     showAlert(err.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // ── HANDLE MAP CLICK ────────────────────────────────────────────────────
   const handleMapClick = (lat: number, lng: number) => {
     setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
     setMarkerPos([lat, lng]);
     setMapCenter([lat, lng]);
   };
 
-  // Icons
+  // ── RENDER ──────────────────────────────────────────────────────────────
+  if (schoolLoading) {
+    return <div className="text-white py-10">Memuat informasi sekolah...</div>;
+  }
+
+  if (!SCHOOL_ID) {
+    return <div className="text-red-400 py-10">School ID tidak ditemukan. Pastikan useSchool berfungsi dengan benar.</div>;
+  }
+
   const Icon = ({ label }: { label: string }) => (
     <span aria-hidden className="inline-block align-middle select-none" style={{ width: 16, display: "inline-flex", justifyContent: "center" }}>
       {label}
     </span>
   );
   const ISave = () => <Icon label="💾" />;
+  const IEdit = () => <Icon label="✏️" />;
+  const IDelete = () => <Icon label="🗑️" />;
 
-  // ── RENDER ──────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-2 pb-4 mb-10">
+    <div className="space-y-6 pb-10">
+      <AnimatePresence>{alert.isVisible && <Alert message={alert.message} onClose={hideAlert} />}</AnimatePresence>
 
-      <div className="flex justify-between items-center mb-4 w-full">
+      {/* Tombol Tambah / Edit */}
+      <div className="flex flex-wrap gap-4 mt-4">
         {!profile && !loading && (
           <button
             onClick={() => {
@@ -288,145 +335,133 @@ export function ProfileSekolahMain() {
               setIsEditing(false);
               setIsModalOpen(true);
             }}
-            className="w-max inline-flex items-center gap-2 rounded-md mt-4 bg-blue-500 px-4 py-2 text-sm font-semibold hover:bg-blue-600"
+            className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
             disabled={loading}
-          > 
-            <Plus size={16} /> 
-            <p className="w-max">
-              Tambah Profil
-            </p>
+          >
+            <ISave /> Tambah Profil Sekolah
           </button>
         )}
-      </div>
-
-      <div className="flex flex-col w-max sm:flex-row gap-4">
-        <button
-          onClick={() => {
-            setIsEditing(true);
-            setIsModalOpen(true);
-          }}
-          disabled={loading}
-          className="w-max flex items-center justify-center mb-4 gap-2 py-2 px-4 text-[13px] rounded-md bg-blue-500 border border-blue-400/30 text-white hover:bg-blue-600 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ISave />
-          <span className="font-semibold">Perbarui Profil</span>
-        </button>
-      </div>
-
-      <div className="bg-white/5 border border-white/30 rounded-xl pt-7 px-7">
-
-       <AnimatePresence>{alert.isVisible && <Alert message={alert.message} onClose={hideAlert} />}</AnimatePresence>
-
-        {loading && <div className="text-left py-10 text-white/70">Memuat profil...</div>}
-
-        {!loading && !profile && <div className="text-left py-10 text-white/60">Belum ada profil sekolah. Tambahkan sekarang!</div>}
 
         {profile && (
-          <div className="space-y-8 animate-fade-in">
-            {/* Header / Foto Kepsek - Centered & Modern */}
-            <div className="flex items-center gap-4">
-              {profile.photoHeadmasterUrl && (
-                <div className="relative group">
-                  <div className="absolute inset-0 rounded-full opacity-70 group-hover:opacity-100 transition-opacity duration-500" />
-                  <img
-                    src={profile.photoHeadmasterUrl}
-                    alt="Kepala Sekolah"
-                    className="w-44 h-44 md:w-40 md:h-40 object-cover rounded-2xl shadow-2xl border-4 border-white/40"
-                  />
-                </div>
-              )}
+          <button
+            onClick={() => {
+              setIsEditing(true);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            disabled={loading}
+          >
+            <ISave /> Perbarui Profil
+          </button>
+        )}
 
-              <div className="w-max ml-3">
-                <h2 className="text-2xl md:text-3xl mb-2 font-bold text-white tracking-tight">
-                  {profile.schoolName || "Profil Sekolah"}
-                </h2>
-                <p className="text-lg text-blue-300/90 font-medium">
-                  {profile.headmasterName ? `Kepala Sekolah: ${profile.headmasterName}` : "Belum ditentukan"}
+        {/* {profile && (
+          <button
+            onClick={handleDelete}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600/80 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            disabled={loading}
+          >
+            🗑️ Hapus Profil
+          </button>
+        )} */}
+      </div>
+
+      {/* Konten Utama */}
+      <div className="rounded-2xl border border-white/20 bg-white/5 p-6 backdrop-blur-sm">
+        {loading && <div className="py-12 text-center text-white/70">Memuat...</div>}
+
+        {!loading && !profile && (
+          <div className="py-12 text-center text-white/60">Belum ada data profil sekolah.</div>
+        )}
+
+        {profile && (
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
+              {profile.photoHeadmasterUrl && (
+                <img
+                  src={profile.photoHeadmasterUrl}
+                  alt="Kepala Sekolah"
+                  className="h-40 w-40 rounded-2xl border-4 border-white/30 object-cover shadow-xl"
+                />
+              )}
+              <div>
+                <h1 className="text-3xl font-bold text-white">{profile.schoolName || "Profil Sekolah"}</h1>
+                <p className="mt-2 text-lg text-emerald-300">
+                  Kepala Sekolah: {profile.headmasterName || "—"}
                 </p>
               </div>
             </div>
 
-            {/* Info Grid - Card Style */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Card Component reusable */}
+            {/* Statistik Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 { label: "Nama Sekolah", value: profile.schoolName },
-                { label: "Nama Kepala Sekolah", value: profile.headmasterName },
+                { label: "Kepala Sekolah", value: profile.headmasterName },
                 { label: "Jumlah Siswa", value: profile.studentCount?.toLocaleString() || "0" },
                 { label: "Jumlah Guru", value: profile.teacherCount?.toLocaleString() || "0" },
-                { label: "Jumlah Ruang Kelas", value: profile.roomCount?.toLocaleString() || "0" },
+                { label: "Ruang Kelas", value: profile.roomCount?.toLocaleString() || "0" },
                 { label: "Prestasi", value: profile.achievementCount?.toLocaleString() || "0" },
                 {
-                  label: "Koordinat Lokasi",
+                  label: "Koordinat",
                   value: profile.latitude
-                    ? `${profile.latitude.toFixed(6)}, ${profile.longitude.toFixed(6)}`
-                    : "Belum ditentukan",
+                    ? `${parseFloat(profile.latitude).toFixed(6)}, ${parseFloat(profile.longitude).toFixed(6)}`
+                    : "—",
                 },
-              ].map((item, idx) => (
+              ].map((item, i) => (
                 <div
-                  key={idx}
-                  className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-lg hover:shadow-xl hover:bg-white/10 transition-all duration-300"
+                  key={i}
+                  className="rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm transition hover:bg-white/10"
                 >
-                  <p className="text-xs md:text-sm text-white/60 uppercase tracking-wide mb-1">
-                    {item.label}
-                  </p>
-                  <p className="text-lg md:text-sm font-semibold text-white">
-                    {item.value || "—"}
-                  </p>
+                  <p className="text-xs uppercase tracking-wide text-white/60">{item.label}</p>
+                  <p className="mt-1 text-lg font-semibold text-white">{item.value || "—"}</p>
                 </div>
               ))}
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Informasi Kontak</h3>
-              <div className="bg-green-100/40 border border-green-700 rounded-xl p-2 flex items-center justify-left pl-4 pt-2.5 text-white">
-                {profile.address && (
-                  <p><strong>Alamat:</strong> {profile.address}</p>
-                )}
-              </div>
-              <div className="text-white/90 grid grid-cols-2 mt-4 gap-4">
-                <div className="bg-green-100/40 border border-green-700 rounded-xl p-2 flex items-center justify-left pl-4 pt-2.5 text-white">
+            {/* Kontak */}
+            {(profile.address || profile.phoneNumber || profile.email) && (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                <h3 className="mb-4 text-lg font-semibold text-white">Informasi Kontak</h3>
+                <div className="space-y-3">
+                  {profile.address && (
+                    <div className="flex items-center gap-3 rounded-lg bg-green-900/20 p-3">
+                      <MapPin size={18} className="text-green-400" />
+                      <p className="text-white/90">{profile.address}</p>
+                    </div>
+                  )}
                   {profile.phoneNumber && (
-                    <p><strong>Telepon:</strong> {profile.phoneNumber}</p>
+                    <p className="text-white/90">
+                      <strong>Telepon:</strong> {profile.phoneNumber}
+                    </p>
                   )}
-                </div>
-                <div className="bg-green-100/40 border border-green-700 rounded-xl p-2 flex items-center justify-left pl-4 pt-2.5 text-white">
                   {profile.email && (
-                    <p><strong>Email:</strong> <a href={`mailto:${profile.email}`} className="text-blue-300 hover:underline">{profile.email}</a></p>
+                    <p className="text-white/90">
+                      <strong>Email:</strong>{" "}
+                      <a href={`mailto:${profile.email}`} className="text-blue-300 hover:underline">
+                        {profile.email}
+                      </a>
+                    </p>
                   )}
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Sambutan Kepsek - Card khusus */}
+            {/* Sambutan */}
             {profile.headmasterWelcome && (
-              <div className="bg-gradient-to-br from-blue-900/20 to-blue-900/10 border border-blue-500/20 rounded-2xl p-6 md:p-8 shadow-xl">
-                <h3 className="text-lg md:text-xl font-semibold text-blue-300 mb-3">
-                  Sambutan Kepala Sekolah
-                </h3>
-                <p className="text-white/90 leading-relaxed whitespace-pre-line">
+              <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-blue-900/20 p-6 md:p-8">
+                <h3 className="mb-4 text-xl font-semibold text-blue-300">Sambutan Kepala Sekolah</h3>
+                <p className="whitespace-pre-line text-white/90 leading-relaxed">
                   {profile.headmasterWelcome}
                 </p>
               </div>
             )}
-
-            {/* Hero Title (jika ingin ditampilkan) */}
-            {profile.heroTitle && (
-              <div className="text-left">
-                <p className="text-sm text-white/60 uppercase tracking-wider">Hero Title</p>
-                <h3 className="text-xl md:text-xl font-bold text-white mt-1">
-                  {profile.heroTitle}
-                </h3>
-                {profile.heroSubTitle && (
-                  <p className="text-white/80 mt-2">{profile.heroSubTitle}</p>
-                )}
-              </div>
-            )}]
           </div>
         )}
       </div>
 
-      {/* MODAL CREATE/UPDATE */}
+      {/* MODAL */}
+    {/* MODAL CREATE/UPDATE */}
       <Transition appear show={isModalOpen} as={Fragment}>
         <Dialog as="div" className="relative z-[999999999999999999999]" onClose={() => setIsModalOpen(false)}>
           <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">

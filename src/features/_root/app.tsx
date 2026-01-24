@@ -111,6 +111,9 @@ import { GuruTendikLanding } from "../teacherAndStaff";
 import { TemaLanding } from "../tema";
 import { VisiMisiLanding } from "../visiMission";
 import { WelcomeLanding } from "../welcome";
+import { PenilaianLanding } from "../penilaian/pages/penilaian-landing.js";
+import { FasilitasLanding } from "../fasilitas/pages/berita-landing.js";
+import { PartnerLanding } from "../partner/pages/partner-landing.js";
 const router = createBrowserRouter(
   [
     {
@@ -193,6 +196,10 @@ const router = createBrowserRouter(
         {
           path: "healt-bridge",
           element: <HealtBridgeLanding />,
+        },
+        {
+          path: "ulasan",
+          element: <PenilaianLanding />,
         },
         {
           path: "format/card",
@@ -408,8 +415,16 @@ const router = createBrowserRouter(
           element: <SejarahLanding />,
         },
         {
-          path: "struktur-pegawai",
+          path: "struktur-organisasi",
           element: <StrukturORGLanding />,
+        },
+        {
+          path: "fasilitas",
+          element: <FasilitasLanding />,
+        },
+        {
+          path: "partner-dan-sponsor",
+          element: <PartnerLanding />,
         },
         {
           path: "buku-alumni",
