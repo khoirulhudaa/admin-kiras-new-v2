@@ -1,0 +1,984 @@
+import { useSchool } from "@/features/schools";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  BarChart3,
+  Check,
+  CheckSquare,
+  Copy,
+  FileSpreadsheet,
+  LayoutGrid, List,
+  Plus,
+  Printer, RefreshCw, Search,
+  Square,
+  Ticket,
+  Trash,
+  Trash2,
+  X
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FaSpinner } from "react-icons/fa";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis, YAxis
+} from 'recharts';
+import * as XLSX from "xlsx";
+
+// --- CONFIG ---
+const BASE_URL = "https://be-school.kiraproject.id/voting";
+const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+// --- INTERFACES ---
+interface Candidate {
+  id?: number;
+  chairmanName: string;
+  chairmanNik: string;
+  chairmanClass: string;
+  chairmanMajor: string;
+  chairmanBatch: string;
+  chairmanImageUrl?: string;
+
+  viceChairmanName: string;
+  viceChairmanNik: string;
+  viceChairmanClass: string;
+  viceChairmanMajor: string;
+  viceChairmanBatch: string;
+  viceChairmanImageUrl?: string;
+
+  vision: string;
+  mission: string[];          
+  motto: string;
+  votes: number;
+}
+
+interface VoteCode { id: number; code: string; isActive: boolean; createdAt: string; }
+interface AlertState { message: string; type: "success" | "error"; visible: boolean; }
+
+// --- COMPONENTS ---
+const Alert = ({ alert, onClose }: { alert: AlertState; onClose: () => void }) => {
+  if (!alert.visible) return null;
+  return (
+    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+      className={`fixed bottom-5 right-5 z-[9999] p-3 rounded-xl border shadow-2xl ${
+        alert.type === "success" ? "bg-green-900/90 border-green-500/50 text-green-200" : "bg-red-900/90 border-red-500/50 text-red-200"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <p className="text-sm">{alert.message}</p>
+        <button onClick={onClose} className="hover:text-white font-bold"><X size={18.5} /></button>
+      </div>
+    </motion.div>
+  );
+};
+
+const CandidateModal = ({ 
+  open, 
+  onClose, 
+  initialData, 
+  onSubmit 
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialData: Candidate | null;
+  onSubmit: (formData: FormData) => Promise<void>;
+}) => {
+  const [form, setForm] = useState({
+    chairmanName: "", chairmanNik: "", chairmanClass: "", chairmanMajor: "", chairmanBatch: "",
+    viceChairmanName: "", viceChairmanNik: "", viceChairmanClass: "", viceChairmanMajor: "", viceChairmanBatch: "",
+    vision: "",
+    motto: ""
+  });
+
+  // Mission sekarang array string
+  const [missions, setMissions] = useState<string[]>([""]); // minimal 1 input kosong
+
+  const [chairFile, setChairFile] = useState<File | null>(null);
+  const [viceFile, setViceFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Ref untuk fokus ke input terakhir saat tambah
+  const missionInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (open && initialData) {
+      setForm({
+        chairmanName: initialData.chairmanName || "",
+        chairmanNik: initialData.chairmanNik || "",
+        chairmanClass: initialData.chairmanClass || "",
+        chairmanMajor: initialData.chairmanMajor || "",
+        chairmanBatch: initialData.chairmanBatch || "",
+        viceChairmanName: initialData.viceChairmanName || "",
+        viceChairmanNik: initialData.viceChairmanNik || "",
+        viceChairmanClass: initialData.viceChairmanClass || "",
+        viceChairmanMajor: initialData.viceChairmanMajor || "",
+        viceChairmanBatch: initialData.viceChairmanBatch || "",
+        vision: initialData.vision || "",
+        motto: initialData.motto || ""
+      });
+
+      // Logika parsing mission untuk form edit
+      let missionData: string[] = [""];
+      if (initialData.mission) {
+        if (Array.isArray(initialData.mission)) {
+          missionData = initialData.mission;
+        } else if (typeof initialData.mission === 'string') {
+          try {
+            missionData = JSON.parse(initialData.mission);
+          } catch {
+            missionData = [""];
+          }
+        }
+      }
+      
+      setMissions(missionData.length > 0 ? missionData : [""]);
+    } else {
+      // Reset untuk tambah kandidat baru
+      setForm({
+        chairmanName: "", chairmanNik: "", chairmanClass: "", chairmanMajor: "", chairmanBatch: "",
+        viceChairmanName: "", viceChairmanNik: "", viceChairmanClass: "", viceChairmanMajor: "", viceChairmanBatch: "",
+        vision: "", motto: ""
+      });
+      setMissions([""]);
+    }
+    setChairFile(null);
+    setViceFile(null);
+  }, [open, initialData]);
+
+  // Fungsi tambah misi baru
+  const addMission = () => {
+    setMissions(prev => [...prev, ""]);
+    // Fokus ke input terakhir setelah render
+    setTimeout(() => {
+      const lastIndex = missions.length;
+      if (missionInputRefs.current[lastIndex]) {
+        missionInputRefs.current[lastIndex]?.focus();
+      }
+    }, 100);
+  };
+
+  // Hapus misi di index tertentu (minimal tetap 1)
+  const removeMission = (index: number) => {
+    if (missions.length === 1) return; // jangan hapus jika hanya 1
+    setMissions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Update misi di index tertentu
+  const updateMission = (index: number, value: string) => {
+    setMissions(prev => {
+      const newMissions = [...prev];
+      newMissions[index] = value;
+      return newMissions;
+    });
+  };
+
+  const handleAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validasi misi
+    const cleanedMissions = missions
+      .map(m => m.trim())
+      .filter(m => m.length > 0);
+
+    if (cleanedMissions.length === 0) {
+      alert("Minimal satu misi harus diisi!");
+      return;
+    }
+
+    setLoading(true); // <--- Set loading true saat mulai
+
+    try {
+      const formData = new FormData();
+
+      Object.entries(form).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+
+      formData.append("mission", JSON.stringify(cleanedMissions));
+
+      if (chairFile) formData.append("chairmanImg", chairFile);
+      if (viceFile) formData.append("viceChairmanImg", viceFile);
+
+      await onSubmit(formData);
+      onClose();
+    } catch (error) {
+      console.error("Error saving candidate:", error);
+      alert("Gagal menyimpan data.");
+    } finally {
+      setLoading(false); // <--- Set loading false setelah selesai (berhasil/gagal)
+    }
+  };
+
+  if (!open) return null;
+
+  const Icon = ({ label }: { label: string }) => (
+    <span aria-hidden className="inline-block align-middle select-none" style={{ width: 16, display: "inline-flex", justifyContent: "center" }}>
+      {label}
+    </span>
+  );
+  const ISave = () => <Icon label="💾" />;
+
+  return (
+    <div className="fixed top-0 right-0 inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4 backdrop-blur-sm">
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }} 
+        animate={{ scale: 1, opacity: 1 }} 
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-black/80 absolute top-0 right-0 w-full max-w-lg border border-white/10 overflow-auto h-screen shadow-2xl"
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            {initialData ? "Edit Kandidat" : "Tambah Kandidat Baru"}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleAction} className="px-8 pt-8 space-y-8 max-h-[85vh] overflow-y-auto custom-scroll">
+           <div className="grid grid-cols-1 md:grid-cols-1 gap-12">
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold text-xs tracking-[0.2em] uppercase border-b border-white/5 pb-2">Identitas Ketua</h3>
+              <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Nama Lengkap Ketua" value={form.chairmanName} onChange={e => setForm({...form, chairmanName: e.target.value})} required />
+              <div className="grid grid-cols-2 gap-4">
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="NISN/NIK" value={form.chairmanNik} onChange={e => setForm({...form, chairmanNik: e.target.value})} required />
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Angkatan" value={form.chairmanBatch} onChange={e => setForm({...form, chairmanBatch: e.target.value})} required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Kelas" value={form.chairmanClass} onChange={e => setForm({...form, chairmanClass: e.target.value})} required />
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Jurusan" value={form.chairmanMajor} onChange={e => setForm({...form, chairmanMajor: e.target.value})} required />
+              </div>
+              <div className="p-4 bg-white/5 rounded-xl border border-dashed border-white/20">
+                <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold">Foto Ketua</p>
+                <input type="file" accept="image/*" onChange={e => setChairFile(e.target.files?.[0] || null)} className="text-xs text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold text-xs tracking-[0.2em] uppercase border-b border-white/5 pb-2">Identitas Wakil Ketua</h3>
+              <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Nama Lengkap Wakil" value={form.viceChairmanName} onChange={e => setForm({...form, viceChairmanName: e.target.value})} required />
+              <div className="grid grid-cols-2 gap-4">
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="NISN/NIK" value={form.viceChairmanNik} onChange={e => setForm({...form, viceChairmanNik: e.target.value})} required />
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Angkatan" value={form.viceChairmanBatch} onChange={e => setForm({...form, viceChairmanBatch: e.target.value})} required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Kelas" value={form.viceChairmanClass} onChange={e => setForm({...form, viceChairmanClass: e.target.value})} required />
+                <input className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Jurusan" value={form.viceChairmanMajor} onChange={e => setForm({...form, viceChairmanMajor: e.target.value})} required />
+              </div>
+              <div className="p-4 bg-white/5 rounded-xl border border-dashed border-white/20">
+                <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold">Foto Wakil</p>
+                <input type="file" accept="image/*" onChange={e => setViceFile(e.target.files?.[0] || null)} className="text-xs text-gray-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* Visi & Misi */}
+          <div className="space-y-6 pt-6 border-t border-white/10">
+            {/* Visi */}
+            <div className="space-y-2">
+              <label className="text-white font-semibold text-sm uppercase tracking-wide">Visi Pasangan</label>
+              <textarea
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500 min-h-[100px]"
+                placeholder="Visi pasangan calon..."
+                value={form.vision}
+                onChange={e => setForm({ ...form, vision: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Misi - Daftar Input Dinamis */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-white font-semibold text-sm uppercase tracking-wide">Misi Pasangan</label>
+                <button
+                  type="button"
+                  onClick={addMission}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors font-medium text-sm"
+                >
+                  <Plus size={16} /> Tambah Misi
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {missions.map((misi, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-3"
+                  >
+                    <input
+                      ref={el => { missionInputRefs.current[index] = el; }}
+                      type="text"
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500"
+                      placeholder={`Misi ${index + 1}...`}
+                      value={misi}
+                      onChange={e => updateMission(index, e.target.value)}
+                      required
+                    />
+
+                    {missions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMission(index)}
+                        className="p-3 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Motto */}
+            <div className="space-y-2">
+              <label className="text-white font-semibold text-sm uppercase tracking-wide">Motto Pasangan</label>
+              <input
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500"
+                placeholder="Motto pasangan calon..."
+                value={form.motto}
+                onChange={e => setForm({ ...form, motto: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Tombol Aksi */}
+          <div className="w-full grid grid-cols-2 justify-end gap-4 pt-6 border-t border-white/10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-colors font-semibold"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={loading} // Mencegah klik ganda saat sedang proses
+              className={`px-8 py-3 justify-center text-white rounded-xl transition-all font-semibold shadow-lg flex items-center gap-2 
+                ${loading 
+                  ? "bg-blue-800 cursor-not-allowed opacity-80" 
+                  : "bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-900/30"
+                }`}
+            >
+              {loading ? (
+                <>
+                  {/* Ikon Loading Berputar */}
+                  <svg 
+                    className="animate-spin h-5 w-5 text-white" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle 
+                      className="opacity-25" 
+                      cx="12" 
+                      cy="12" 
+                      r="10" 
+                      stroke="currentColor" 
+                      strokeWidth="4"
+                    ></circle>
+                    <path 
+                      className="opacity-75" 
+                      fill="currentColor" 
+                      对抗 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <ISave />
+                  <span>Simpan</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+// --- MAIN PAGE ---
+export default function VotingMain() {
+  const [activeTab, setActiveTab] = useState<"candidates" | "codes" | "results">("candidates");
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [codes, setCodes] = useState<VoteCode[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [genAmount, setGenAmount] = useState<number | "">("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [alert, setAlert] = useState<AlertState>({ message: "", type: "success", visible: false });
+  const [toast, setToast] = useState({ show: false, message: "" });
+
+  // Fungsi untuk memicu toast
+  const showToast = (msg: string) => {
+    setToast({ show: true, message: msg });
+    setTimeout(() => setToast({ show: false, message: "" }), 3000); // Hilang setelah 2 detik
+  };
+
+  const dataSchool: any = useSchool();
+  const SCHOOL_ID = dataSchool?.data?.[0]?.id;
+
+  const showAlert = useCallback((msg: string, type: "success" | "error" = "success") => {
+    setAlert({ message: msg, type, visible: true });
+    setTimeout(() => setAlert((p) => ({ ...p, visible: false })), 4000);
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    if (!SCHOOL_ID) return;
+    setLoading(true);
+    try {
+      const [resCan, resCodes] = await Promise.all([
+        fetch(`${BASE_URL}/kandidat?schoolId=${SCHOOL_ID}`),
+        fetch(`${BASE_URL}/list-kode?schoolId=${SCHOOL_ID}`)
+      ]);
+      
+      const jsonCan = await resCan.json();
+      const jsonCodes = await resCodes.json();
+
+      if (jsonCan.success) {
+        // PROSES SANITASI DATA: Mengubah string mission menjadi Array
+        const sanitizedCandidates = jsonCan.data.map((can: any) => {
+          let parsedMission = [];
+          try {
+            if (typeof can.mission === 'string') {
+              // Jika mission adalah string "[\"a\",\"b\"]", kita parse
+              parsedMission = JSON.parse(can.mission);
+            } else if (Array.isArray(can.mission)) {
+              // Jika sudah array, pakai langsung
+              parsedMission = can.mission;
+            }
+          } catch (error) {
+            console.error(`Gagal parse mission untuk ID ${can.id}:`, error);
+            parsedMission = []; // fallback jika JSON corrupt
+          }
+
+          return {
+            ...can,
+            mission: parsedMission
+          };
+        });
+        
+        setCandidates(sanitizedCandidates);
+      }
+
+      if (jsonCodes.success) {
+        setCodes(jsonCodes.data);
+      }
+    } catch (err) { 
+      showAlert("Gagal mengambil data dari server", "error"); 
+    } finally { 
+      setLoading(false); 
+    }
+  }, [SCHOOL_ID, showAlert]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleSaveCandidate = async (formData: FormData) => {
+    const isEdit = !!selectedCandidate;
+    if(!isEdit) formData.append("schoolId", SCHOOL_ID.toString());
+    const url = isEdit ? `${BASE_URL}/kandidat/${selectedCandidate.id}` : `${BASE_URL}/kandidat`;
+    const res = await fetch(url, { method: isEdit ? "PUT" : "POST", body: formData });
+    if (res.ok) { showAlert(isEdit ? "Data diperbarui" : "Pasangan ditambahkan"); fetchData(); }
+  };
+
+  const handleDeleteCandidate = async (id: number) => {
+    if (!confirm("Hapus pasangan ini?")) return;
+    const res = await fetch(`${BASE_URL}/kandidat/${id}`, { method: "DELETE" });
+    if (res.ok) { showAlert("Data dihapus"); fetchData(); }
+  };
+
+  const handleGenerateCodes = async () => {
+    if (!genAmount || genAmount <= 0) return showAlert("Masukkan jumlah token", "error");
+    const res = await fetch(`${BASE_URL}/generate-kode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: genAmount, schoolId: SCHOOL_ID }),
+    });
+    if (res.ok) { showAlert("Token berhasil dibuat"); setGenAmount(""); fetchData(); }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredCodes.length) setSelectedIds([]);
+    else setSelectedIds(filteredCodes.map(c => c.id));
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!confirm(`Hapus ${selectedIds.length} kode terpilih?`)) return;
+    const res = await fetch(`${BASE_URL}/delete-selected-kode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    if (res.ok) { showAlert(`${selectedIds.length} Kode dihapus`); setSelectedIds([]); fetchData(); }
+  };
+
+  const handleBulkDeleteAll = async () => {
+    if (!confirm("Hapus SEMUA kode untuk sekolah ini?")) return;
+    const res = await fetch(`${BASE_URL}/bulk-delete-kode?schoolId=${SCHOOL_ID}`, { method: "DELETE" });
+    if (res.ok) { showAlert("Seluruh kode dibersihkan"); fetchData(); }
+  };
+
+  const exportToExcel = () => {
+    const data = codes.map(c => ({ Kode: c.code, Status: c.isActive ? "Aktif" : "Terpakai", Dibuat: new Date(c.createdAt).toLocaleString() }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tokens");
+    XLSX.utils.writeFile(wb, `Token_Voting_${SCHOOL_ID}.xlsx`);
+  };
+
+  const filteredCodes = codes.filter(c => c.code.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  // Data for Charts
+  const chartData = candidates.map(can => ({
+    name: `${can.chairmanName.split(' ')[0]} & ${can.viceChairmanName.split(' ')[0]}`,
+    votes: can.votes,
+    fullName: `${can.chairmanName} & ${can.viceChairmanName}`
+  }));
+
+  const totalVotes = candidates.reduce((acc, curr) => acc + curr.votes, 0);
+
+  const Icon = ({ label }: { label: string }) => (
+    <span aria-hidden className="inline-block align-middle select-none" style={{ width: 16, display: "inline-flex", justifyContent: "center" }}>
+      {label}
+    </span>
+  );
+  const ISave = () => <Icon label="💾" />;
+  const IEdit = () => <Icon label="✏️" />;
+
+  return (
+    <div className="min-h-screen bg-[#0B1220] text-gray-100 font-sans">
+      <AnimatePresence>{alert.visible && <Alert alert={alert} onClose={() => setAlert({...alert, visible: false})} />}</AnimatePresence>
+
+      <div className="max-w-7xl mx-auto space-y-4 pb-5">
+        <div className="flex justify-between items-center gap-4 mt-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div 
+              onClick={() => { 
+                if (activeTab !== "candidates") return;
+                setSelectedCandidate(null); setModalOpen(true); 
+              }} 
+              className={`${activeTab !== "results" && activeTab !== "codes" ? 'bg-blue-500 hover:bg-blue-600 tex-white cursor-pointer' : 'bg-gray-600 text-gray-400 cursor-not-allowed'} px-3 w-max h-[36px] py-2 rounded-md font-semibold flex items-center gap-2 shadow-xl shadow-blue-900/20 transition-all`}
+            >
+              <ISave /> 
+              <span className="w-max text-[13px]">Tambah Kandidat</span>
+          </div>
+          <button
+                onClick={() => {
+                  setLoading(true);
+                  fetchData().finally(() => setLoading(false));
+                  showToast("Data kandidat diperbarui");
+                }}
+                disabled={loading}
+                className={`
+                  flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-bold text-xs tracking-widest transition-all
+                  ${loading 
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/30 active:scale-95'
+                  }
+                `}
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+                <span>Refresh</span>
+              </button>
+          </div>
+
+            <div className="grid grid-cols-3 bg-white/5 rounded-lg border h-[39px] backdrop-blur-md w-full">
+                <button onClick={() => setActiveTab("candidates")} className={`px-4 justify-center rounded-md flex items-center gap-2 transition-all font-semibold text-sm ${activeTab === 'candidates' ? 'bg-blue-500 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:text-white'}`}>
+                    <LayoutGrid size={18} /> <span className="hidden sm:inline">Kandidat</span>
+                </button>
+                <button onClick={() => setActiveTab("codes")} className={`px-4 justify-center rounded-md flex items-center gap-2 transition-all font-semibold text-sm ${activeTab === 'codes' ? 'bg-blue-500 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:text-white'}`}>
+                    <List size={18} /> <span className="hidden sm:inline">Kode voting</span>
+                </button>
+                <button onClick={() => setActiveTab("results")} className={`px-4 justify-center rounded-md flex items-center gap-2 transition-all font-semibold text-sm ${activeTab === 'results' ? 'bg-blue-500 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:text-white'}`}>
+                    <BarChart3 size={18} /> <span className="hidden sm:inline">Hasil Voting</span>
+                </button>
+            </div>
+        </div>
+
+        {activeTab === "candidates" && (
+          <div className="space-y-6">
+            {loading ? 
+            <>
+              <div className="h-64 flex items-center gap-3 justify-center text-gray-500 animate-pulse">
+                <FaSpinner className="animate animate-spin duration-300" />
+                Sinkronisasi data...
+              </div>
+            </>
+             : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6 bg-white/5 rounded-2xl border border-white/10">
+                {candidates.map(can => (
+                 <motion.div
+                    layout
+                    key={can.id}
+                    className="relative bg-[#111827]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden group hover:border-blue-500/40 transition-all duration-500 shadow-2xl"
+                  >
+                    {/* Image Section */}
+                    <div className="flex h-80 relative overflow-hidden">
+                      {/* Chairman */}
+                      <div className="w-1/2 relative group/img overflow-hidden">
+                        <img 
+                          src={can.chairmanImageUrl || "/placeholder.png"} 
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent opacity-60" />
+                        <div className="absolute bottom-3 left-3 right-3 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+                          <p className="text-[9px] font-bold text-blue-400 tracking-[0.2em] uppercase mb-0.5">Ketua</p>
+                          <h4 className="text-xs font-bold truncate text-white uppercase tracking-tight">{can.chairmanName}</h4>
+                        </div>
+                      </div>
+
+                      {/* Vice Chairman */}
+                      <div className="w-1/2 relative group/img overflow-hidden border-l border-white/5">
+                        <img 
+                          src={can.viceChairmanImageUrl || "/placeholder.png"} 
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent opacity-60" />
+                        <div className="absolute bottom-3 left-3 right-3 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+                          <p className="text-[9px] font-bold text-blue-400 tracking-[0.2em] uppercase mb-0.5">Wakil</p>
+                          <h4 className="text-xs font-bold truncate text-white uppercase tracking-tight">{can.viceChairmanName}</h4>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content Section */}
+                    <div className="p-5">
+                      <div className="mb-6">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <span className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-500/20">
+                            {can.chairmanMajor}
+                          </span>
+                          <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/20">
+                            Batch {can.chairmanBatch}
+                          </span>
+                          <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/20">
+                            ID-{can.id}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-xs leading-relaxed">
+                          {can.chairmanClass} & {can.viceChairmanClass}
+                        </p>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center gap-3">
+                        {/* Edit Button */}
+                        <button 
+                          onClick={() => { setSelectedCandidate(can); setModalOpen(true); }}
+                          className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white text-black hover:brightness-90 text-sm font-bold rounded-xl transition-all active:scale-95"
+                        >
+                          <IEdit />
+                          <span>Perbarui data</span>
+                        </button>
+
+                        {/* Vote Count Badge */}
+                        <div className="flex flex-col items-center justify-center px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl min-w-[80px]">
+                          <span className="text-[9px] text-blue-400 font-bold uppercase tracking-tighter leading-none mb-1">Votes</span>
+                          <span className="text-xl font-black text-white leading-none">{can.votes}</span>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button 
+                          onClick={() => handleDeleteCandidate(can.id!)}
+                          className="p-3.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all duration-300 border border-red-500/20 active:scale-95"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "codes" && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="space-y-6">
+              <div className="bg-[#111827] p-4 rounded-lg border border-white/10 shadow-xl">
+                <h3 className="text-md font-semibold mb-4 flex items-center gap-2 text-white tracking-widest"><Ticket size={18}/> Kode baru</h3>
+                <input type="number" placeholder="Jumlah Token" className="w-full bg-white/5 border border-white/10 rounded-md p-4 mb-2 outline-none focus:border-blue-500 transition-all" value={genAmount} onChange={e => setGenAmount(e.target.value === "" ? "" : parseInt(e.target.value))} />
+                <button onClick={handleGenerateCodes} className="w-full bg-blue-600 py-4 rounded-md font-semibold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/30">Hasilkan kode</button>
+              </div>
+
+              <div className="bg-[#111827] p-4 rounded-lg border border-white/10 space-y-2">
+                <button onClick={exportToExcel} className="w-full flex items-center gap-3 px-5 py-4 bg-green-600/5 text-green-400 border border-green-600/10 rounded-md hover:bg-green-600/10 text-sm transition-all"><FileSpreadsheet size={18}/> Export to Excel</button>
+                <button onClick={() => window.print()} className="w-full flex items-center gap-3 px-5 py-4 bg-blue-600/5 text-blue-400 border border-blue-600/10 rounded-md hover:bg-blue-600/10 text-sm transition-all"><Printer size={18}/> Print Token Cards</button>
+                <button onClick={handleBulkDeleteAll} className="w-full flex items-center gap-3 px-5 py-4 bg-red-600/5 text-red-500 border border-red-600/10 rounded-md hover:bg-red-600/10 text-sm transition-all"><Trash size={18}/> Clear All Data</button>
+              </div>
+
+              <AnimatePresence>
+                {selectedIds.length > 0 && (
+                  <motion.button initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                    onClick={handleDeleteSelected}
+                    className="w-full py-4 bg-red-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-red-900/40 flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={20}/> Hapus {selectedIds.length} Terpilih
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="lg:col-span-3 bg-[#111827] rounded-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/5">
+                <div className="w-max flex items-center gap-3">
+                  <div className="relative w-full sm:w-80">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input type="text" placeholder="Search token..." className="w-full bg-white/5 pl-12 pr-4 py-3 rounded-xl outline-none border border-transparent focus:border-blue-500 transition-all text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      fetchData().finally(() => setLoading(false));
+                      showToast("Data kode voting telah diperbarui");
+                    }}
+                    disabled={loading}
+                    className={`
+                      flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all
+                      ${loading 
+                        ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 hover:border-blue-400/50'
+                      }
+                    `}
+                    title="Refresh daftar kode"
+                  >
+                    {loading ? (
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                        <path d="M21 3v5h-5" />
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                        <path d="M3 21v-5h5" />
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 text-[10px] font-semibold text-gray-500 tracking-widest">
+                  <span>{selectedIds.length} SELECTED</span>
+                  <span className="h-4 w-px bg-white/10"></span>
+                  <span>TOTAL {codes.length}</span>
+                </div>
+              </div>
+
+              <div className="overflow-y-auto max-h-[600px] custom-scroll">
+                <table className="w-full text-left">
+                  <tbody className="divide-y divide-white/5">
+                    {filteredCodes.map(c => (
+                      <tr key={c.id} className={`group transition-colors ${selectedIds.includes(c.id) ? 'bg-blue-500/5' : 'hover:bg-white/5'}`}>
+                        <td className="px-8 py-4">
+                          <button onClick={() => toggleSelect(c.id)}>
+                            {selectedIds.includes(c.id) ? <CheckSquare size={20} className="text-blue-500" /> : <Square size={20} className="text-gray-700" />}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-bold text-white text-lg tracking-widest">
+                              {c.code}
+                            </span>
+                            {/* Tombol Copy Clipboard */}
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(c.code);
+                                showToast("Kode berhasil disalin!"); // <--- Panggil toast di sini
+                              }}
+                              className="p-2 hover:bg-blue-500/20 text-white rounded-md transition-all active:scale-90"
+                              title="Salin Kode"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {c.isActive ? 
+                            <span className="flex items-center gap-1.5 text-green-500 text-[10px] font-semibold bg-green-500/10 px-3 py-1 rounded-full w-fit tracking-widest">READY</span> : 
+                            <span className="flex items-center gap-1.5 text-red-400 text-[10px] font-semibold bg-red-400/10 px-3 py-1 rounded-full w-fit tracking-widest">USED</span>
+                          }
+                        </td>
+                        <td className="px-6 py-4 text-right text-gray-500 text-xs font-bold">
+                          {new Date(c.createdAt).toLocaleDateString('id-ID')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <AnimatePresence>
+              {toast.show && (
+                <motion.div   
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="fixed bottom-4 right-7 -translate-x-1/2 z-[9999] bg-blue-600 text-white px-6 py-3 rounded-md shadow-2xl flex items-center gap-3 border border-white/20 backdrop-blur-md"
+                >
+                  <div className="bg-white/20 p-1 rounded-full">
+                    <Check size={14} />
+                  </div>
+                  <span className="text-sm font-bold tracking-wide">{toast.message}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {activeTab === "results" && (
+          <div className="space-y-8">
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-[#111827] border border-white/10 px-5 pt-4 pb-5 rounded-2xl shadow-xl">
+                <p className="text-gray-400 text-[14px] font-semibold tracking-widest">Total Suara Masuk</p>
+                <div className="flex items-end gap-2 mt-2">
+                  <h2 className="text-4xl font-semibold text-white">{totalVotes}</h2>
+                  {/* <span className="text-gray-500 text-sm mb-1 font-bold">Suara</span> */}
+                </div>
+              </div>
+              <div className="bg-[#111827] border border-white/10 px-5 pt-4 pb-5 rounded-2xl shadow-xl">
+                <p className="text-gray-400 text-[14px] font-semibold tracking-widest">Token Terpakai</p>
+                <div className="flex items-end gap-2 mt-2">
+                  <h2 className="text-4xl font-semibold text-white">{codes.filter(c => !c.isActive).length}</h2>
+                  {/* <span className="text-gray-500 text-sm mb-1 font-bold">Terpakai</span> */}
+                </div>
+              </div>
+              <div className="bg-[#111827] border border-white/10 px-5 pt-4 pb-5 rounded-2xl shadow-xl">
+                <p className="text-gray-400 text-[14px] font-semibold tracking-widest">Token Tersedia</p>
+                <div className="flex items-end gap-2 mt-2">
+                  <h2 className="text-4xl font-semibold text-white">
+                    {codes.filter(c => c.isActive).length}
+                  </h2>
+                  {/* <span className="text-gray-500 text-sm mb-1 font-bold">Tersisa</span> */}
+                </div>
+              </div>
+              <div className="bg-[#111827] border border-white/10 px-5 pt-4 pb-5 rounded-2xl shadow-xl">
+                <p className="text-gray-400 text-[14px] font-semibold tracking-widest">Partisipasi</p>
+                <div className="flex items-end gap-2 mt-2">
+                  <h2 className="text-4xl font-semibold text-white">
+                    {codes.length > 0 ? ((codes.filter(c => !c.isActive).length / codes.length) * 100).toFixed(1) : 0}%
+                  </h2>
+                  {/* <span className="text-gray-500 text-sm mb-1 font-bold">Rate</span> */}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Main Bar Chart */}
+              <div className="lg:col-span-2 bg-[#111827] border border-white/10 p-8 rounded-3xl shadow-2xl">
+                <h3 className="text-md font-semibold text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
+                  <BarChart3 className="text-blue-500" size={20} /> Statistik Perolehan Suara
+                </h3>
+                <div className="h-[400px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                      <XAxis dataKey="name" stroke="#6B7280" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                      <YAxis stroke="#6B7280" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        cursor={{ fill: '#ffffff05' }}
+                        contentStyle={{ backgroundColor: '#111827', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                        itemStyle={{ color: '#F3F4F6', fontWeight: '900', fontSize: '12px' }}
+                      />
+                      <Bar dataKey="votes" radius={[10, 10, 0, 0]} barSize={60}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Pie Chart Distribution */}
+              <div className="bg-[#111827] border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col">
+                <h3 className="text-md font-semibold text-white mb-8 uppercase tracking-widest text-center">Distribusi Suara</h3>
+                <div className="h-[280px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        innerRadius={70}
+                        outerRadius={100}
+                        paddingAngle={8}
+                        dataKey="votes"
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="mt-6 space-y-3">
+                  {chartData.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></div>
+                        <span className="text-xs font-bold text-gray-300 truncate max-w-[120px]">{item.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-white leading-none">{item.votes}</p>
+                        <p className="text-[10px] text-gray-500 font-bold">SUARA</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* PRINTABLE AREA */}
+      <div id="printable-area" className="hidden print:block">
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .print-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 20px; }
+            .card { border: 2px solid #000; padding: 15px; text-align: center; border-radius: 10px; }
+            .card-title { font-size: 10px; font-weight: 800; border-bottom: 1px solid #000; margin-bottom: 8px; }
+            .card-code { font-size: 22px; font-family: monospace; font-weight: 900; }
+          }
+        `}</style>
+        <div className="print-grid">
+          {codes.filter(c => c.isActive).map(c => (
+            <div key={c.id} className="card">
+              <div className="card-title">E-VOTING TOKEN</div>
+              <div className="card-code">{c.code}</div>
+              <div style={{fontSize: '7px', marginTop: '5px'}}>Official Voting Code</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <CandidateModal open={modalOpen} onClose={() => setModalOpen(false)} initialData={selectedCandidate} onSubmit={handleSaveCandidate} />
+    </div>
+  );
+}

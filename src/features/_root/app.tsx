@@ -114,6 +114,9 @@ import { WelcomeLanding } from "../welcome";
 import { PenilaianLanding } from "../penilaian/pages/penilaian-landing.js";
 import { FasilitasLanding } from "../fasilitas/pages/berita-landing.js";
 import { PartnerLanding } from "../partner/pages/partner-landing.js";
+import { VotingLanding } from "../voting/index.js";
+import { TataTertibLanding } from "../tataTertib/index.js";
+import { FaqLanding } from "../FAQ/index.js";
 const router = createBrowserRouter(
   [
     {
@@ -415,8 +418,20 @@ const router = createBrowserRouter(
           element: <SejarahLanding />,
         },
         {
+          path: "faq",
+          element: <FaqLanding />,
+        },
+        {
+          path: "tata-tertib",
+          element: <TataTertibLanding />,
+        },
+        {
           path: "struktur-organisasi",
           element: <StrukturORGLanding />,
+        },
+        {
+          path: "voting-osis",
+          element: <VotingLanding />,
         },
         {
           path: "fasilitas",

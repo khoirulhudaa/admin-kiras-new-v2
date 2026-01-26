@@ -300,12 +300,6 @@ export const MENU_STAFF: VokadashProps["menus"] = [
         main: false,
       },
       // {
-      //   title: lang.text('organization'),
-      //   url: "/struktur-organisasi",
-      //   icon: "ListTree", // For vision and mission (goals)
-      //   main: false,
-      // },
-      // {
         //   title: lang.text("permohonan"),
         //   url: "/permohonan",
         //   icon: "FormInput", // For teachers and staff
@@ -314,7 +308,19 @@ export const MENU_STAFF: VokadashProps["menus"] = [
       {
         title: lang.text("kurikulum"),
         url: "/curriculum",
-        icon: "BookOpen", // For curriculum (education)
+        icon: "BookOpen",
+        main: false,
+      },
+      {
+        title: lang.text("faq"),
+        url: "/faq",
+        icon: "MessageCircleQuestion", 
+        main: false,
+      },
+      {
+        title: lang.text("rules"),
+        url: "/tata-tertib",
+        icon: "Scale", 
         main: false,
       },
       {
@@ -324,9 +330,21 @@ export const MENU_STAFF: VokadashProps["menus"] = [
         main: true
       },
       {
+        title: lang.text('organization'),
+        url: "/struktur-organisasi",
+        icon: "ListTree", // For vision and mission (goals)
+        main: false,
+      },
+      {
         title: lang.text("berita"),
         url: "/berita",
         icon: "Newspaper",
+        main: true
+      },
+      {
+        title: lang.text("vote"),
+        url: "/voting-osis",
+        icon: "Ticket",
         main: true
       },
       {

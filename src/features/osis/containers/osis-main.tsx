@@ -279,7 +279,7 @@ export const OsisMain = () => {
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <button
           onClick={() => setModal("editOsis")}
-          className="px-3 gap-2 py-2 flex items-center rounded-lg text-sm font-medium bg-sky-600 text-white hover:bg-sky-700"
+          className="px-3 gap-2 py-2 flex items-center rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600"
         >
           <ISave /> Perbarui Data OSIS
         </button>
@@ -448,7 +448,7 @@ export const OsisMain = () => {
                             value={formData.periodeSaatIni}
                             onChange={e => updateForm("periodeSaatIni", e.target.value)}
                             placeholder="2025/2026"
-                            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                           />
                         </div>
 
@@ -461,19 +461,19 @@ export const OsisMain = () => {
                               placeholder="Nama"
                               value={formData[`${role.key}Nama`]}
                               onChange={e => updateForm(`${role.key}Nama`, e.target.value)}
-                              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                             />
 
                             <input
                               placeholder="NIP/NUPTK (opsional)"
                               value={formData[`${role.key}NipNuptk`]}
                               onChange={e => updateForm(`${role.key}NipNuptk`, e.target.value)}
-                              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                             />
 
                             <div>
                               <label className="block text-sm font-medium mb-2 text-zinc-300">Foto {role.title}</label>
-                              <label className="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-zinc-600 rounded-xl cursor-pointer hover:border-sky-500/50 transition-colors bg-zinc-900/40">
+                              <label className="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-zinc-600 rounded-xl cursor-pointer hover:border-blue-500/50 transition-colors bg-zinc-900/40">
                                 <div className="text-center">
                                   <Upload className="mx-auto h-10 w-10 text-zinc-500" />
                                   <p className="mt-3 text-sm text-zinc-400">
@@ -516,7 +516,7 @@ export const OsisMain = () => {
                             value={formData.visi}
                             onChange={e => updateForm("visi", e.target.value)}
                             rows={4}
-                            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white resize-y focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white resize-y focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                             placeholder="Tuliskan visi OSIS..."
                           />
                         </div>
@@ -529,7 +529,7 @@ export const OsisMain = () => {
                               <input
                                 value={misi}
                                 onChange={e => updateMisi(idx, e.target.value)}
-                                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                                 placeholder={`Misi ${idx + 1}`}
                               />
                               <button
@@ -544,7 +544,7 @@ export const OsisMain = () => {
                           <button
                             type="button"
                             onClick={addMisi}
-                            className="mt-3 text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1"
+                            className="mt-3 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
                           >
                             <Plus size={16} /> Tambah Misi
                           </button>
@@ -559,20 +559,20 @@ export const OsisMain = () => {
                                 placeholder="Judul Prestasi"
                                 value={p.judul}
                                 onChange={e => updatePrestasi(idx, "judul", e.target.value)}
-                                className="w-full mb-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                                className="w-full mb-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                               />
                               <input
                                 placeholder="Tahun"
                                 value={p.tahun}
                                 onChange={e => updatePrestasi(idx, "tahun", e.target.value)}
-                                className="w-full mb-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                                className="w-full mb-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                               />
                               <textarea
                                 placeholder="Deskripsi singkat"
                                 value={p.deskripsi}
                                 onChange={e => updatePrestasi(idx, "deskripsi", e.target.value)}
                                 rows={3}
-                                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none"
                               />
                               <button
                                 type="button"
@@ -586,7 +586,7 @@ export const OsisMain = () => {
                           <button
                             type="button"
                             onClick={addPrestasi}
-                            className="mt-3 text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1"
+                            className="mt-3 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
                           >
                             <Plus size={16} /> Tambah Prestasi
                           </button>
@@ -607,8 +607,8 @@ export const OsisMain = () => {
                             className={clsx(
                               "px-8 py-2.5 justify-center rounded-lg text-white flex items-center gap-2 transition-colors",
                               savingOsis 
-                                ? "bg-sky-800 cursor-not-allowed" 
-                                : "bg-sky-600 hover:bg-sky-700"
+                                ? "bg-blue-800 cursor-not-allowed" 
+                                : "bg-blue-600 hover:bg-blue-700"
                             )}
                           >
                             {savingOsis ? (

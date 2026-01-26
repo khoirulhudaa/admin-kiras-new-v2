@@ -2199,6 +2199,10 @@
     "id": "FASILITAS",
     "en": "FACILITY"
   },
+  "vote": {
+    "id": "VOTING OSIS",
+    "en": "OSIS VOTE"
+  },
   "partner": {
     "id": "PARTNER",
     "en": "PARTNER"
@@ -2458,6 +2462,14 @@
   "resetPassword": {
     "id": "Reset password",
     "en": "Password reset"
+  },
+  "faq": {
+    "id": "KELOLA FAQ",
+    "en": "FAQ MANAGEMENT"
+  },
+ "rules": {
+    "id": "TATA TERTIB",
+    "en": "REGULATIONS"
   },
   "successResetPass": {
     "id": "Berhasil reset password (default: password123)",

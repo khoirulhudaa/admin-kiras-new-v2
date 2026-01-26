@@ -169,17 +169,17 @@ const ServiceModal = ({ open, onClose, title, onSubmit, initialData = {}, type }
   });
 
   useEffect(() => {
-    if (initialData) {
+    if (open) {
       setForm({
         title: initialData.title || "",
         description: initialData.description || "",
-        type: initialData.type || type,
+        type: initialData.type || type || "internal",
         atasNama: initialData.atasNama || "",
         noTelephone: initialData.noTelephone || "",
         email: initialData.email || "",
       });
     }
-  }, [type]);
+  }, [open]);   // ← HANYA bergantung pada open, BUKAN initialData atau type
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;

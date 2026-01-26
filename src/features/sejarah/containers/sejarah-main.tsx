@@ -1,809 +1,7 @@
-// import { AnimatePresence, motion } from "framer-motion";
-// import React, { useState, useEffect, useCallback } from "react";
-
-// // Theme Tokens
-// const THEME_TOKENS: Record<string, React.CSSProperties> = {
-//   smkn13: {
-//     "--brand-primary": "#10b981",
-//     "--brand-primaryText": "#ffffff",
-//     "--brand-accent": "#f59e0b",
-//     "--brand-bg": "#0a0a0a",
-//     "--brand-surface": "rgba(24,24,27,0.8)",
-//     "--brand-surfaceText": "#f3f4f6",
-//     "--brand-subtle": "#27272a",
-//     "--brand-pop": "#3b82f6",
-//   },
-// };
-
-// // Apply theme
-// if (typeof document !== "undefined") {
-//   document.documentElement.style.cssText = Object.entries(THEME_TOKENS.smkn13)
-//     .map(([k, v]) => `${k}: ${v};`)
-//     .join("");
-// }
-
-// // Utility: clsx
-// const clsx = (...args: Array<string | false | null | undefined>): string =>
-//   args.filter(Boolean).join(" ");
-
-// // Custom useAlert Hook
-// interface AlertState {
-//   message: string;
-//   isVisible: boolean;
-// }
-
-// const useAlert = () => {
-//   const [alert, setAlert] = useState<AlertState>({ message: "", isVisible: false });
-
-//   const showAlert = useCallback((message: string) => {
-//     setAlert({ message, isVisible: true });
-//   }, []);
-
-//   const hideAlert = useCallback(() => {
-//     setAlert({ message: "", isVisible: false });
-//   }, []);
-
-//   return { alert, showAlert, hideAlert };
-// };
-
-// // Alert Component
-// const Alert: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
-//   const isSuccess = message.includes("successfully");
-
-//   return (
-//     <motion.div
-//       initial={{ opacity: 0, y: -20 }}
-//       animate={{ opacity: 1, y: 0 }}
-//       exit={{ opacity: 0, y: -20 }}
-//       className={clsx(
-//         "mb-4 rounded-xl border p-4 text-sm",
-//         isSuccess
-//           ? "border-green-500/30 bg-green-500/10 text-green-300"
-//           : "border-red-500/30 bg-red-500/10 text-red-300"
-//       )}
-//     >
-//       <div className="flex items-start justify-between">
-//         <div className="whitespace-pre-line">{message}</div>
-//         <button
-//           type="button"
-//           onClick={onClose}
-//           className={clsx(
-//             "ml-4",
-//             isSuccess ? "text-green-300 hover:text-green-400" : "text-red-300 hover:text-red-400"
-//           )}
-//         >
-//           ✕
-//         </button>
-//       </div>
-//     </motion.div>
-//   );
-// };
-
-// // Mini Icons
-// const Icon = ({ label }: { label: string }) => (
-//   <span
-//     aria-hidden
-//     className="inline-block align-middle select-none"
-//     style={{ width: 16, display: "inline-flex", justifyContent: "center" }}
-//   >
-//     {label}
-//   </span>
-// );
-// const ISave = () => <Icon label="💾" />;
-
-// // Utility Components
-// interface FieldProps {
-//   label?: string;
-//   hint?: string;
-//   children: React.ReactNode;
-//   className?: string;
-// }
-
-// const Field: React.FC<FieldProps> = ({ label, hint, children, className }) => (
-//   <label className={clsx("block", className)}>
-//     {label && <div className="mb-1 text-xs font-medium text-white/70">{label}</div>}
-//     {children}
-//     {hint && <div className="mt-1 text-[10px] text-white/50">{hint}</div>}
-//   </label>
-// );
-
-// interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-//   className?: string;
-// }
-
-// const Input: React.FC<InputProps> = ({ className, ...props }) => (
-//   <input
-//     {...props}
-//     className={clsx(
-//       "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none",
-//       className
-//     )}
-//   />
-// );
-
-// interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-//   className?: string;
-// }
-
-// const TextArea: React.FC<TextAreaProps> = ({ className, ...props }) => (
-//   <textarea
-//     {...props}
-//     className={clsx(
-//       "w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none",
-//       className
-//     )}
-//   />
-// );
-
-// // Data Interface
-// interface Sejarah {
-//   stats: {
-//     tahunBerdiri: number;
-//     jumlahKepsek: number;
-//     kompetensiKeahlian: number;
-//   };
-//   timeline: Array<{
-//     id?: number;
-//     year: string;
-//     title: string;
-//     text: string;
-//     detailUrl: string;
-//     sortOrder?: number;
-//   }>;
-//   kepsek: Array<{
-//     id?: number;
-//     name: string;
-//     period: string;
-//     foto?: string | File;
-//     sortOrder?: number;
-//   }>;
-//   catatanKS: {
-//     title: string;
-//     text: string;
-//     updated: string;
-//   } | null;
-//   serverTimelineIndices: number[];
-//   serverKepsekIndices: number[];
-// }
-
-// // Default Data
-// const DEFAULT_SEJARAH: Sejarah = {
-//   stats: {
-//     tahunBerdiri: 1976,
-//     jumlahKepsek: 12,
-//     kompetensiKeahlian: 8,
-//   },
-//   timeline: [],
-//   kepsek: [],
-//   catatanKS: null,
-//   serverTimelineIndices: [],
-//   serverKepsekIndices: [],
-// };
-
-// // Timeline Editor
-// interface TimelineEditorProps {
-//   items: Sejarah["timeline"];
-//   onChange: (list: Sejarah["timeline"]) => void;
-//   onDelete: (index: number) => void;
-//   disabled: boolean;
-// }
-
-// const TimelineEditor: React.FC<TimelineEditorProps> = ({ items, onChange, onDelete, disabled }) => {
-//   const setAt = (index: number, field: keyof Sejarah["timeline"][0], value: string) => {
-//     const copy = [...items];
-//     copy[index] = { ...copy[index], [field]: value };
-//     onChange(copy);
-//   };
-
-//   const add = () => onChange([...items, { year: "", title: "", text: "", detailUrl: "#", sortOrder: items.length }]);
-
-//   const up = (index: number) => {
-//     if (index <= 0) return;
-//     const copy = [...items];
-//     [copy[index - 1], copy[index]] = [copy[index], copy[index - 1]];
-//     copy.forEach((item, i) => (item.sortOrder = i));
-//     onChange(copy);
-//   };
-
-//   const down = (index: number) => {
-//     if (index >= items.length - 1) return;
-//     const copy = [...items];
-//     [copy[index + 1], copy[index]] = [copy[index], copy[index + 1]];
-//     copy.forEach((item, i) => (item.sortOrder = i));
-//     onChange(copy);
-//   };
-
-//   return (
-//     <div className="space-y-2">
-//       {items.map((item, index) => (
-//         <div key={index} className="grid gap-2 md:grid-cols-2">
-//           <Field label="Tahun">
-//             <Input
-//               value={item.year}
-//               onChange={(e) => setAt(index, "year", e.target.value)}
-//               placeholder="Tahun"
-//               disabled={disabled}
-//             />
-//           </Field>
-//           <Field label="Judul">
-//             <Input
-//               value={item.title}
-//               onChange={(e) => setAt(index, "title", e.target.value)}
-//               placeholder="Judul"
-//               disabled={disabled}
-//             />
-//           </Field>
-//           <Field label="Deskripsi" className="md:col-span-2">
-//             <TextArea
-//               value={item.text}
-//               onChange={(e) => setAt(index, "text", e.target.value)}
-//               placeholder="Deskripsi"
-//               rows={3}
-//               disabled={disabled}
-//             />
-//           </Field>
-//           <Field label="Detail URL" className="md:col-span-2">
-//             <Input
-//               value={item.detailUrl}
-//               onChange={(e) => setAt(index, "detailUrl", e.target.value)}
-//               placeholder="Detail URL"
-//               disabled={disabled}
-//             />
-//           </Field>
-//           <div className="md:col-span-2 flex gap-2 justify-end">
-//             <button
-//               type="button"
-//               onClick={() => up(index)}
-//               className="rounded-lg border border-white/20 px-2 py-1 text-xs"
-//               disabled={disabled}
-//             >
-//               ↑
-//             </button>
-//             <button
-//               type="button"
-//               onClick={() => down(index)}
-//               className="rounded-lg border border-white/20 px-2 py-1 text-xs"
-//               disabled={disabled}
-//             >
-//               ↓
-//             </button>
-//             <button
-//               type="button"
-//               onClick={() => onDelete(index)}
-//               className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300"
-//               disabled={disabled}
-//             >
-//               Hapus
-//             </button>
-//           </div>
-//         </div>
-//       ))}
-//       <button
-//         type="button"
-//         onClick={add}
-//         className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-300"
-//         disabled={disabled}
-//       >
-//         Tambah Timeline
-//       </button>
-//     </div>
-//   );
-// };
-
-// // Kepsek Editor
-// interface KepsekEditorProps {
-//   items: Sejarah["kepsek"];
-//   onChange: (list: Sejarah["kepsek"]) => void;
-//   onDelete: (index: number) => void;
-//   disabled: boolean;
-// }
-
-// const KepsekEditor: React.FC<KepsekEditorProps> = ({ items, onChange, onDelete, disabled }) => {
-//   const setAt = (index: number, field: keyof Sejarah["kepsek"][0], value: string | File) => {
-//     const copy = [...items];
-//     copy[index] = { ...copy[index], [field]: value };
-//     onChange(copy);
-//   };
-
-//   const add = () => onChange([...items, { name: "", period: "", sortOrder: items.length }]);
-
-//   const up = (index: number) => {
-//     if (index <= 0) return;
-//     const copy = [...items];
-//     [copy[index - 1], copy[index]] = [copy[index], copy[index - 1]];
-//     copy.forEach((item, i) => (item.sortOrder = i));
-//     onChange(copy);
-//   };
-
-//   const down = (index: number) => {
-//     if (index >= items.length - 1) return;
-//     const copy = [...items];
-//     [copy[index + 1], copy[index]] = [copy[index], copy[index + 1]];
-//     copy.forEach((item, i) => (item.sortOrder = i));
-//     onChange(copy);
-//   };
-
-//   return (
-//     <div className="space-y-2">
-//       {items.map((item, index) => (
-//         <div key={index} className="grid gap-2 md:grid-cols-2">
-//           <Field label="Nama">
-//             <Input
-//               value={item.name}
-//               onChange={(e) => setAt(index, "name", e.target.value)}
-//               placeholder="Nama Kepala Sekolah"
-//               disabled={disabled}
-//             />
-//           </Field>
-//           <Field label="Periode">
-//             <Input
-//               value={item.period}
-//               onChange={(e) => setAt(index, "period", e.target.value)}
-//               placeholder="Periode (e.g., 2020 - Sekarang)"
-//               disabled={disabled}
-//             />
-//           </Field>
-//           <Field label="Foto" className="md:col-span-2">
-//             <input
-//               type="file"
-//               accept="image/*"
-//               onChange={(e) => {
-//                 if (e.target.files && e.target.files[0]) {
-//                   setAt(index, "foto", e.target.files[0]);
-//                 }
-//               }}
-//               disabled={disabled}
-//               className="w-full rounded-xl border border-white/20 bg-white/20 px-3 py-2 text-sm text-white outline-none"
-//             />
-//             {item.foto && typeof item.foto === "string" && (
-//               <div className="mt-2">
-//                 <img src={'https://dev.kiraproject.id'+item.foto} alt="Preview" className="h-20 w-20 object-cover rounded" />
-//               </div>
-//             )}
-//           </Field>
-//           <div className="md:col-span-2 flex gap-2 justify-end">
-//             <button
-//               type="button"
-//               onClick={() => up(index)}
-//               className="rounded-lg border border-white/20 px-2 py-1 text-xs"
-//               disabled={disabled}
-//             >
-//               ↑
-//             </button>
-//             <button
-//               type="button"
-//               onClick={() => down(index)}
-//               className="rounded-lg border border-white/20 px-2 py-1 text-xs"
-//               disabled={disabled}
-//             >
-//               ↓
-//             </button>
-//             <button
-//               type="button"
-//               onClick={() => onDelete(index)}
-//               className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300"
-//               disabled={disabled}
-//             >
-//               Hapus
-//             </button>
-//           </div>
-//         </div>
-//       ))}
-//       <button
-//         type="button"
-//         onClick={add}
-//         className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-300"
-//         disabled={disabled}
-//       >
-//         Tambah Kepala Sekolah
-//       </button>
-//     </div>
-//   );
-// };
-
-// export function Sejarah() {
-//   const [local, setLocal] = useState<Sejarah>(DEFAULT_SEJARAH);
-//   const [loading, setLoading] = useState(false);
-//   const { alert, showAlert, hideAlert } = useAlert();
-
-//   const BASE_URL = "https://dev.kiraproject.id/api/sejarah";
-//   const getToken = () => localStorage.getItem("token");
-
-//   // Common headers with token
-//   const getHeaders = () => {
-//     const token = getToken();
-//     return {
-//       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-//     };
-//   };
-
-//   // Fetch initial data
-//   useEffect(() => {
-//     const fetchData = async () => {
-//       setLoading(true);
-//       try {
-//         const response = await fetch(BASE_URL, {
-//           headers: getHeaders(),
-//         });
-//         if (!response.ok) throw new Error("Failed to fetch data");
-//         const data = await response.json();
-//         setLocal({
-//           stats: data.stats ?? DEFAULT_SEJARAH.stats, // Fallback to default stats if API response is missing stats
-//           timeline: data.timeline?.map((item: any, i: number) => ({ ...item, sortOrder: i })) ?? [],
-//           kepsek: data.kepsek?.map((item: any, i: number) => ({ ...item, sortOrder: i })) ?? [],
-//           catatanKS: data.catatanKS ?? null,
-//           serverTimelineIndices: Array.from({ length: data.timeline?.length ?? 0 }, (_, i) => i),
-//           serverKepsekIndices: Array.from({ length: data.kepsek?.length ?? 0 }, (_, i) => i),
-//         });
-//       } catch (err) {
-//         showAlert("Failed to load data from API");
-//         console.error(err);
-//         // Ensure local.stats is initialized even on error
-//         setLocal(DEFAULT_SEJARAH);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchData();
-//   }, [showAlert]);
-
-//   const touch = (patch: Partial<Sejarah>) => {
-//     setLocal({ ...local, ...patch });
-//   };
-
-//   // Stats Handlers
-//   const setStats = (field: keyof Sejarah["stats"], value: number) => {
-//     touch({ stats: { ...local.stats, [field]: value } });
-//   };
-
-//   const handleSubmitStats = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setLoading(true);
-//     try {
-//       const response = await fetch(`${BASE_URL}/stats`, {
-//         method: "POST",
-//         headers: { ...getHeaders(), "Content-Type": "application/json" },
-//         body: JSON.stringify(local.stats),
-//       });
-//       if (!response.ok) throw new Error("Failed to save stats");
-//       showAlert("Stats saved successfully!");
-//     } catch (err) {
-//       showAlert("Failed to save stats");
-//       console.error(err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Timeline Handlers
-//   const setTimeline = (list: Sejarah["timeline"]) => touch({ timeline: list });
-
-//   const handleDeleteTimeline = async (index: number) => {
-//     const item = local.timeline[index];
-//     if (!local.serverTimelineIndices.includes(index) || !item.id) {
-//       // Item is local-only, delete from state
-//       setTimeline(local.timeline.filter((_, idx) => idx !== index));
-//       showAlert("Timeline deleted successfully");
-//       return;
-//     }
-
-//     // Item exists on server, attempt API delete
-//     try {
-//       const response = await fetch(`${BASE_URL}/timeline/${item.id}`, {
-//         method: "DELETE",
-//         headers: getHeaders(),
-//       });
-//       if (!response.ok) throw new Error("Failed to delete timeline");
-//       setTimeline(local.timeline.filter((_, idx) => idx !== index));
-//       touch({ serverTimelineIndices: local.serverTimelineIndices.filter((i) => i !== index) });
-//       showAlert("Timeline deleted successfully");
-//     } catch (err) {
-//       showAlert("Failed to delete timeline");
-//       console.error(err);
-//     }
-//   };
-
-//   const handleSubmitTimeline = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setLoading(true);
-//     try {
-//       for (const [index, item] of local.timeline.entries()) {
-//         if (!local.serverTimelineIndices.includes(index)) {
-//           // New item, use POST
-//           const response = await fetch(`${BASE_URL}/timeline`, {
-//             method: "POST",
-//             headers: { ...getHeaders(), "Content-Type": "application/json" },
-//             body: JSON.stringify({
-//               year: item.year,
-//               title: item.title,
-//               text: item.text,
-//               detailUrl: item.detailUrl,
-//               sortOrder: item.sortOrder,
-//             }),
-//           });
-//           if (!response.ok) throw new Error("Failed to save timeline");
-//           const data = await response.json();
-//           item.id = data.id; // Update with server-assigned ID
-//         } else if (item.id) {
-//           // Existing item, use PUT
-//           const response = await fetch(`${BASE_URL}/timeline/${item.id}`, {
-//             method: "PUT",
-//             headers: { ...getHeaders(), "Content-Type": "application/json" },
-//             body: JSON.stringify({
-//               title: item.title,
-//               text: item.text,
-//             }),
-//           });
-//           if (!response.ok) throw new Error("Failed to update timeline");
-//         }
-//       }
-//       touch({
-//         serverTimelineIndices: Array.from({ length: local.timeline.length }, (_, i) => i),
-//       });
-//       showAlert("Timeline saved successfully!");
-//     } catch (err) {
-//       showAlert("Failed to save timeline");
-//       console.error(err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Kepsek Handlers
-//   const setKepsek = (list: Sejarah["kepsek"]) => touch({ kepsek: list });
-
-//   const handleDeleteKepsek = async (index: number) => {
-//     const item = local.kepsek[index];
-//     if (!local.serverKepsekIndices.includes(index) || !item.id) {
-//       // Item is local-only, delete from state
-//       setKepsek(local.kepsek.filter((_, idx) => idx !== index));
-//       showAlert("Kepala Sekolah deleted successfully");
-//       return;
-//     }
-
-//     // Item exists on server, attempt API delete
-//     try {
-//       const response = await fetch(`${BASE_URL}/kepsek/${item.id}`, {
-//         method: "DELETE",
-//         headers: getHeaders(),
-//       });
-//       if (!response.ok) throw new Error("Failed to delete kepsek");
-//       setKepsek(local.kepsek.filter((_, idx) => idx !== index));
-//       touch({ serverKepsekIndices: local.serverKepsekIndices.filter((i) => i !== index) });
-//       showAlert("Kepala Sekolah deleted successfully");
-//     } catch (err) {
-//       showAlert("Failed to delete kepsek");
-//       console.error(err);
-//     }
-//   };
-
-//   const handleSubmitKepsek = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setLoading(true);
-//     try {
-//       for (const [index, item] of local.kepsek.entries()) {
-//         const formData = new FormData();
-//         formData.append("name", item.name);
-//         formData.append("period", item.period);
-//         formData.append("sortOrder", item.sortOrder?.toString() || "0");
-//         if (item.foto instanceof File) {
-//           formData.append("foto", item.foto);
-//         }
-
-//         if (!local.serverKepsekIndices.includes(index)) {
-//           // New item, use POST
-//           const response = await fetch(`${BASE_URL}/kepsek`, {
-//             method: "POST",
-//             headers: getHeaders(),
-//             body: formData,
-//           });
-//           if (!response.ok) throw new Error("Failed to save kepsek");
-//           const data = await response.json();
-//           item.id = data.id; // Update with server-assigned ID
-//           item.foto = data.foto; // Update with server-provided URL
-//         } else if (item.id) {
-//           // Existing item, use PUT
-//           const response = await fetch(`${BASE_URL}/kepsek/${item.id}`, {
-//             method: "PUT",
-//             headers: getHeaders(),
-//             body: formData,
-//           });
-//           if (!response.ok) throw new Error("Failed to update kepsek");
-//           const data = await response.json();
-//           item.foto = data.foto; // Update with server-provided URL
-//         }
-//       }
-//       touch({
-//         serverKepsekIndices: Array.from({ length: local.kepsek.length }, (_, i) => i),
-//       });
-//       showAlert("Kepala Sekolah saved successfully!");
-//     } catch (err) {
-//       showAlert("Failed to save kepsek");
-//       console.error(err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Catatan KS Handlers
-//   const setCatatanKS = (field: keyof NonNullable<Sejarah["catatanKS"]>, value: string) => {
-//     touch({
-//       catatanKS: {
-//         ...local.catatanKS,
-//         [field]: value,
-//       } as NonNullable<Sejarah["catatanKS"]>,
-//     });
-//   };
-
-//   const handleSubmitCatatanKS = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!local.catatanKS) return;
-//     setLoading(true);
-//     try {
-//       const response = await fetch(`${BASE_URL}/catatanKS`, {
-//         method: "POST",
-//         headers: { ...getHeaders(), "Content-Type": "application/json" },
-//         body: JSON.stringify(local.catatanKS),
-//       });
-//       if (!response.ok) throw new Error("Failed to save catatanKS");
-//       showAlert("Catatan Kepala Sekolah saved successfully!");
-//     } catch (err) {
-//       showAlert("Failed to save catatanKS");
-//       console.error(err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   if (!local.stats) {
-//     return (
-//       <div className="space-y-6 py-4 mb-10">
-//         <AnimatePresence>
-//           {alert.isVisible && <Alert message={alert.message} onClose={hideAlert} />}
-//         </AnimatePresence>
-//         {loading && <div className="text-sm text-white/70">Loading...</div>}
-//         <div className="text-sm text-white/70">Initializing data...</div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="space-y-6 py-4 mb-10">
-//       <AnimatePresence>
-//         {alert.isVisible && <Alert message={alert.message} onClose={hideAlert} />}
-//       </AnimatePresence>
-//       {loading && <div className="text-sm text-white/70">Loading...</div>}
-
-//       {/* Stats Section */}
-//       <form onSubmit={handleSubmitStats} className="rounded-2xl border border-white/20 p-4">
-//         <div className="mb-3 text-sm font-semibold">Statistik</div>
-//         <div className="grid gap-2 md:grid-cols-3">
-//           <Field label="Tahun Berdiri">
-//             <Input
-//               type="number"
-//               value={local.stats.tahunBerdiri}
-//               onChange={(e) => setStats("tahunBerdiri", Number(e.target.value))}
-//               placeholder="Tahun Berdiri"
-//               disabled={loading}
-//             />
-//           </Field>
-//           <Field label="Jumlah Kepala Sekolah">
-//             <Input
-//               type="number"
-//               value={local.stats.jumlahKepsek}
-//               onChange={(e) => setStats("jumlahKepsek", Number(e.target.value))}
-//               placeholder="Jumlah Kepala Sekolah"
-//               disabled={loading}
-//             />
-//           </Field>
-//           <Field label="Kompetensi Keahlian">
-//             <Input
-//               type="number"
-//               value={local.stats.kompetensiKeahlian}
-//               onChange={(e) => setStats("kompetensiKeahlian", Number(e.target.value))}
-//               placeholder="Kompetensi Keahlian"
-//               disabled={loading}
-//             />
-//           </Field>
-//         </div>
-//         <div className="flex justify-end mt-4">
-//           <button
-//             type="submit"
-//             className="inline-flex items-center gap-2 rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
-//             disabled={loading}
-//           >
-//             <ISave className="h-4 w-4" /> Simpan Statistik
-//           </button>
-//         </div>
-//       </form>
-
-//       {/* Timeline Section */}
-//       <form onSubmit={handleSubmitTimeline} className="rounded-2xl border border-white/20 p-4">
-//         <div className="mb-3 text-sm font-semibold">Timeline</div>
-//         <TimelineEditor
-//           items={local.timeline}
-//           onChange={setTimeline}
-//           onDelete={handleDeleteTimeline}
-//           disabled={loading}
-//         />
-//         <div className="flex justify-end mt-4">
-//           <button
-//             type="submit"
-//             className="inline-flex items-center gap-2 rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
-//             disabled={loading}
-//           >
-//             <ISave className="h-4 w-4" /> Simpan Timeline
-//           </button>
-//         </div>
-//       </form>
-
-//       {/* Kepsek Section */}
-//       <form onSubmit={handleSubmitKepsek} className="rounded-2xl border border-white/20 p-4">
-//         <div className="mb-3 text-sm font-semibold">Kepala Sekolah</div>
-//         <KepsekEditor
-//           items={local.kepsek}
-//           onChange={setKepsek}
-//           onDelete={handleDeleteKepsek}
-//           disabled={loading}
-//         />
-//         <div className="flex justify-end mt-4">
-//           <button
-//             type="submit"
-//             className="inline-flex items-center gap-2 rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
-//             disabled={loading}
-//           >
-//             <ISave className="h-4 w-4" /> Simpan Kepala Sekolah
-//           </button>
-//         </div>
-//       </form>
-
-//       {/* Catatan KS Section */}
-//       <form onSubmit={handleSubmitCatatanKS} className="rounded-2xl border border-white/20 p-4">
-//         <div className="mb-3 text-sm font-semibold">Catatan Kepala Sekolah</div>
-//         <Field label="Judul">
-//           <Input
-//             value={local.catatanKS?.title || ""}
-//             onChange={(e) => setCatatanKS("title", e.target.value)}
-//             placeholder="Judul Catatan"
-//             disabled={loading}
-//           />
-//         </Field>
-//         <Field label="Teks">
-//           <TextArea
-//             value={local.catatanKS?.text || ""}
-//             onChange={(e) => setCatatanKS("text", e.target.value)}
-//             placeholder="Teks Catatan"
-//             rows={5}
-//             disabled={loading}
-//           />
-//         </Field>
-//         <Field label="Tanggal Update">
-//           <Input
-//             value={local.catatanKS?.updated || ""}
-//             onChange={(e) => setCatatanKS("updated", e.target.value)}
-//             placeholder="Tanggal Update"
-//             disabled={loading}
-//           />
-//         </Field>
-//         <div className="flex justify-end mt-4">
-//           <button
-//             type="submit"
-//             className="inline-flex items-center gap-2 rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
-//             disabled={loading || !local.catatanKS}
-//           >
-//             <ISave className="h-4 w-4" /> Simpan Catatan Kepala Sekolah
-//           </button>
-//         </div>
-//       </form>
-//     </div>
-//   );
-// }
-
-
-import { Edit, Trash2, X, Plus, Save, Upload } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useSchool } from "@/features/schools";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus, Save, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 // Theme (sama seperti contoh program)
 const THEME = {
@@ -885,6 +83,7 @@ const SejarahModal = ({
     daftarKepalaSekolah: initialData?.daftarKepalaSekolah || [],
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [kepsekFiles, setKepsekFiles] = useState<File[]>([]);
 
   useEffect(() => {
@@ -956,6 +155,8 @@ const SejarahModal = ({
       return;
     }
 
+    setIsSubmitting(true);
+
     const formData = new FormData();
     formData.append("deskripsi", form.deskripsi);
     formData.append("tahunBerdiri", form.tahunBerdiri);
@@ -963,10 +164,11 @@ const SejarahModal = ({
     formData.append("timeline", JSON.stringify(form.timeline));
     formData.append("daftarKepalaSekolah", JSON.stringify(form.daftarKepalaSekolah));
 
-    // Attach foto kepsek (hanya yang baru diubah)
+    // Kirim foto hanya yang diubah + index-nya
     kepsekFiles.forEach((file, index) => {
       if (file) {
-        formData.append(`kepalaPhotos`, file); // sesuai multer .array('kepalaPhotos')
+        formData.append("kepalaPhotos", file);
+        formData.append("photoIndices", index.toString()); // penting: kirim index kepsek yang di-update
       }
     });
 
@@ -974,7 +176,9 @@ const SejarahModal = ({
       await onSubmit(formData);
       onClose();
     } catch (err: any) {
-      alert("Gagal menyimpan: " + err.message);
+      alert("Gagal menyimpan: " + (err.message || "Terjadi kesalahan"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1148,15 +352,49 @@ const SejarahModal = ({
               type="button"
               onClick={onClose}
               className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl"
+              disabled={isSubmitting}  // ← optional: disable saat loading
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2"
+              disabled={isSubmitting}
+              className={`px-6 py-2.5 text-white rounded-xl flex items-center gap-2 transition-opacity ${
+                isSubmitting
+                  ? "bg-blue-700/70 cursor-not-allowed opacity-70"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
             >
-              <Save size={18} />
-              Simpan Sejarah
+              {isSubmitting ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                    />
+                  </svg>
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save size={18} />
+                  Simpan Sejarah
+                </>
+              )}
             </button>
           </div>
         </form>
