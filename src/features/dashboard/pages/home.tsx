@@ -1,66 +1,19 @@
-// import { APP_CONFIG } from "@/core/configs";
-// import { lang } from "@/core/libs";
-// import { DashboardPageLayout } from "@/features/_global";
-// import { useProfile } from "@/features/profile";
-// import { useSchool } from "@/features/schools";
-// import { SchoolDistribution } from "@/features/schools/pages/school-distribution";
-// import { SchoolUpdateDialog } from "../containers";
-// // import { HeatMap } from "@/features/schools/components";
-
-// export const HomePage = () => {
-//   const profile = useProfile();
-//   const isAdmin = profile?.user?.role === "admin";
-//   const school = useSchool();
-//   console.log('school this is:', school?.data);
-
-//   // Periksa apakah salah satu data bernilai null atau ""
-//   const shouldShowUpdateDialog = isAdmin && school?.data?.[0] && (
-//     school.data[0].namaSekolah === null || school.data[0].namaSekolah === "" ||
-//     school.data[0].npsn === null || school.data[0].npsn === "" ||
-//     school.data[0].nameProvince === null || school.data[0].nameProvince === "" ||
-//     school.data[0].urlYutubeFirst === null || school.data[0].urlYutubeFirst === ""
-//   );
-
-//   return (
-//     <DashboardPageLayout
-//       siteTitle={`${lang.text("dashboard")} | ${APP_CONFIG.appName}`}
-//       breadcrumbs={[
-//         {
-//           label: "Dashboard",
-//           url: "/",
-//         },
-//       ]}
-//     >
-//       <SchoolDistribution />
-//       {/* <HeatMap /> */}
-//       <div className="pb-16 sm:pb-0" />
-//       {shouldShowUpdateDialog && <SchoolUpdateDialog />}
-//     </DashboardPageLayout>
-//   );
-// };
-
-
-
-
-import { motion } from "framer-motion";
-import {
-  Loader,
-  AlertCircle,
-  School,
-  MapPin,
-  Building,
-  LayoutDashboard,
-  Zap,
-  Eye,
-  BarChart3,
-  Edit,
-} from "lucide-react";
+import { APP_CONFIG } from "@/core/configs";
+import { lang } from "@/core/libs";
 import { DashboardPageLayout } from "@/features/_global";
 import { useProfile } from "@/features/profile";
 import { useSchool } from "@/features/schools";
-import { SchoolUpdateDialog } from "../containers";
-import { APP_CONFIG } from "@/core/configs";
-import { lang } from "@/core/libs";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  BarChart3,
+  Building,
+  LayoutDashboard,
+  Loader,
+  MapPin,
+  School,
+  Zap
+} from "lucide-react";
 
 // ──────────────────────────────────────────────────────────────
 // Utilities

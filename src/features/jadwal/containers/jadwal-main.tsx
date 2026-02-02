@@ -481,7 +481,7 @@ export default function Jadwal() {
   const ISave = () => <Icon label="💾" />;
 
   return (
-    <div className="min-h-screen py-4" style={{ background: THEME.bg, color: THEME.text }}>
+    <div className="min-h-screen py-3.5" style={{ background: THEME.bg, color: THEME.text }}>
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div className="flex flex-wrap items-center gap-4">
 

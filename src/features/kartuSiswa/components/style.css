@@ -12,6 +12,19 @@
   height: 100% !important;
 }
 
+/* Buat ikon jadi putih di semua kondisi */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);          /* paling simpel → ubah hitam jadi putih */
+  /* atau lebih advance: */
+  /* filter: invert(92%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(105%) contrast(105%); */
+}
+
+/* Opsional: hover biar lebih interaktif */
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.7;
+  cursor: pointer;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;

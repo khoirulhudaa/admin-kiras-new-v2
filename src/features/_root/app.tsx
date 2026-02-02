@@ -117,6 +117,8 @@ import { PartnerLanding } from "../partner/pages/partner-landing.js";
 import { VotingLanding } from "../voting/index.js";
 import { TataTertibLanding } from "../tataTertib/index.js";
 import { FaqLanding } from "../FAQ/index.js";
+import { JadwalSDLanding } from "../jadwalSD/index.js";
+import { FeedLanding } from "../feed/index.js";
 const router = createBrowserRouter(
   [
     {
@@ -378,8 +380,16 @@ const router = createBrowserRouter(
           element: <CalendarLanding />,
         },
         {
+          path: "feed",
+          element: <FeedLanding />,
+        },
+        {
           path: "schedule-teacher",
           element: <JadwalLanding />,
+        },
+        {
+          path: "jadwal-sd",
+          element: <JadwalSDLanding />,
         },
         {
           path: "pengumuman",

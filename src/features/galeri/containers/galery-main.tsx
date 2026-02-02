@@ -745,6 +745,7 @@
 // }
 
 
+import { useSchool } from "@/features/schools";
 import { Dialog, Transition } from "@headlessui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pen, Plus, Trash } from "lucide-react";
@@ -864,10 +865,6 @@ const Select = ({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectEl
 const DEFAULT_ALBUM = { title: "", description: "", cover: null };
 const DEFAULT_ITEM = { title: "", description: "", albumId: "", image: null };
 
-// === CONFIG ===
-const SCHOOL_ID = "25"; // ← GANTI SESUAI SEKOLAH ANDA
-const BASE_URL = "https://be-school.kiraproject.id";
-
 const getJsonHeaders = () => ({
   "Content-Type": "application/json",
   // "Authorization": `Bearer ${localStorage.getItem("token")}` // jika pakai auth
@@ -882,22 +879,28 @@ export function GaleriMain() {
   const [activeTab, setActiveTab] = useState<"album" | "item">("album");
   const [albums, setAlbums] = useState<any[]>([]);
   const [itemsByAlbum, setItemsByAlbum] = useState<Record<string, any[]>>({});
-
+  
   const [albumForm, setAlbumForm] = useState(DEFAULT_ALBUM);
   const [itemForm, setItemForm] = useState(DEFAULT_ITEM);
-
+  
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-
+  
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
   const [selectedAlbumForItems, setSelectedAlbumForItems] = useState<string | null>(null);
   const [selectedAlbumForGallery, setSelectedAlbumForGallery] = useState<string | null>(null);
-
+  
   const [loading, setLoading] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
-
+  
+  const schoolid = useSchool()
+  
+  // === CONFIG ===
+  const SCHOOL_ID = schoolid?.data?.[0]?.id; // ← GANTI SESUAI SEKOLAH ANDA
+  const BASE_URL = "https://be-school.kiraproject.id";
+  
   // ── FETCH ────────────────────────────────────────────────────────────────
 
   const fetchAlbums = async () => {

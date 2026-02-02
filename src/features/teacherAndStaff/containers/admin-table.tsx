@@ -632,11 +632,11 @@ interface GuruTendikItem {
 const BASE_URL = "https://be-school.kiraproject.id/guruTendik";
 
 // Dropdown Options
-const ROLE_OPTIONS = ["Guru", "Wali Kelas", "Kepala Sekolah", "Kepala Tata Usaha", "Administrasi"];
+const ROLE_OPTIONS = ["Guru", "Wakil Kepala Sekolah", "Ka. Subag. Tata Usaha", "Bendahara Keuangan", "Pengurus Barang", "S D M", "Laboran", "Staff Perpustakaan", "Penjaga Sekolah", "Tenaga Kebersihan", "Komite Sekolah", "Wakasek. Bidang Kurikulum", "Wakasek. Bidang Kesiswaan dan Humas", "Wakasek. Bidang Sarana dan Prasarana", "Staf Kesiswaan dan Humas", "Staf Bidang Kurikulum", "Staf Sarana dan Prasana", "Guru BK", "Pembina OSIS/Ekskul", "Dewan Guru", "Kepala Perpustakaan", "Kepala Laboratorium", "Wali Kelas", "Kepala Sekolah", "Kepala Tata Usaha", "Administrasi"];
 const JENIS_KELAMIN_OPTIONS = ["Laki-laki", "Perempuan"];
 
 // Modal Sidebar Right
-const GuruTendikModal = ({
+const GuruTendikModal = ({  
   open,
   onClose,
   initialData,
@@ -718,7 +718,7 @@ const GuruTendikModal = ({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="absolute right-0 top-0 h-full w-full max-w-md bg-black/70 border-l border-white/10 shadow-2xl overflow-y-auto"
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-black/90 border-l border-white/10 shadow-2xl overflow-y-auto"
           >
             <div className="relative top-0 z-10 flex items-center justify-between border-b border-white/10 px-6 py-4">
               <h2 className="text-xl font-semibold text-white">

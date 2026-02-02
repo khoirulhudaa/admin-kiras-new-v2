@@ -33,21 +33,20 @@ export const DashboardPageLayout = React.memo(
       onClickBack?.();
     };
 
-    const profile = useProfile()
+    // const profile = useProfile()
     // console.log('profile', profile)
 
-    const QueryClient = useQueryClient()
+    // const QueryClient = useQueryClient()
 
-    useEffect(() => {
-      if (profile?.user) {
-        const allowedRoles = ['admin', 'superAdmin'];
-        if (!profile.user.role || !allowedRoles.includes(profile.user.role)) {
-          storage.delete("auth.token");
-          QueryClient.clear();
-          navigate("/auth/login", { replace: true });
-        }
-      }
-    }, [profile?.user]);
+    // useEffect(() => {
+    //   if (profile?.user) {
+    //     // const allowedRoles = ['admin', 'superAdmin'];
+    //     if (!profile.user) {
+    //       storage.delete("auth.token");
+    //       navigate("/auth/login", { replace: true });
+    //     }
+    //   }
+    // }, [profile?.user]);
 
     return (
       <>

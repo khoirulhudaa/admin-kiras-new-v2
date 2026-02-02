@@ -1,8 +1,7 @@
-// ProfileSekolahMain.tsx
 import { useSchool } from "@/features/schools";
 import { Dialog, Transition } from "@headlessui/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MapPin, Plus } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { FaTimes } from "react-icons/fa";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
@@ -113,7 +112,6 @@ const getFormDataHeaders = () => ({
   // "Authorization": `Bearer ${localStorage.getItem("token")}`,
 });
 
-// === DEFAULT VALUES ===
 const DEFAULT_PROFILE = {
   heroTitle: "",
   heroSubTitle: "",
@@ -131,6 +129,8 @@ const DEFAULT_PROFILE = {
   phoneNumber: "",
   email: "",
   photoHeadmasterUrl: null as File | null,
+  heroImage: null as File | null,        
+  logo: null as File | null, // ← TAMBAHKAN INI   // ← BARU
 };
 
 // Komponen untuk handle klik peta
@@ -160,7 +160,7 @@ export function ProfileSekolahMain() {
   const [markerPos, setMarkerPos] = useState<[number, number] | null>(null);
 
   // ── FETCH PROFILE ───────────────────────────────────────────────────────
-  const fetchProfile = async () => {
+ const fetchProfile = async () => {
     if (!SCHOOL_ID) return;
 
     setLoading(true);
@@ -170,6 +170,7 @@ export function ProfileSekolahMain() {
       });
       if (!res.ok) throw new Error("Gagal mengambil profil");
       const json = await res.json();
+
       if (json.success && json.data) {
         setProfile(json.data);
         setFormData({
@@ -189,6 +190,8 @@ export function ProfileSekolahMain() {
           phoneNumber: json.data.phoneNumber || "",
           email: json.data.email || "",
           photoHeadmasterUrl: null,
+          heroImage: null,            
+          logo: null, // ← RESET SAAT FETCH        // ← reset saat fetch
         });
 
         if (json.data.latitude && json.data.longitude) {
@@ -224,7 +227,7 @@ export function ProfileSekolahMain() {
     setLoading(true);
 
     const form = new FormData();
-    form.append("schoolId", SCHOOL_ID);
+    form.append("schoolId", SCHOOL_ID.toString());
     form.append("heroTitle", formData.heroTitle);
     form.append("heroSubTitle", formData.heroSubTitle || "");
     form.append("linkYoutube", formData.linkYoutube || "");
@@ -240,17 +243,28 @@ export function ProfileSekolahMain() {
     form.append("address", formData.address || "");
     form.append("phoneNumber", formData.phoneNumber || "");
     form.append("email", formData.email || "");
+    
+    // Foto kepala sekolah
     if (formData.photoHeadmasterUrl) {
       form.append("photoHeadmasterUrl", formData.photoHeadmasterUrl);
     }
-
+    
+    // Hero image – BARU
+    if (formData.heroImage) {
+      form.append("heroImage", formData.heroImage);
+    }
+    
+    if (formData.logo) { // ← TAMBAHKAN LOGIKA INI
+      form.append("logo", formData.logo);
+    }
+    
     try {
       const url = profile ? `${BASE_URL}/profileSekolah/${profile.id}` : `${BASE_URL}/profileSekolah`;
       const method = profile ? "PUT" : "POST";
 
       const res = await fetch(url, {
         method,
-        headers: getFormDataHeaders(),
+        headers: getFormDataHeaders(), // jangan set Content-Type
         body: form,
       });
 
@@ -264,38 +278,13 @@ export function ProfileSekolahMain() {
 
       showAlert(profile ? "Profil sekolah berhasil diperbarui" : "Profil sekolah berhasil ditambahkan");
       setIsModalOpen(false);
-      fetchProfile();
+      fetchProfile(); // refresh data
     } catch (err: any) {
       showAlert(err.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
   };
-
-  // ── HANDLE DELETE ───────────────────────────────────────────────────────
-  // const handleDelete = async () => {
-  //   if (!profile || !confirm("Yakin ingin menghapus profil sekolah ini?")) return;
-  //   if (!SCHOOL_ID) return;
-
-  //   setLoading(true);
-  //   try {
-  //     const res = await fetch(`${BASE_URL}/profileSekolah/${profile.id}`, {
-  //       method: "DELETE",
-  //       headers: getJsonHeaders(),
-  //     });
-  //     if (!res.ok) throw new Error("Gagal menghapus profil");
-  //     const json = await res.json();
-  //     if (!json.success) throw new Error(json.message || "Gagal");
-  //     showAlert("Profil sekolah berhasil dihapus");
-  //     setProfile(null);
-  //     setFormData(DEFAULT_PROFILE);
-  //     setMarkerPos(null);
-  //   } catch (err: any) {
-  //     showAlert(err.message);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   // ── HANDLE MAP CLICK ────────────────────────────────────────────────────
   const handleMapClick = (lat: number, lng: number) => {
@@ -376,6 +365,29 @@ export function ProfileSekolahMain() {
 
         {profile && (
           <div className="space-y-8">
+          {/* HERO IMAGE – BARU: Tampilkan gambar hero di atas */}
+          {profile.heroImageUrl && (
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+              <img
+                src={profile.heroImageUrl}
+                alt="Hero Banner Sekolah"
+                className="w-full h-64 sm:h-80 lg:h-96 object-cover"
+              />
+              {/* Overlay gradient + teks hero title (opsional, bisa dihapus jika tidak perlu) */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end p-6">
+                <div>
+                  <h2 className="text-3xl sm:text-4xl font-bold text-white drop-shadow-lg">
+                    {profile.heroTitle || "Selamat Datang di Sekolah Kami"}
+                  </h2>
+                  {profile.heroSubTitle && (
+                    <p className="mt-2 text-lg text-white/90 drop-shadow-md">
+                      {profile.heroSubTitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
             {/* Header */}
             <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
               {profile.photoHeadmasterUrl && (
@@ -639,6 +651,34 @@ export function ProfileSekolahMain() {
                         />
                       </Field>
                     </div>
+
+                    <Field label={isEditing ? "Ganti Gambar Hero (opsional)" : "Gambar Hero (Banner Utama)"}>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setFormData({ ...formData, heroImage: e.target.files?.[0] || null })
+                        }
+                      />
+                      {formData.heroImage && (
+                        <p className="text-xs text-white/70 mt-1">{formData.heroImage.name}</p>
+                      )}
+                      {/* Optional: bisa tambah preview kecil jika diinginkan */}
+                    </Field>
+
+                    <Field label={isEditing ? "Ganti Gambar Logo (opsional)" : "Gambar Logo (Banner Utama)"}>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setFormData({ ...formData, logo: e.target.files?.[0] || null })
+                        }
+                      />
+                      {formData.logo && (
+                        <p className="text-xs text-white/70 mt-1">{formData.logo.name}</p>
+                      )}
+                      {/* Optional: bisa tambah preview kecil jika diinginkan */}
+                    </Field>
 
                     <Field label={isEditing ? "Ganti Foto Kepsek (opsional)" : "Foto Kepsek"}>
                       <Input

@@ -2295,8 +2295,16 @@
     "id": "KALENDER",
     "en": "CALENDAR"
   },
+  "feed": {
+    "id": "FEED IG",
+    "en": "FEED IG"
+  },
+  "jadwalsd": {
+    "id": "JADWAL SD",
+    "en": "SD SCHEDULE"
+  },
   "jadwal": {
-    "id": "JADWAL",
+    "id": "JADWAL SLTA",
     "en": "SCHEDULE"
   },
   "pengumuman": {

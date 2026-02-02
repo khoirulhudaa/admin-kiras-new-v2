@@ -8,9 +8,9 @@ import { useAuth } from "../hooks/auth";
 export const AuthPage = () => {
   const auth = useAuth();
 
-  if (auth.isAuthenticated()) {
-    return <Navigate to="/" replace />;
-  }
+  // if (auth.isAuthenticated()) {
+  //   return <Navigate to="/" replace />;
+  // }
 
   // useEffect(() => {
   //   localStorage.removeItem('token');

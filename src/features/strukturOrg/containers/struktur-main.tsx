@@ -2,14 +2,13 @@ import { useSchool } from "@/features/schools";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
-import { 
-  FaEdit, 
-  FaPlus, 
-  FaSave, 
-  FaSpinner, 
-  FaTrash, 
-  FaChevronDown, 
-  FaChevronRight 
+import {
+  FaChevronDown,
+  FaChevronRight,
+  FaEdit,
+  FaSave,
+  FaSpinner,
+  FaTrash
 } from "react-icons/fa";
 
 const clsx = (...args: Array<string | false | null | undefined>): string =>
@@ -295,7 +294,7 @@ export default function EmployeeManager() {
       <AnimatePresence>{alert.isVisible && <Alert message={alert.message} onClose={hideAlert} />}</AnimatePresence>
 
       {/* Main Container Tree */}
-      <div className="bg-slate-900/40 border border-white/5 rounded-xl p-6 backdrop-blur-md h-max">
+      <div className="bg-white/5 border border-white/5 rounded-xl p-6 backdrop-blur-md h-max">
         {loading && !modalOpen ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <FaSpinner className="animate-spin text-5xl text-blue-500" />
@@ -306,7 +305,7 @@ export default function EmployeeManager() {
              {organizations.length > 0 ? (
                <div className="min-w-[500px] pb-10">{renderTree(organizations)}</div>
              ) : (
-               <div className="text-center py-24 text-white/20 border-2 border-dashed border-white/5 rounded-2xl italic">
+               <div className="text-center py-24 text-white/50 border-2 border-dashed border-white/5 rounded-2xl italic">
                  Belum ada struktur organisasi yang dibuat.
                </div>
              )}

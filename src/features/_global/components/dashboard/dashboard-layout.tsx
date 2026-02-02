@@ -5,7 +5,7 @@ import { fetchCalendarEvents } from '@/features/events';
 import { useProfile } from '@/features/profile';
 import { useSchool } from '@/features/schools';
 import { useBiodata } from '@/features/user';
-import { Loader2, Maximize, Menu, MessageSquare, Mic, Minimize, Send, X } from 'lucide-react';
+import { Loader2, Maximize, Menu, Mic, Minimize, Send } from 'lucide-react';
 import React, { PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { LangToggle } from '../lang-toggle';
 import { ThemeToggle } from '../theme-toggle';

@@ -420,6 +420,9 @@ export default function VotingMain() {
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [alert, setAlert] = useState<AlertState>({ message: "", type: "success", visible: false });
   const [toast, setToast] = useState({ show: false, message: "" });
+  // Hitung kandidat dengan vote tertinggi
+  const maxVotes = Math.max(...candidates.map(c => c.votes), 0);
+  const winners = candidates.filter(c => c.votes === maxVotes && maxVotes > 0);
 
   // Fungsi untuk memicu toast
   const showToast = (msg: string) => {
@@ -535,11 +538,18 @@ export default function VotingMain() {
   };
 
   const exportToExcel = () => {
-    const data = codes.map(c => ({ Kode: c.code, Status: c.isActive ? "Aktif" : "Terpakai", Dibuat: new Date(c.createdAt).toLocaleString() }));
+    const data = codes.map(c => ({ 
+      Kode: c.code, 
+      Status: c.isActive ? "Aktif" : "Terpakai", 
+      Dibuat: new Date(c.createdAt).toLocaleString() 
+    }));
+    
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Tokens");
-    XLSX.utils.writeFile(wb, `Token_Voting_${SCHOOL_ID}.xlsx`);
+    
+    // PERBAIKAN: Gunakan XLSX.writeFile, bukan XLSX.utils.writeFile
+    XLSX.writeFile(wb, `Token_Voting_${SCHOOL_ID}.xlsx`);
   };
 
   const filteredCodes = codes.filter(c => c.code.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -617,17 +627,19 @@ export default function VotingMain() {
 
         {activeTab === "candidates" && (
           <div className="space-y-6">
-            {loading ? 
-            <>
-              <div className="h-64 flex items-center gap-3 justify-center text-gray-500 animate-pulse">
-                <FaSpinner className="animate animate-spin duration-300" />
-                Sinkronisasi data...
+            {loading ? (
+              <div className="h-64 flex items-center justify-center text-gray-500 animate-pulse gap-3">
+                <FaSpinner className="animate-spin" />
+                Memuat data kandidat...
               </div>
-            </>
-             : (
+            ) : candidates.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                Belum ada pasangan kandidat. Tambahkan kandidat baru.
+              </div>
+            ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6 bg-white/5 rounded-2xl border border-white/10">
-                {candidates.map(can => (
-                 <motion.div
+                {candidates.map((can) => (
+                  <motion.div
                     layout
                     key={can.id}
                     className="relative bg-[#111827]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden group hover:border-blue-500/40 transition-all duration-500 shadow-2xl"
@@ -636,71 +648,108 @@ export default function VotingMain() {
                     <div className="flex h-80 relative overflow-hidden">
                       {/* Chairman */}
                       <div className="w-1/2 relative group/img overflow-hidden">
-                        <img 
-                          src={can.chairmanImageUrl || "/placeholder.png"} 
-                          className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110" 
+                        <img
+                          src={can.chairmanImageUrl || "/placeholder.png"}
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110"
+                          alt="Ketua"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent opacity-60" />
-                        <div className="absolute bottom-3 left-3 right-3 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
-                          <p className="text-[9px] font-bold text-blue-400 tracking-[0.2em] uppercase mb-0.5">Ketua</p>
-                          <h4 className="text-xs font-bold truncate text-white uppercase tracking-tight">{can.chairmanName}</h4>
+
+                        {/* Medali Juara (hanya jika kandidat ini pemenang) */}
+                        {winners.some(w => w.id === can.id) && (
+                          <div className="absolute top-2.5 left-3 z-30">
+                            <div className="relative flex flex-col items-center">
+                              <div className="w-16 h-16 md:w-10 md:h-10 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 rounded-full flex items-center justify-center shadow-2xl shadow-yellow-500/60 border-4 border-white/40 animate-pulse-slow">
+                                <span className="text-lg md:text-xl font-black text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]">🥇</span>
+                              </div>
+                              {/* <span className="mt-2 text-xs md:text-sm font-bold text-yellow-300 tracking-wider uppercase drop-shadow-md">
+                                Juara
+                              </span> */}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="absolute bottom-4 left-4 right-4 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+                          <p className="text-[10px] font-bold text-blue-400 tracking-[0.2em] uppercase mb-1">Ketua</p>
+                          <h4 className="text-sm font-black truncate text-white uppercase tracking-tight leading-tight">
+                            {can.chairmanName}
+                          </h4>
                         </div>
                       </div>
 
                       {/* Vice Chairman */}
                       <div className="w-1/2 relative group/img overflow-hidden border-l border-white/5">
-                        <img 
-                          src={can.viceChairmanImageUrl || "/placeholder.png"} 
-                          className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110" 
+                        <img
+                          src={can.viceChairmanImageUrl || "/placeholder.png"}
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110"
+                          alt="Wakil"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent opacity-60" />
-                        <div className="absolute bottom-3 left-3 right-3 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
-                          <p className="text-[9px] font-bold text-blue-400 tracking-[0.2em] uppercase mb-0.5">Wakil</p>
-                          <h4 className="text-xs font-bold truncate text-white uppercase tracking-tight">{can.viceChairmanName}</h4>
+
+                        {/* Medali Juara (sama seperti di atas) */}
+                        {winners.some(w => w.id === can.id) && (
+                          <div className="absolute top-2.5 left-3 z-30">
+                            <div className="relative flex flex-col items-center">
+                              <div className="w-16 h-16 md:w-10 md:h-10 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 rounded-full flex items-center justify-center shadow-2xl shadow-yellow-500/60 border-4 border-white/40 animate-pulse-slow">
+                                <span className="text-lg md:text-xl font-black text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]">🥇</span>
+                              </div>
+                              {/* <span className="mt-2 text-xs md:text-sm font-bold text-yellow-300 tracking-wider uppercase drop-shadow-md">
+                                Juara
+                              </span> */}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="absolute bottom-4 left-4 right-4 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+                          <p className="text-[10px] font-bold text-blue-400 tracking-[0.2em] uppercase mb-1">Wakil</p>
+                          <h4 className="text-sm font-black truncate text-white uppercase tracking-tight leading-tight">
+                            {can.viceChairmanName}
+                          </h4>
                         </div>
                       </div>
                     </div>
 
                     {/* Content Section */}
-                    <div className="p-5">
+                    <div className="p-6">
                       <div className="mb-6">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          <span className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-500/20">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-wider border border-blue-500/20">
                             {can.chairmanMajor}
                           </span>
-                          <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/20">
+                          <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-bold uppercase tracking-wider border border-purple-500/20">
                             Batch {can.chairmanBatch}
                           </span>
-                          <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/20">
+                          <span className="px-3 py-1 rounded-full bg-gray-500/10 text-gray-300 text-xs font-bold uppercase tracking-wider border border-gray-500/20">
                             ID-{can.id}
                           </span>
                         </div>
-                        <p className="text-gray-400 text-xs leading-relaxed">
-                          {can.chairmanClass} & {can.viceChairmanClass}
+                        <p className="text-gray-400 text-sm leading-relaxed">
+                          {can.chairmanClass} • {can.viceChairmanClass}
                         </p>
                       </div>
 
-                      {/* Footer Actions */}
+                      {/* Actions */}
                       <div className="flex items-center gap-3">
-                        {/* Edit Button */}
-                        <button 
-                          onClick={() => { setSelectedCandidate(can); setModalOpen(true); }}
-                          className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white text-black hover:brightness-90 text-sm font-bold rounded-xl transition-all active:scale-95"
+                        <button
+                          onClick={() => {
+                            setSelectedCandidate(can);
+                            setModalOpen(true);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-black hover:brightness-95 rounded-xl font-semibold text-sm transition-all active:scale-95"
                         >
-                          <IEdit />
-                          <span>Perbarui data</span>
+                          <span className="text-lg">✏️</span> Perbarui
                         </button>
 
-                        {/* Vote Count Badge */}
-                        <div className="flex flex-col items-center justify-center px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl min-w-[80px]">
-                          <span className="text-[9px] text-blue-400 font-bold uppercase tracking-tighter leading-none mb-1">Votes</span>
-                          <span className="text-xl font-black text-white leading-none">{can.votes}</span>
+                        <div className="flex flex-col items-center justify-center px-5 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl min-w-[90px]">
+                          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-tighter leading-none mb-1">
+                            SUARA
+                          </span>
+                          <span className="text-2xl font-black text-white leading-none">{can.votes}</span>
                         </div>
 
-                        {/* Delete Button */}
-                        <button 
+                        <button
                           onClick={() => handleDeleteCandidate(can.id!)}
-                          className="p-3.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all duration-300 border border-red-500/20 active:scale-95"
+                          className="p-4 bg-red-500/10 hover:bg-red-500/80 text-red-400 hover:text-white rounded-xl transition-all duration-300 border border-red-500/20 active:scale-95"
                         >
                           <Trash2 size={20} />
                         </button>
@@ -897,10 +946,27 @@ export default function VotingMain() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                       <XAxis dataKey="name" stroke="#6B7280" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
                       <YAxis stroke="#6B7280" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                      <Tooltip 
+                      {/* <Tooltip 
                         cursor={{ fill: '#ffffff05' }}
                         contentStyle={{ backgroundColor: '#111827', border: '1px solid #ffffff10', borderRadius: '12px' }}
                         itemStyle={{ color: '#F3F4F6', fontWeight: '900', fontSize: '12px' }}
+                      /> */}
+                      <Tooltip 
+                        cursor={{ fill: '#ffffff05' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const isWinner = winners.some(w => w.id === data.id);
+                            return (
+                              <div className="bg-[#111827] p-4 rounded-xl border border-white/10 shadow-xl">
+                                <p className="font-bold text-white">{data.fullName}</p>
+                                <p className="text-blue-400">Suara: {data.votes}</p>
+                                {isWinner && <p className="text-yellow-400 font-black mt-1">🥇 Juara</p>}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
                       />
                       <Bar dataKey="votes" radius={[10, 10, 0, 0]} barSize={60}>
                         {chartData.map((entry, index) => (

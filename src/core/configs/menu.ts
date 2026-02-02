@@ -342,6 +342,12 @@ export const MENU_STAFF: VokadashProps["menus"] = [
         main: true
       },
       {
+        title: lang.text("feed"),
+        url: "/feed",
+        icon: "Instagram",
+        main: true
+      },
+      {
         title: lang.text("vote"),
         url: "/voting-osis",
         icon: "Ticket",
@@ -380,6 +386,12 @@ export const MENU_STAFF: VokadashProps["menus"] = [
       {
         title: lang.text("jadwal"),
         url: "/schedule-teacher",
+        icon: "Clock", // For teacher schedules (time-based)
+        main: false,
+      },
+      {
+        title: lang.text("jadwalsd"),
+        url: "/jadwal-sd",
         icon: "Clock", // For teacher schedules (time-based)
         main: false,
       },
