@@ -31,7 +31,8 @@ interface GuruTendikItem {
   scanTime?: string;
 }
 
-const BASE_URL = "https://be-school.kiraproject.id/guruTendik";
+const BASE_URL = "http://localhost:5005/guruTendik";
+// const BASE_URL = "https://be-school.kiraproject.id/guruTendik";
 
 const ROLE_OPTIONS = [
   "Guru", "Wakil Kepala Sekolah", "Ka. Subag. Tata Usaha", "Bendahara Keuangan", 
