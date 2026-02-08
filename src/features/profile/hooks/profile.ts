@@ -84,8 +84,7 @@ export const useProfile = () => {
   const query = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:5005/auth/profile", {
-      // const res = await axios.get("https://be-school.kiraproject.id/auth/profile", {
+      const res = await axios.get("https://be-school.kiraproject.id/auth/profile", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
       return res.data.data; // Mengambil object { id, name, sekolah, ... }

@@ -1,7 +1,7 @@
 // import axios from 'axios';
 // import { useState } from 'react';
 
-// const API_AUTH = "http://localhost:5005/auth";
+// const API_AUTH = "https://be-school.kiraproject.id/auth";
 
 // export const useAuth = () => {
 //   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +39,7 @@ import { useCallback, useState } from 'react';
 import { getToken, saveToken } from '../utils'; // IMPORT INI WAJIB
 import { storage } from "@itokun99/secure-storage"; // IMPORT INI WAJIB
 
-const API_AUTH = "http://localhost:5005/auth";
+const API_AUTH = "https://be-school.kiraproject.id/auth";
 
 export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -118,7 +118,7 @@ export const useSchoolCreation = () => {
       formData.append('logo', payload.file); 
     }
 
-    return await axios.post("http://localhost:5005/auth/register", formData, {
+    return await axios.post("https://be-school.kiraproject.id/auth/register", formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   };

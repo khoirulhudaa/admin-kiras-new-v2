@@ -20,8 +20,8 @@ import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
-// const BASE_URL = "https://be-school.kiraproject.id/siswa";
-const BASE_URL = "http://localhost:5005/siswa";
+const BASE_URL = "https://be-school.kiraproject.id/siswa";
+// const BASE_URL = "http://localhost:5005/siswa";
 
 // --- Interfaces ---
 interface Student {
@@ -245,7 +245,7 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
       <motion.div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000]" onClick={onClose} />
       <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="fixed right-0 top-0 h-full w-full max-w-xl bg-[#0B1220] border-l border-white/10 z-[100001] p-10 overflow-y-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-black italic text-white uppercase tracking-tight">{title}</h2>
+          <h2 className="text-2xl font-black text-white uppercase tracking-tight">{title}</h2>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-zinc-500"><X/></button>
         </div>
 
@@ -490,12 +490,16 @@ const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'A
     alert("Gagal mencatat ketidakhadiran");
   }
 };
+
 const generatePDF = async () => {
   const doc = new jsPDF('p', 'mm', 'a4');
   setIsProcessing(true);
 
-  const cardWidth = 86;   // mm - standar kartu pelajar/ID
-  const cardHeight = 54;  // mm
+  const cardWidth = 86;
+  const cardHeight = 54;
+  const spacing = 6; // Jarak antar kartu (Horizontal & Vertikal)
+  const marginLeft = 10;
+  const marginTop = 10;
 
   try {
     for (let i = 0; i < students.length; i++) {
@@ -506,56 +510,67 @@ const generatePDF = async () => {
 
       if (i > 0 && idxInPage === 0) doc.addPage();
 
-      const x = 10 + col * (cardWidth + 6);   // margin antar kolom ~6 mm
-      const y = 10 + row * (cardHeight + 6);  // margin antar baris ~6 mm
+      const x = marginLeft + col * (cardWidth + spacing);
+      const y = marginTop + row * (cardHeight + spacing);
 
-      // 1. Background Kartu (solid color fallback)
-      doc.setFillColor(255, 255, 255);  // putih atau ganti sesuai kebutuhan
-      doc.rect(x, y, cardWidth, cardHeight, 'F');  // tanpa radius, sesuai kode A terbaru
+      // 1. Background Dasar (Putih)
+      doc.setFillColor(255, 255, 255);
+      doc.rect(x, y, cardWidth, cardHeight, 'F');
 
-      // Background custom image dengan cover + center crop
+      // 2. Background Custom dengan Pre-Crop Canvas (Object-fit: Cover)
       if (cardConfig.bgImage) {
         try {
           const img = new Image();
+          img.crossOrigin = "anonymous"; // Hindari isu CORS
           img.src = cardConfig.bgImage;
 
-          await new Promise((resolve) => { img.onload = resolve; });
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+          });
+
+          // Proses Cropping di Canvas
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Gunakan resolusi tinggi agar tidak pecah di PDF
+          canvas.width = 860; 
+          canvas.height = 540;
 
           const imgRatio = img.width / img.height;
-          const cardRatio = cardWidth / cardHeight;  // ≈ 1.5926
+          const canvasRatio = canvas.width / canvas.height;
 
-          let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+          let sw, sh, sx, sy;
 
-          if (imgRatio > cardRatio) {
-            // Gambar lebih lebar → scale full height, crop sisi
-            drawHeight = cardHeight;
-            drawWidth = drawHeight * imgRatio;
-            offsetX = (drawWidth - cardWidth) / 2;
+          // Hitung area crop (Center Crop)
+          if (imgRatio > canvasRatio) {
+            sh = img.height;
+            sw = sh * canvasRatio;
+            sx = (img.width - sw) / 2;
+            sy = 0;
           } else {
-            // Gambar lebih tinggi → scale full width, crop atas/bawah
-            drawWidth = cardWidth;
-            drawHeight = drawWidth / imgRatio;
-            offsetY = (drawHeight - cardHeight) / 2;
+            sw = img.width;
+            sh = sw / canvasRatio;
+            sx = 0;
+            sy = (img.height - sh) / 2;
           }
 
-          doc.addImage(
-            img,
-            'PNG',
-            x - offsetX,
-            y - offsetY,
-            drawWidth,
-            drawHeight
-          );
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          
+          // Masukkan ke PDF (Pasti pas, tidak akan meluber)
+          const croppedImgData = canvas.toDataURL('image/jpeg', 0.9);
+          doc.addImage(croppedImgData, 'JPEG', x, y, cardWidth, cardHeight);
+          
         } catch (e) {
           console.warn("Gagal render background custom:", e);
         }
       }
 
-      // 2. Header accent (tanpa radius seperti kode A)
+      // 3. Header Accent
       doc.setFillColor(cardConfig.accentColor);
       doc.rect(x, y, cardWidth, 12, 'F');
 
-      doc.setTextColor(255, 255, 255);  // asumsi accent gelap → teks putih
+      doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text(cardConfig.title, x + cardWidth / 2, y + 6, { align: 'center' });
@@ -563,47 +578,52 @@ const generatePDF = async () => {
       doc.setFontSize(6);
       doc.text(cardConfig.subtitle, x + cardWidth / 2, y + 10, { align: 'center' });
 
-      // 3. Foto Siswa (ukuran sedikit diperkecil agar pas di 54 mm tinggi)
+      // 4. Foto Siswa
+      const photoX = x + 5;
+      const photoY = y + 15; // Disesuaikan sedikit agar lebih rapi
+      const photoW = 18;
+      const photoH = 22;
+
       if (s.photoUrl) {
         try {
-          doc.addImage(s.photoUrl, 'JPEG', x + 5, y + 14, 18, 22);  // turun sedikit dari 17 → 14
+          doc.addImage(s.photoUrl, 'JPEG', photoX, photoY, photoW, photoH);
         } catch (e) {
           doc.setFillColor(240, 240, 240);
-          doc.rect(x + 5, y + 14, 18, 22, 'F');
+          doc.rect(photoX, photoY, photoW, photoH, 'F');
         }
       } else {
         doc.setFillColor(240, 240, 240);
-        doc.rect(x + 5, y + 14, 18, 22, 'F');
+        doc.rect(photoX, photoY, photoW, photoH, 'F');
       }
 
-      // 4. Data Teks
+      // 5. Data Teks (NIS & NISN)
       doc.setTextColor(30, 41, 59);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      doc.text(s.name.toUpperCase(), x + 27, y + 20, { maxWidth: 50 });
+      doc.text(s.name.toUpperCase(), x + 27, y + 21, { maxWidth: 50 });
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
-      doc.text(`NIS : ${s.nis}`, x + 27, y + 26);
-      doc.text(`NISN: ${s.nisn || "-"}`, x + 27, y + 30);
+      doc.text(`NIS : ${s.nis}`, x + 27, y + 27);
+      doc.text(`NISN: ${s.nisn || "-"}`, x + 27, y + 31);
 
-      // 5. QR Code (ditempatkan lebih bawah agar pas dengan tinggi 54 mm)
+      // 6. QR Code
       const qrData = s.qrCodeData || s.nis;
-      const qr = await QRCode.toDataURL(qrData, { margin: 1, width: 180 });
-      doc.addImage(qr, 'PNG', x + 63, y + 33, 18, 18);  // posisi QR disesuaikan
+      const qr = await QRCode.toDataURL(qrData, { margin: 1, width: 150 });
+      doc.addImage(qr, 'PNG', x + 63, y + 33, 18, 18);
 
-      // Optional: Border tipis luar kartu
-      doc.setDrawColor(230, 230, 230);
-      doc.rect(x, y, cardWidth, cardHeight, 'D');  // tanpa radius
-      // Kalau mau rounded lagi: doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'D');
+      // 7. Border kartu (tipis)
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.1);
+      doc.rect(x, y, cardWidth, cardHeight, 'D');
     }
 
     doc.save(`Kartu_Siswa_${new Date().toISOString().slice(0, 10)}.pdf`);
     setModals(p => ({ ...p, designer: false }));
   } catch (e) {
     console.error(e);
-    alert("Gagal membuat PDF. Pastikan semua gambar dapat diakses.");
+    alert("Gagal membuat PDF.");
   } finally {
     setIsProcessing(false);
   }
@@ -668,7 +688,7 @@ const statusStyles: Record<string, string> = {
         </div>
       </div>
 
-      <div className="mb-6 relative max-w-md">
+      <div className="mb-6 relative w-full">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
         <input 
           type="text" 

@@ -16,10 +16,10 @@ import moment from "moment";
 import { useCallback, useEffect, useState } from "react";
 
 // Konfigurasi API
-// const API_BASE = "https://be-school.kiraproject.id/siswa";
-// const API_KELAS = "https://be-school.kiraproject.id/kelas";
-const API_BASE = "http://localhost:5005/siswa";
-const API_KELAS = "http://localhost:5005/kelas";
+const API_BASE = "https://be-school.kiraproject.id/siswa";
+const API_KELAS = "https://be-school.kiraproject.id/kelas";
+// const API_BASE = "http://localhost:5005/siswa";
+// const API_KELAS = "http://localhost:5005/kelas";
 
 export default function AttendanceMain() {
   const schoolQuery = useSchool();
@@ -158,13 +158,13 @@ export default function AttendanceMain() {
         </div>
 
         <div className="flex flex-wrap justify-center gap-3">
-          <div className="flex gap-2 bg-white/5 w-fit rounded-2xl border border-white/10">
+          <div className="flex gap-2 bg-white/5 h-14 w-fit overflow-hidden rounded-2xl border border-blue-700">
            {['student', 'teacher'].map((r) => (
               <button
                 key={r}
                 onClick={() => setFilters({...filters, role: r, page: 1})}
-                className={`h-14 px-5 rounded-xl font-black uppercase text-[12px] tracking-widest transition-all ${
-                  filters.role === r ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                className={`h-14 px-5 font-black uppercase text-[12px] tracking-widest transition-all ${
+                  filters.role === r ? 'bg-blue-600 text-white' : 'text-white/70 hover:text-zinc-300'
                 }`}
               >
                 {r === 'student' ? 'Data Siswa' : 'Data Guru'}

@@ -31,8 +31,8 @@ interface GuruTendikItem {
   scanTime?: string;
 }
 
-const BASE_URL = "http://localhost:5005/guruTendik";
-// const BASE_URL = "https://be-school.kiraproject.id/guruTendik";
+// const BASE_URL = "http://localhost:5005/guruTendik";
+const BASE_URL = "https://be-school.kiraproject.id/guruTendik";
 
 const ROLE_OPTIONS = [
   "Guru", "Wakil Kepala Sekolah", "Ka. Subag. Tata Usaha", "Bendahara Keuangan", 
@@ -527,7 +527,7 @@ export default function TeacherManager() {
     if (!SCHOOL_ID) return;
     setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}?schoolId=${SCHOOL_ID}&limit=100`);
+      const res = await fetch(`${BASE_URL}/absensi?schoolId=${SCHOOL_ID}&limit=100`);
       const json = await res.json();
       if (json.success) {
         setData(json.data || []);
@@ -656,8 +656,13 @@ export default function TeacherManager() {
     setIsProcessing(true);
     const doc = new jsPDF("p", "mm", "a4");
 
-    const cardWidth = 86;   // mm
-    const cardHeight = 54;  // mm
+    const cardWidth = 86;   
+    const cardHeight = 54;  
+
+    // Tambahkan margin halaman agar tidak terlalu mepet ke pinggir kertas
+    const marginLeft = 12; 
+    const marginTop = 15;
+    const spacing = 8; // Jarak antar kartu (horizontal & vertikal)
 
     try {
       for (let i = 0; i < data.length; i++) {
@@ -665,8 +670,10 @@ export default function TeacherManager() {
         const idx = i % 8;
         const col = idx % 2;
         const row = Math.floor(idx / 2);
-        const x = 10 + col * (cardWidth + 5);   // tambah margin antar kolom
-        const y = 10 + row * (cardHeight + 5);
+
+        // Kalkulasi koordinat dengan spacing yang lebih besar
+        const x = marginLeft + col * (cardWidth + spacing);
+        const y = marginTop + row * (cardHeight + spacing);
 
         if (i > 0 && idx === 0) doc.addPage();
 
@@ -675,42 +682,49 @@ export default function TeacherManager() {
         doc.setFillColor(15, 23, 42);           // ≈ slate-950 / sangat gelap
         doc.rect(x, y, cardWidth, cardHeight, "F");  // background kartu
         // doc.rect(x, y, 90, 50, "F");
-       if (cardConfig.bgImage) {
-          try {
-            const img = new Image();
-            img.src = cardConfig.bgImage;  // asumsi ini dataURL atau URL yang bisa di-load
+    if (cardConfig.bgImage) {
+  try {
+    const img = new Image();
+    img.src = cardConfig.bgImage;
+    await new Promise((resolve) => { img.onload = resolve; });
 
-            await new Promise((resolve) => { img.onload = resolve; });  // tunggu image load
+    // 1. Buat canvas tersembunyi untuk cropping
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Tentukan resolusi output (gunakan rasio kartu 86:54)
+    canvas.width = 860; 
+    canvas.height = 540;
 
-            const imgRatio    = img.width / img.height;
-            const cardRatio   = cardWidth / cardHeight;  // ≈ 86/54 ≈ 1.5926
+    const imgRatio = img.width / img.height;
+    const canvasRatio = canvas.width / canvas.height;
 
-            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+    let sw, sh, sx, sy;
 
-            if (imgRatio > cardRatio) {
-              // Gambar lebih lebar → scale ke height penuh, crop sisi kiri/kanan
-              drawHeight = cardHeight;
-              drawWidth  = drawHeight * imgRatio;
-              offsetX    = (drawWidth - cardWidth) / 2;  // center crop
-            } else {
-              // Gambar lebih tinggi → scale ke width penuh, crop atas/bawah
-              drawWidth  = cardWidth;
-              drawHeight = drawWidth / imgRatio;
-              offsetY    = (drawHeight - cardHeight) / 2;
-            }
+    // 2. Logika "Object-fit: Cover" manual
+    if (imgRatio > canvasRatio) {
+      sh = img.height;
+      sw = sh * canvasRatio;
+      sx = (img.width - sw) / 2;
+      sy = 0;
+    } else {
+      sw = img.width;
+      sh = sw / canvasRatio;
+      sx = 0;
+      sy = (img.height - sh) / 2;
+    }
 
-            doc.addImage(
-              img, 
-              "PNG", 
-              x - offsetX, 
-              y - offsetY, 
-              drawWidth, 
-              drawHeight
-            );
-          } catch (e) {
-            console.warn("Gagal load atau render background custom", e);
-          }
-        }
+    // 3. Gambar ke canvas (Otomatis terpotong di sini)
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+    // 4. Masukkan hasil canvas ke PDF (Pasti pas dengan ukuran kartu)
+    const croppedImgData = canvas.toDataURL('image/jpeg', 0.9);
+    doc.addImage(croppedImgData, 'JPEG', x, y, cardWidth, cardHeight);
+
+  } catch (e) {
+    console.warn("Gagal render background", e);
+  }
+}
 
         // Header accent
         doc.setFillColor(cardConfig.accentColor);
@@ -743,19 +757,19 @@ export default function TeacherManager() {
        
         // Nama & Jabatan
         doc.setTextColor("#0f172a");
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
-        doc.text(t.nama.toUpperCase(), x + 27, y + 22, { maxWidth: 55 });
+        doc.text(t.nama.toUpperCase(), x + 27, y + 20, { maxWidth: 55 });
 
         doc.setFontSize(8);
         doc.setTextColor("#0f172a");
-        doc.text(t.role, x + 27, y + 29, { maxWidth: 55 });
+        doc.text(t.role, x + 27, y + 25, { maxWidth: 55 });
 
-        // Email kecil
+        // jenis kelamin
         if (t.jenisKelamin) {
           doc.setFontSize(7);
           doc.setTextColor("#0f172a");
-          doc.text(t.jenisKelamin, x + 27, y + 36, { maxWidth: 55 });
+          doc.text(t.jenisKelamin, x + 27, y + 28, { maxWidth: 55 });
         }
 
         // QR Code
@@ -837,27 +851,25 @@ export default function TeacherManager() {
             <Palette size={16} /> Cetak Kartu
           </button>
 
-          <button
+           <button 
             onClick={() => {
               setSelectedItem(null);
               setModalOpen(true);
             }}
-            className="h-14 px-8 bg-blue-600 hover:bg-blue-500 rounded-2xl flex items-center gap-3 font-black uppercase tracking-widest text-sm shadow-xl transition-all"
-          >
-            <UserPlus size={20} />
-            <span className="hidden sm:block text-[10px]">Add Data</span>
+            className="h-14 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-blue-600/30">
+            <Plus size={16}/> Tambah
           </button>
 
         </div>
       </div>
           <div className="relative flex-1 w-full mb-6 group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-500 transition-colors" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
             <input
               type="text"
               placeholder="Cari nama atau role"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-blue-500/50 transition-all text-sm"
+               className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
             />
           </div>
 
