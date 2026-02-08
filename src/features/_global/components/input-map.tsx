@@ -113,8 +113,8 @@ export const InputMap = React.memo(
     const renderMap = () => {
       return (
         <div>
-          <Label className="mb-2 block">{label}</Label>
-          <div className="w-full aspect-video relative mb-2">
+          <Label className="mb-4 block">{label}</Label>
+          <div className="w-full aspect-video rounded-xl overflow-hidden relative mb-2">
             <MapContainer
               center={position}
               zoom={13}

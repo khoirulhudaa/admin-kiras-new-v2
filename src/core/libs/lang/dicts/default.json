@@ -136,8 +136,8 @@
     "id": "Unduh (harian)"
   },
   "visionMission": {
-    "en": "VISION AND MISSION",
-    "id": "VISI DAN MISI"
+    "en": "VISION MISSION",
+    "id": "VISI MISI"
   },
   "downloadAttedanceMonthly": {
     "en": "Download attedance (month)",
@@ -179,9 +179,13 @@
     "en": "Add Attendance",
     "id": "Tambah Kehadiran"
   },
+  "class": {
+    "en": "CLASS MANAGEMENT",
+    "id": "MANAJEMEN KELAS"
+  },
   "attendance": {
-    "en": "Attendance",
-    "id": "Kehadiran"
+    "en": "STUDENTS ABSENCE",
+    "id": "KEHADIRAN SISWA"
   },
   "leave": {
     "en": "Leave",
@@ -1164,16 +1168,16 @@
     "en": "Total Location Points"
   },
   "student": {
-    "id": "Siswa",
-    "en": "Students"
+    "id": "DATA SISWA",
+    "en": "STUDENTS DATA"
   },
   "studentsPerClass": {
     "id": "Siswa per-kelas",
     "en": "Students by class"
   },
-  "teacher": {
-    "id": "Guru",
-    "en": "Teachers"
+   "teacher": {
+    "id": "DATA GURU",
+    "en": "TEACHERS DATA"
   },
   "ReportOverview": {
     "id": "Ikhtisar Laporan",
@@ -1715,6 +1719,10 @@
     "id": "Format SKL",
     "en": "SKL Format"
   },
+  "scan": {
+    "id": "SCAN - KEHADIRAN",
+    "en": "ATTEDANCE - SCAN"
+  },
   "manualAttendance": {
     "id": "Absen manual siswa",
     "en": "Manual absence student"
@@ -1728,8 +1736,8 @@
     "en": "Manual absence"
   },
   "studentAbsence": {
-    "id": "Absen siswa",
-    "en": "Student absence"
+    "id": "KEHADIRAN SISWA",
+    "en": "STUDENT ABSENCE"
   },
   "userAdmin": {
     "id": "Pengguna Admin",
@@ -2208,8 +2216,8 @@
     "en": "PARTNER"
   },
   "organization": {
-    "id": "STRUKTUR ORGANISASI",
-    "en": "ORAGANIZATION ORGANIZATION"
+    "id": "ORGANISASI",
+    "en": "ORGANIZATION"
   },
   "rating": {
     "id": "ULASAN",

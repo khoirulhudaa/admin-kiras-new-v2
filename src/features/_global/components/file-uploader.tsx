@@ -59,7 +59,7 @@ export function FileUploader({
   };
 
   return (
-    <Card className={`w-full mx-auto ${mt ? 'mt-8' : 'mt-0'}`}>
+    <Card className={`w-full mx-auto bg-white/5 border-white/10 border ${mt ? 'mt-8' : 'mt-0'}`}>
       <CardContent className="pt-6">
         <div className="space-y-6">
           <div className="flex items-center justify-center w-full">

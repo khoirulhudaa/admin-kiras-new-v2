@@ -453,6 +453,30 @@ export const MENU_STAFF: VokadashProps["menus"] = [
     icon: "Shield",
     main: true
   },
+  {
+    title: lang.text("student"),
+    url: "/data-siswa",
+    icon: "Users",
+    main: true
+  },
+  {
+    title: lang.text("teacher"),
+    url: "/data-guru",
+    icon: "Users2",
+    main: true
+  },
+  {
+    title: lang.text("attendance"),
+    url: "/kehadiran-siswa",
+    icon: "Scan",
+    main: true
+  },
+  {
+    title: lang.text("class"),
+    url: "/manajemen-kelas",
+    icon: "DoorOpen",
+    main: true
+  },
   // {
   //   title: lang.text("TU"),
   //   url: "/admin/tata-usaha",

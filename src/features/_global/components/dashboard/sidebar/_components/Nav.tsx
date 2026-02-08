@@ -1,10 +1,10 @@
 import { cn, lang } from '@/core/libs';
+import { Icon, SidebarContext } from '@/features/_global';
+import { useProfile } from '@/features/profile';
+import { ChevronDown, ChevronRight, Gem } from 'lucide-react';
 import React, { useCallback, useContext, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItemProps, NavProps } from '../types';
-import { ChevronDown, ChevronRight, Gem } from 'lucide-react';
-import { Icon, SidebarContext } from '@/features/_global';
-import { useProfile } from '@/features/profile';
 
 interface NavItemPropsExtended extends NavItemProps {
   isCollapsed?: boolean;
@@ -42,13 +42,12 @@ const NavItem = React.memo(({ isCollapsed, isParentManajemenData = false, isChil
 
   const showTooltip = isDisabled || (isParentManajemenData && props.title === lang.text('event'));
 
-  // Sembunyikan item dengan main: true saat isCollapsed = true
   if (isCollapsed && main) {
     return (
       <>
         {hasChild && (
           <Nav
-            isChild={true} // Pastikan isChild = true untuk item anak
+            isChild={true}
             items={props.items || []}
             mobile={props.mobile}
             isCollapsed={isCollapsed}
@@ -61,55 +60,83 @@ const NavItem = React.memo(({ isCollapsed, isParentManajemenData = false, isChil
 
   return (
     <>
-      <li className="relative">
+      <li className="relative list-none">
         <NavLink
           onClick={showTooltip && !isMember ? undefined : handleClick}
           to={showTooltip && !isMember ? '#' : props.url || ''}
           className={(p) =>
             cn(
-              'sidebar-nav-item flex gap-3 max-w-[250px] px-3 py-2 mb-2 items-center rounded-lg border-none hover:bg-muted-foreground/15 justify-between text-sm relative group',
-              p.isActive && !isDisabled && 'bg-muted-foreground/15',
-              isCollapsed && 'justify-center px-2',
-              isDisabled && 'bg-muted-foreground/15 cursor-not-allowed text-white/40',
-              !isMember && isParentManajemenData && props.title === lang.text('event') && 'bg-muted-foreground/15 cursor-not-allowed text-white/40',
-              isChild && !isCollapsed && 'pl-6'
+              // Base Styles
+              'group relative flex items-center justify-between gap-3 px-3 py-2.5 mb-1 rounded-xl text-[13px] font-medium transition-all duration-200',
+              'text-slate-400 hover:text-blue-400 hover:bg-blue-600/5',
+              
+              // Active State: Premium Blue Glow & Border Indicator
+              p.isActive && !isDisabled && [
+                'bg-blue-600/10 text-blue-400 shadow-[inset_0_0_15px_rgba(37,99,235,0.05)]',
+                'after:absolute after:right-0 after:top-2 after:bottom-2 after:w-[3px] after:bg-blue-500 after:rounded-l-full'
+              ],
+              
+              // Collapsed Mode
+              isCollapsed && 'justify-center px-0 h-11 w-11 mx-auto',
+              
+              // Child Menu Styling
+              isChild && !isCollapsed && 'ml-4 pl-5 border-l border-slate-800 hover:border-blue-500/50 rounded-none mb-0',
+              
+              // Disabled & Premium Lock
+              isDisabled && 'opacity-40 cursor-not-allowed grayscale-[0.5]',
+              !isMember && isParentManajemenData && props.title === lang.text('event') && 'opacity-40 cursor-not-allowed'
             )
           }
           end
         >
-          <div
-            className={cn(
-              'flex flex-row items-center gap-2',
-              isCollapsed && 'justify-center',
-            )}
-          >
+          <div className={cn('flex items-center gap-3', isCollapsed && 'justify-center')}>
             {props.icon && (
               <Icon
                 iconName={props.icon}
-                className="sidebar-nav-item-icon h-4 w-4"
+                className={cn(
+                  "h-4.5 w-4.5 transition-all duration-300 group-hover:scale-110",
+                  "text-white group-hover:text-blue-500"
+                )}
               />
             )}
-            {!isCollapsed && props.title}
-            {showTooltip && !isCollapsed && !isMember && <Gem className="w-[14px] h-[14px] text-yellow-500" />}
+            
+            {!isCollapsed && (
+              <span className="truncate tracking-wide">{props.title}</span>
+            )}
+
+            {/* Premium Indicator */}
+            {showTooltip && !isCollapsed && !isMember && (
+              <Gem className="w-3 h-3 text-amber-500 animate-pulse ml-auto" />
+            )}
           </div>
+
+          {/* Submenu Arrow */}
           {hasChild && !isCollapsed && (
-            visibleChild ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+            <div className={cn('transition-transform duration-300 opacity-40 group-hover:opacity-100', visibleChild && 'rotate-90 text-blue-500')}>
+              <ChevronRight size={14} />
+            </div>
           )}
+
+          {/* Premium Tooltip */}
           {showTooltip && !isMember && (
             <span
               className={cn(
-                'absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block bg-white text-black text-xs rounded py-1 px-2 whitespace-nowrap z-50',
-                isCollapsed && 'left-full translate-x-2 bottom-1/2 translate-y-1/2',
+                'absolute hidden group-hover:block bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded shadow-xl z-[100] whitespace-nowrap pointer-events-none',
+                isCollapsed 
+                  ? 'left-full translate-x-3 top-1/2 -translate-y-1/2' 
+                  : 'right-2 -top-6'
               )}
             >
-              Belum aktifkan member ✨
+              PRO ONLY ✨
             </span>
           )}
         </NavLink>
       </li>
+
+      {/* Child Submenu Container */}
       {hasChild && (visibleChild || isCollapsed) && (
         <Nav
-          isChild={true} // Pastikan isChild = true untuk item anak
+          isChild={true}
           items={props.items || []}
           mobile={props.mobile}
           isCollapsed={isCollapsed}
@@ -125,7 +152,8 @@ export const Nav = React.memo(
     return (
       <ul
         className={cn(
-          isChild && !isCollapsed ? 'pl-2.5' : '',
+          "flex flex-col list-none p-0 m-0",
+          isChild && !isCollapsed ? 'mt-0.5' : '',
         )}
       >
         {items?.map((item, index) => (

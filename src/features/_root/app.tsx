@@ -34,7 +34,7 @@ import {
 } from "@/features/course";
 import { CalendarEvent } from "@/features/events";
 import { StudentCardPage, TeacherCardPage } from "@/features/kartuSiswa";
-import { Otp } from "@/features/otp";
+// import { Otp } from "@/features/otp";
 import { ParentDetail, ParentEdit, ParentLanding } from "@/features/parents";
 import { EditProfileForm } from "@/features/profile";
 import {
@@ -68,12 +68,16 @@ import { TULanding } from "../administration";
 import { AlumniLanding } from "../alumni-new";
 import { ApplicationLanding } from "../applications/pages/application";
 import { AcrhiveLanding } from "../archive";
+import { OTPPage } from "../auth/pages/otpPage.js";
 import { BeritaLanding } from "../berita/pages/berita-landing.js";
 import { CalendarLanding } from "../calendar";
 import { CardPage } from "../card/pages";
 import { ChangePasswordFormPage } from "../changePassword/pages/form";
 import { CurriculumLanding } from "../curriculum";
 import { EkstraLanding } from "../ekstrakurikuler";
+import { FaqLanding } from "../FAQ/index.js";
+import { FasilitasLanding } from "../fasilitas/pages/berita-landing.js";
+import { FeedLanding } from "../feed/index.js";
 import { GaleriLanding } from "../galeri";
 import { GalleryPramukaLanding } from "../galeriPramuka";
 import { GraduationNewLanding } from "../graduation-new";
@@ -82,6 +86,7 @@ import { HealtBridgeLanding } from "../healtBridge";
 import { WorkHomeMainLanding } from "../homework/pages/taskLanding";
 import { InfraLanding } from "../infrastructure";
 import { JadwalLanding } from "../jadwal";
+import { JadwalSDLanding } from "../jadwalSD/index.js";
 import { LayananLanding } from "../layanan";
 import { LetterPreview } from "../letter/containers/letter-preview";
 import { LetterPage } from "../letter/pages";
@@ -90,7 +95,9 @@ import { LibraryLanding } from "../library/pages/library-attedances";
 import { LicensingPage } from "../licensing/pages/licensing";
 import { LocationLanding } from "../locations/pages/location-landing";
 import { OsisLanding } from "../osis";
+import { PartnerLanding } from "../partner/pages/partner-landing.js";
 import { PengumumanLanding } from "../pengumuman/pages/pengumuman-landing.js";
+import { PenilaianLanding } from "../penilaian/pages/penilaian-landing.js";
 import { PermohonanLanding } from "../permohonan";
 import { PPDBLanding } from "../ppdb";
 import { PPIDLanding } from "../ppid";
@@ -103,22 +110,21 @@ import { RatingLanding } from "../rating";
 import { ScheduleLanding } from "../schedules/pages/schedules-landing";
 import { SchoolDistribution } from "../schools/pages/school-distribution";
 import { SejarahLanding } from "../sejarah";
+import { SiswaLanding } from "../siswa/index.js";
 import { SPMBLanding } from "../spmb";
 import { StrukturORGLanding } from "../strukturOrg";
 import { StudentLandingManual } from "../student/pages/student-landing-manual";
 import { TeacherLandingManual } from "../student/pages/teacher-landing";
+import { TataTertibLanding } from "../tataTertib/index.js";
 import { GuruTendikLanding } from "../teacherAndStaff";
 import { TemaLanding } from "../tema";
 import { VisiMisiLanding } from "../visiMission";
-import { WelcomeLanding } from "../welcome";
-import { PenilaianLanding } from "../penilaian/pages/penilaian-landing.js";
-import { FasilitasLanding } from "../fasilitas/pages/berita-landing.js";
-import { PartnerLanding } from "../partner/pages/partner-landing.js";
 import { VotingLanding } from "../voting/index.js";
-import { TataTertibLanding } from "../tataTertib/index.js";
-import { FaqLanding } from "../FAQ/index.js";
-import { JadwalSDLanding } from "../jadwalSD/index.js";
-import { FeedLanding } from "../feed/index.js";
+import { WelcomeLanding } from "../welcome";
+import { ScanLanding } from "../scan/index.js";
+import { AttedanceLanding } from "../kehadiran/pages/kehadiran-landing.js";
+import { KelasLanding } from "../kelas/pages/kelas-landing.js";
+import { GuruLanding } from "../guru/index.js";
 const router = createBrowserRouter(
   [
     {
@@ -500,6 +506,26 @@ const router = createBrowserRouter(
           element: <GraduationLanding />
         },
         {
+          path: "/manajemen-kelas",
+          element: <KelasLanding />
+        },
+        {
+          path: "/scan-qrcode",
+          element: <ScanLanding />
+        },
+        {
+          path: "/kehadiran-siswa",
+          element: <AttedanceLanding />
+        },
+        {
+          path: "data-siswa",
+          element: <SiswaLanding />
+        },
+        {
+          path: "data-guru",
+          element: <GuruLanding />
+        },
+        {
           path: "admin/users",
           element: <AdminLanding />,
         },
@@ -577,8 +603,12 @@ const router = createBrowserRouter(
     },
     {
       path: "/otp",
-      element: <Otp />,
+      element: <OTPPage />,
     },
+    // {
+    //   path: "/otp",
+    //   element: <OTPPage />,
+    // },
   ],
   {
     basename: APP_CONFIG.baseName,

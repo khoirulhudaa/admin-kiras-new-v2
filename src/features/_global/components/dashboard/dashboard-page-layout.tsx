@@ -1,11 +1,11 @@
-import React, { PropsWithChildren, useEffect } from 'react';
-import { CustomBreadcrumbs, CustomBreadcrumbsProps } from '../breadcrumbs';
 import { Button, VokadashHead } from '@/core/libs';
 import { ChevronLeft } from 'lucide-react';
+import React, { PropsWithChildren } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProfile } from '@/features/profile';
-import { storage } from '@itokun99/secure-storage';
-import { useQueryClient } from "@tanstack/react-query";
+import { CustomBreadcrumbs, CustomBreadcrumbsProps } from '../breadcrumbs';
+// import { useProfile } from '@/features/profile';
+// import { storage } from '@itokun99/secure-storage';
+// import { useQueryClient } from "@tanstack/react-query";
 
 export interface DashboardPageLayoutProps extends PropsWithChildren {
   title?: string;
@@ -69,13 +69,13 @@ export const DashboardPageLayout = React.memo(
               </Button>
             )}
             <div>
-              {title && (
+              {/* {title && (
                 <div className="flex items-center">
                   <h1 className="dashboard-page-title  text-lg font-semibold md:text-2xl">
                     {title}
                   </h1>
                 </div>
-              )}
+              )} */}
               {description && (
                 <div className="flex items-center mt-2">
                   <p className="dashboard-page-title text-slate-400 text-sm font-normal">
