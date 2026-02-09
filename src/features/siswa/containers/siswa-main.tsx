@@ -1,4 +1,5 @@
 import { useSchool } from "@/features/schools";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from "framer-motion";
 import { jsPDF } from "jspdf";
 import {
@@ -10,6 +11,7 @@ import {
   Palette,
   Plus,
   Printer,
+  RefreshCw,
   Search,
   Trash2,
   Upload,
@@ -17,7 +19,7 @@ import {
   X
 } from "lucide-react";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
 const BASE_URL = "https://be-school.kiraproject.id/siswa";
@@ -64,59 +66,59 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
         <div className="space-y-10">
           {/* Live Preview */}
           <div className="flex flex-col items-center justify-center p-8 py-12 bg-white/5 rounded-3xl border border-white/10 relative">
-              <div 
-                className="w-[320px] h-[200px] rounded-xl shadow-2xl overflow-hidden relative bg-white border border-white/20"
-                style={{ 
-                  backgroundImage: config.bgImage ? `url(${config.bgImage})` : 'none',
-                  backgroundSize: 'cover', 
-                  backgroundPosition: 'center'
-                }}
-              >
-                {/* Header dengan Accent Color */}
-                <div className="h-10 flex flex-col items-center shadow-none justify-center" style={{ backgroundColor: config.accentColor }}>
-                  <div 
-                    className="text-[10px] font-black tracking-widest uppercase"
-                    style={{ color: config.titleColor }} // Warna dinamis
-                  >
-                    {config.title}
+            <div 
+              className="w-[320px] h-[200px] rounded-xl shadow-2xl overflow-hidden relative bg-white border border-white/20"
+              style={{ 
+                backgroundImage: config.bgImage ? `url(${config.bgImage})` : 'none',
+                backgroundSize: 'cover', 
+                backgroundPosition: 'center'
+              }}
+            >
+              {/* Header dengan Accent Color */}
+              <div className="h-10 flex flex-col items-center shadow-none justify-center" style={{ backgroundColor: config.accentColor }}>
+                <div 
+                  className="text-[10px] font-black tracking-widest uppercase"
+                  style={{ color: config.titleColor }} // Warna dinamis
+                >
+                  {config.title}
+                </div>
+                <div 
+                  className="text-[6px] font-bold opacity-80 uppercase"
+                  style={{ color: config.subtitleColor }} // Warna dinamis
+                >
+                  {config.subtitle}
+                </div>
+              </div>
+
+              {/* Content Area */}
+              <div className="p-4 flex gap-4 h-[calc(100%-40px)] relative">
+                {/* Foto Siswa */}
+                <div className="w-20 h-24 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                  <User size={40} className="text-slate-300"/>
+                </div>
+
+                {/* Informasi Teks */}
+                <div className="flex-1 space-y-1.5 pt-1">
+                  <div className="leading-tight">
+                    <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nama Lengkap</div>
+                    <div className="text-[10px] font-black text-slate-800 uppercase truncate">NAMA SISWA LENGKAP</div>
                   </div>
-                  <div 
-                    className="text-[6px] font-bold opacity-80 uppercase"
-                    style={{ color: config.subtitleColor }} // Warna dinamis
-                  >
-                    {config.subtitle}
+                  <div className="leading-tight">
+                    <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nomor Induk</div>
+                    <div className="text-[8px] font-bold text-slate-700">NIS: 123456789</div>
+                    <div className="text-[7px] font-semibold text-slate-500">NISN: 00987654321</div>
+                  </div>
+                  <div className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[5px] font-black rounded-full uppercase">
+                    Status: Aktif
                   </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="p-4 flex gap-4 h-[calc(100%-40px)] relative">
-                  {/* Foto Siswa */}
-                  <div className="w-20 h-24 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                    <User size={40} className="text-slate-300"/>
-                  </div>
-
-                  {/* Informasi Teks */}
-                  <div className="flex-1 space-y-1.5 pt-1">
-                    <div className="leading-tight">
-                      <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nama Lengkap</div>
-                      <div className="text-[10px] font-black text-slate-800 uppercase truncate">NAMA SISWA LENGKAP</div>
-                    </div>
-                    <div className="leading-tight">
-                          <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nomor Induk</div>
-                          <div className="text-[8px] font-bold text-slate-700">NIS: 123456789</div>
-                          <div className="text-[7px] font-semibold text-slate-500">NISN: 00987654321</div>
-                        </div>
-                        <div className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[5px] font-black rounded-full uppercase">
-                          Status: Aktif
-                        </div>
-                      </div>
-
-                      {/* QR Code di Sudut Kanan Bawah */}
-                      <div className="absolute bottom-4 right-4 w-12 h-12 border border-slate-200 flex items-center justify-center p-1 bg-white rounded-md shadow-sm">
-                        <div className="text-[5px] font-bold text-slate-300">QR CODE</div>
-                      </div>
-                    </div>
-                  </div>
+                {/* QR Code di Sudut Kanan Bawah */}
+                <div className="absolute bottom-4 right-4 w-12 h-12 border border-slate-200 flex items-center justify-center p-1 bg-white rounded-md shadow-sm">
+                  <div className="text-[5px] font-bold text-slate-300">QR CODE</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -336,10 +338,23 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
   );
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ──────────────────────────────────────────────────────────────
 export default function StudentManager() {
   const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [modals, setModals] = useState<any>({ add: false, edit: false, designer: false });
   const [selected, setSelected] = useState<Student | null>(null);
@@ -348,6 +363,7 @@ export default function StudentManager() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0); // Tambahan untuk info total
   const [classList, setClassList] = useState<any[]>([]);
+  const queryClient = useQueryClient();
 
   const [cardConfig, setCardConfig] = useState<any>({
     title: "KARTU PELAJAR",
@@ -369,27 +385,50 @@ export default function StudentManager() {
   const schoolQuery = useSchool();
   const schoolId = schoolQuery?.data?.[0]?.id;
 
-  const fetchStudents = useCallback(async () => {
-    if (!schoolId) return;
-    setLoading(true);
-    try {
-      // Tambahkan search ke URL
+  // GANTI DENGAN INI
+  const { data: studentData, isLoading: loading, refetch, isFetching } = useQuery({
+    queryKey: ['students', schoolId, page, limit, debouncedSearch],
+    queryFn: async () => {
       const res = await fetch(
         `${BASE_URL}?schoolId=${schoolId}&page=${page}&limit=${limit}&name=${debouncedSearch}`
       );
-      const json = await res.json();
-      
-      setStudents(json.data || []);
-      setTotalPages(json.pagination?.totalPages || 1);
-      setTotalItems(json.pagination?.totalItems || 0);
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
-      setLoading(false); 
-    }
-  }, [schoolId, page, limit, debouncedSearch]); // Tambahkan debouncedSearch sebagai dep
+      return res.json();
+    },
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000, // Data "Fresh" selama 5 menit (tidak akan hit API jika balik ke hal ini)
+    gcTime: 10 * 60 * 1000,    // Data tetap di memori selama 10 menit
+  });
 
-  useEffect(() => { fetchStudents(); }, [fetchStudents]);
+  // Update state lokal (Hanya jika kamu masih butuh state terpisah untuk UI table)
+  useEffect(() => {
+    if (studentData) {
+      setStudents(studentData.data || []);
+      setTotalPages(studentData.pagination?.totalPages || 1);
+      setTotalItems(studentData.pagination?.totalItems || 0);
+    }
+  }, [studentData]);
+
+  // const fetchStudents = useCallback(async () => {
+  //   if (!schoolId) return;
+  //   setLoading(true);
+  //   try {
+  //     // Tambahkan search ke URL
+  //     const res = await fetch(
+  //       `${BASE_URL}?schoolId=${schoolId}&page=${page}&limit=${limit}&name=${debouncedSearch}`
+  //     );
+  //     const json = await res.json();
+      
+  //     setStudents(json.data || []);
+  //     setTotalPages(json.pagination?.totalPages || 1);
+  //     setTotalItems(json.pagination?.totalItems || 0);
+  //   } catch (err) { 
+  //     console.error(err); 
+  //   } finally { 
+  //     setLoading(false); 
+  //   }
+  // }, [schoolId, page, limit, debouncedSearch]);
+
+  // useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -457,7 +496,8 @@ const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       }
 
       alert("Impor selesai");
-      fetchStudents();
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      // fetchStudents();
     } catch (e) {
       alert("Gagal impor data");
     } finally {
@@ -484,7 +524,8 @@ const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'A
 
     if (res.ok) {
       alert(`Berhasil mencatat ${status}`);
-      fetchStudents(); // Refresh data untuk update status di tabel
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      // fetchStudents(); // Refresh data untuk update status di tabel
     }
   } catch (err) {
     alert("Gagal mencatat ketidakhadiran");
@@ -640,7 +681,8 @@ const handleDelete = async (id: number, name: string) => {
 
     if (res.ok) {
       // Refresh data setelah berhasil hapus
-      fetchStudents();
+      // fetchStudents();
+      queryClient.invalidateQueries({ queryKey: ['students'] });
       alert("Siswa berhasil dihapus");
     } else {
       throw new Error("Gagal menghapus data di server");
@@ -688,15 +730,26 @@ const statusStyles: Record<string, string> = {
         </div>
       </div>
 
-      <div className="mb-6 relative w-full">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-        <input 
-          type="text" 
-          placeholder="Cari nama siswa..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
-        />
+      <div className="mb-6 relative w-full flex gap-3 items-center justify-between">
+        <div className="w-[80%]">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+          <input 
+            type="text" 
+            placeholder="Cari nama siswa..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
+          />
+        </div>
+
+        <button 
+          onClick={() => refetch()} 
+          disabled={isFetching}
+          className="flex-1 h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+          {isFetching ? "Syncing..." : "Refresh"}
+        </button>
       </div>
 
       {/* Tabel dengan Status Kehadiran */}
@@ -835,7 +888,28 @@ const statusStyles: Record<string, string> = {
       </div>
 
       {/* Side Modals */}
-      <StudentModal classList={classList || []} open={modals.add || modals.edit} onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); }} title={selected ? "Edit Siswa" : "Tambah Siswa"} initialData={selected} schoolId={schoolId} onSubmit={async (fd: FormData) => { await fetch(selected ? `${BASE_URL}/${selected.id}` : BASE_URL, {method: selected ? 'PUT' : 'POST', body: fd}); fetchStudents(); }} />
+      <StudentModal 
+        classList={classList || []} 
+        open={modals.add || modals.edit} 
+        onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); }} 
+        title={selected ? "Edit Siswa" : "Tambah Siswa"} 
+        initialData={selected} 
+        schoolId={schoolId} 
+        onSubmit={async (fd: FormData) => { 
+          const res = await fetch(selected ? `${BASE_URL}/${selected.id}` : BASE_URL, {
+            method: selected ? 'PUT' : 'POST', 
+            body: fd
+          });
+
+          if (res.ok) {
+            // INI KUNCINYA: Memberitahu React Query bahwa data siswa sudah berubah
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+            
+            // Jika modal ingin langsung ditutup setelah sukses
+            setModals({...modals, add: false, edit: false});
+          }
+        }} 
+      />
       <CardDesignerModal open={modals.designer} onClose={() => setModals((p: any) => ({ ...p, designer: false }))} config={cardConfig} setConfig={setCardConfig} onGenerate={generatePDF} isProcessing={isProcessing} />
     </div>
   );

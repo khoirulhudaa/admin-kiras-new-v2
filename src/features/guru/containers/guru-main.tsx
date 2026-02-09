@@ -1,4 +1,5 @@
 import { useSchool } from "@/features/schools";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import jsPDF from "jspdf";
 import {
@@ -9,7 +10,9 @@ import {
   Printer,
   Save, Search, Trash2,
   Upload,
-  User, UserPlus, X
+  RefreshCw,
+  User,
+  X
 } from "lucide-react";
 import QRCode from "qrcode";
 import React, { useCallback, useEffect, useState } from "react";
@@ -502,13 +505,14 @@ const GuruTendikModal = ({
 // MAIN COMPONENT
 // ────────────────────────────────────────────────
 export default function TeacherManager() {
-  const [data, setData] = useState<GuruTendikItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [data, setData] = useState<GuruTendikItem[]>([]);
+  // const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<GuruTendikItem | null>(null);
   const [search, setSearch] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCardDesigner, setShowCardDesigner] = useState(false);
+  const queryClient = useQueryClient();
 
   // ─── State untuk custom card ───────────────────────────────
   const [cardConfig, setCardConfig] = useState({
@@ -523,23 +527,42 @@ export default function TeacherManager() {
   const school = useSchool();
   const SCHOOL_ID = school?.data?.[0]?.id;
 
-  const fetchData = useCallback(async () => {
-    if (!SCHOOL_ID) return;
-    setLoading(true);
-    try {
+  // ─── REACT QUERY: Fetch Data ───────────────────────────────
+  const { 
+    data: teacherData = [], 
+    isLoading: loading, 
+    refetch, 
+    isFetching 
+  } = useQuery({
+    queryKey: ['teachers', SCHOOL_ID],
+    queryFn: async () => {
+      if (!SCHOOL_ID) return [];
       const res = await fetch(`${BASE_URL}/absensi?schoolId=${SCHOOL_ID}&limit=100`);
       const json = await res.json();
-      if (json.success) {
-        setData(json.data || []);
-      }
-    } catch (err) {
-      toast.error("Network Error: Gagal memuat data");
-    } finally {
-      setLoading(false);
-    }
-  }, [SCHOOL_ID]);
+      if (!json.success) throw new Error(json.message);
+      return json.data || [];
+    },
+    enabled: !!SCHOOL_ID,
+    staleTime: 5 * 60 * 1000, // Data fresh selama 5 menit
+  });
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // const fetchData = useCallback(async () => {
+  //   if (!SCHOOL_ID) return;
+  //   setLoading(true);
+  //   try {
+  //     const res = await fetch(`${BASE_URL}/absensi?schoolId=${SCHOOL_ID}&limit=100`);
+  //     const json = await res.json();
+  //     if (json.success) {
+  //       setData(json.data || []);
+  //     }
+  //   } catch (err) {
+  //     toast.error("Network Error: Gagal memuat data");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, [SCHOOL_ID]);
+
+  // useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSave = async (form: Partial<GuruTendikItem>, file?: File) => {
     const formData = new FormData();
@@ -562,7 +585,8 @@ export default function TeacherManager() {
     if (!res.ok || !json.success) throw new Error(json.message || "Gagal menyimpan");
 
     toast.success("Data berhasil disimpan");
-    fetchData();
+    queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    // fetchData();
   };
 
   const handleDelete = async (id: number) => {
@@ -574,7 +598,8 @@ export default function TeacherManager() {
       });
       if (res.ok) {
         toast.success("Data dihapus");
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: ['teachers'] });
+        // fetchData();
       }
     } catch (err) {
       toast.error("Gagal menghapus data");
@@ -641,7 +666,8 @@ export default function TeacherManager() {
         }
 
         toast.success("Import selesai");
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: ['teachers'] });
+        // fetchData();
       } catch (err) {
         toast.error("Gagal import data");
         console.error(err);
@@ -665,8 +691,8 @@ export default function TeacherManager() {
     const spacing = 8; // Jarak antar kartu (horizontal & vertikal)
 
     try {
-      for (let i = 0; i < data.length; i++) {
-        const t = data[i];
+      for (let i = 0; i < teacherData.length; i++) {
+        const t = teacherData[i];
         const idx = i % 8;
         const col = idx % 2;
         const row = Math.floor(idx / 2);
@@ -802,8 +828,15 @@ export default function TeacherManager() {
     }
   };
 
-  const filtered = data.filter(
-    (item) =>
+  // const filtered = data.filter(
+  //   (item) =>
+  //     item.nama.toLowerCase().includes(search.toLowerCase()) ||
+  //     item.role.toLowerCase().includes(search.toLowerCase())
+  // );
+
+  // Filter menggunakan data dari useQuery
+  const filtered = teacherData.filter(
+    (item: any) =>
       item.nama.toLowerCase().includes(search.toLowerCase()) ||
       item.role.toLowerCase().includes(search.toLowerCase())
   );
@@ -862,7 +895,8 @@ export default function TeacherManager() {
 
         </div>
       </div>
-          <div className="relative flex-1 w-full mb-6 group">
+        <div className="relative flex-1 w-full mb-6 group flex items-center gap-3 justify-between">
+          <div className="w-[80%]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
             <input
               type="text"
@@ -872,6 +906,16 @@ export default function TeacherManager() {
                className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
             />
           </div>
+          
+          <button 
+            onClick={() => refetch()} 
+            disabled={isFetching}
+            className="flex-1 h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+            {isFetching ? "Syncing..." : "Refresh"}
+          </button>
+      </div>
 
       {/* Content */}
       {loading ? (

@@ -1,4 +1,5 @@
 import { useSchool } from "@/features/schools";
+import { useQuery } from "@tanstack/react-query"; // Tambahkan ini
 import { motion } from "framer-motion";
 import {
   BookOpen,
@@ -9,28 +10,22 @@ import {
   DownloadIcon,
   Filter,
   Loader,
-  RotateCcw,
+  RefreshCw,
   Users
 } from "lucide-react";
 import moment from "moment";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 // Konfigurasi API
 const API_BASE = "https://be-school.kiraproject.id/siswa";
 const API_KELAS = "https://be-school.kiraproject.id/kelas";
-// const API_BASE = "http://localhost:5005/siswa";
-// const API_KELAS = "http://localhost:5005/kelas";
 
 export default function AttendanceMain() {
   const schoolQuery = useSchool();
   const schoolId = schoolQuery?.data?.[0]?.id;
 
-  // --- States ---
-  const [data, setData] = useState<any[]>([]);
-  const [classList, setClassList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  // --- States (Hanya untuk UI & Filter) ---
   const [exportLoading, setExportLoading] = useState(false);
-  
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
@@ -40,33 +35,26 @@ export default function AttendanceMain() {
     month: moment().format("MM"),
     year: moment().format("YYYY")
   });
-  
-  const [pagination, setPagination] = useState({
-    totalItems: 0,
-    totalPages: 1,
-    currentPage: 1
-  });
 
-  // --- 1. Fetch Daftar Kelas untuk Dropdown ---
-  const fetchClassList = useCallback(async () => {
-    if (!schoolId) return;
-    try {
+  // --- 1. Fetch Daftar Kelas (useQuery) ---
+  const { data: classList = [] } = useQuery({
+    queryKey: ["classList", schoolId],
+    queryFn: async () => {
       const res = await fetch(`${API_KELAS}?schoolId=${schoolId}`);
       const json = await res.json();
-      if (json.success) setClassList(json.data);
-    } catch (err) {
-      console.error("Gagal mengambil daftar kelas:", err);
-    }
-  }, [schoolId]);
+      return json.success ? json.data : [];
+    },
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // --- 2. Fetch Data Log Kehadiran ---
-  const fetchData = useCallback(async () => {
-    if (!schoolId) return;
-    setLoading(true);
-    try {
+  // --- 2. Fetch Data Log Kehadiran (useQuery) ---
+  const { data: attendanceResponse, isLoading: loading, refetch, isFetching } = useQuery({
+    queryKey: ["attendance", schoolId, filters], // Otomatis refetch jika filter berubah
+    queryFn: async () => {
       const query = new URLSearchParams({
-        schoolId: schoolId.toString(),
-        role: filters.role, // Tambahkan ini
+        schoolId: schoolId!.toString(),
+        role: filters.role,
         page: filters.page.toString(),
         limit: filters.limit.toString(),
         year: filters.year,
@@ -77,30 +65,18 @@ export default function AttendanceMain() {
 
       const res = await fetch(`${API_BASE}/attendance-report?${query}`);
       const json = await res.json();
-      
-      if (json.success) {
-        setData(json.data);
-        setPagination(json.pagination);
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [schoolId, filters]);
+      return json;
+    },
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000, // Stale 5 menit
+    gcTime: 10 * 60 * 1000,   // GC 10 menit
+  });
 
-  useEffect(() => {
-    fetchClassList();
-  }, [fetchClassList]);
+  // Mapping data dari response
+  const data = attendanceResponse?.data || [];
+  const pagination = attendanceResponse?.pagination || { totalItems: 0, totalPages: 1, currentPage: 1 };
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-        fetchData();
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [fetchData]);
-
-  // --- 3. Handle Export Excel ---
+  // --- 3. Handle Export Excel (Tetap Manual) ---
   const handleExport = async (type: 'monthly' | 'yearly') => {
     if (!schoolId) return;
     setExportLoading(true);
@@ -192,8 +168,6 @@ export default function AttendanceMain() {
 
       {/* Filter Bar */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        
-        {/* Kelas Selector */}
         <div className="relative group">
           <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-blue-500 transition-colors z-10" size={16} />
           <select 
@@ -202,14 +176,13 @@ export default function AttendanceMain() {
             onChange={(e) => setFilters({...filters, class: e.target.value, page: 1})}
           >
             <option value="" className="bg-[#0B1220]">Semua Kelas</option>
-            {classList.map((c) => (
+            {classList.map((c: any) => (
               <option key={c.id} value={c.className} className="bg-[#0B1220]">{c.className}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
         </div>
 
-        {/* Angkatan Input */}
         <div className="relative group">
           <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-blue-500 transition-colors" size={16} />
           <input 
@@ -220,8 +193,7 @@ export default function AttendanceMain() {
           />
         </div>
 
-        {/* Month & Year Selectors */}
-        <div className="flex gap-2 lg:col-span-2">
+        <div className="flex gap-4 lg:col-span-2">
            <select 
             className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-sm outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer font-bold"
             value={filters.month}
@@ -242,12 +214,13 @@ export default function AttendanceMain() {
            </select>
         </div>
 
-        {/* Reset Button */}
         <button 
-          onClick={resetFilters}
-          className="bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/20 text-zinc-500 hover:text-red-400 rounded-2xl px-4 py-4 transition-all flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-widest"
+          onClick={() => refetch()} 
+          disabled={isFetching}
+          className="h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
         >
-          <RotateCcw size={16} /> Reset
+          <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+          {isFetching ? "Syncing..." : "Refresh"}
         </button>
       </div>
 
@@ -258,7 +231,6 @@ export default function AttendanceMain() {
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.03]">
                 <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Waktu Scan</th>
-                {/* Judul kolom berubah otomatis sesuai filter role yang aktif */}
                 <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                   Informasi {filters.role === 'teacher' ? 'Guru/Staff' : 'Siswa'}
                 </th>
@@ -288,18 +260,13 @@ export default function AttendanceMain() {
                   </td>
                 </tr>
               ) : (
-                data.map((item, idx) => {
-                  // 1. Identifikasi Role & Data User
+                data.map((item: any, idx: number) => {
                   const isStudent = item.userRole === 'student';
                   const userData = isStudent ? item.student : item.guru;
-                  
-                  // 2. Mapping Nama & ID (Siswa pakai .name, Guru pakai .nama)
                   const displayName = isStudent ? userData?.name : userData?.nama;
                   const displayId = isStudent 
                     ? `NIS: ${userData?.nis || '-'}` 
                     : `ROLE: ${userData?.role || 'Staff'}`;
-                  
-                  // 3. Mapping Sub-info (Siswa pakai .batch, Guru pakai .mapel)
                   const subInfo = isStudent 
                     ? `Batch ${userData?.batch || '-'}` 
                     : (userData?.mapel || "Umum");
@@ -312,7 +279,6 @@ export default function AttendanceMain() {
                       key={item.id} 
                       className="hover:bg-white/[0.04] transition-colors group"
                     >
-                      {/* --- WAKTU SCAN --- */}
                       <td className="p-6">
                         <div className="flex items-center gap-3">
                           <div className={`p-2.5 rounded-xl transition-transform group-hover:scale-110 ${
@@ -331,7 +297,6 @@ export default function AttendanceMain() {
                         </div>
                       </td>
 
-                      {/* --- INFORMASI USER (Siswa vs Guru) --- */}
                       <td className="p-6">
                         <div className="flex items-center gap-4">
                           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-white text-sm shadow-lg ${
@@ -354,7 +319,6 @@ export default function AttendanceMain() {
                         </div>
                       </td>
 
-                      {/* --- DETAIL POSISI --- */}
                       <td className="p-6 text-sm">
                         <div className="font-bold text-zinc-300 uppercase tracking-tighter italic">
                           {isStudent ? item.currentClass : "GURU / STAFF"}
@@ -366,7 +330,6 @@ export default function AttendanceMain() {
                         </div>
                       </td>
 
-                      {/* --- STATUS --- */}
                       <td className="p-6 text-center">
                         <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest shadow-sm ${
                           item.status === 'Hadir' 
@@ -383,88 +346,49 @@ export default function AttendanceMain() {
             </tbody>
           </table>
         </div>
-
-
       </div>
-       {/* Pagination & Limit Controls */}
-        <div className="flex flex-col md:flex-row justify-between items-center mt-8 gap-6 pb-12">
-            
-            {/* Left Side: Limit & Info */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <select 
-                  value={filters.limit} 
-                  onChange={(e) => {
-                    setFilters({ ...filters, limit: Number(e.target.value), page: 1 });
-                  }}
-                  className="bg-white/5 border border-white/10 w-max pr-8 pl-4 h-11 rounded-xl text-[10px] font-black text-white outline-none appearance-none cursor-pointer hover:bg-white/10 transition-all"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    backgroundSize: '14px'
-                  }}
-                >
-                  <option className="bg-[#0B1220]" value={10}>10 Baris</option>
-                  <option className="bg-[#0B1220]" value={20}>20 Baris</option>
-                  <option className="bg-[#0B1220]" value={50}>50 Baris</option>
-                  <option className="bg-[#0B1220]" value={100}>100 Baris</option>
-                </select>
-              </div>
-              <div className="h-4 w-px bg-white/10 mx-2 hidden md:block" />
-              <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-                Showing <span className="text-white">{(filters.page - 1) * filters.limit + 1}-{Math.min(filters.page * filters.limit, pagination?.totalItems || 0)}</span> 
-                <span className="mx-1 text-zinc-700">/</span> 
-                Total <span className="text-blue-500">{pagination?.totalItems || 0}</span> Log
-              </div>
-            </div>
 
-            {/* Right Side: Navigation */}
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setFilters({ ...filters, page: Math.max(1, filters.page - 1) })}
-                disabled={filters.page === 1 || loading}
-                className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:bg-white/10 transition-all text-zinc-400"
-              >
-                Prev
-              </button>
-              
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(3, pagination?.totalPages || 1) }, (_, i) => {
-                  let pageNum;
-                  if (pagination?.totalPages || 1 <= 3) {
-                    pageNum = i + 1;
-                  } else if (filters.page === pagination?.totalPages || 1) {
-                    pageNum = pagination?.totalPages || 1 - 2 + i;
-                  } else {
-                    pageNum = Math.max(1, filters.page - 1) + i;
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setFilters({ ...filters, page: pageNum })}
-                      className={`w-11 h-11 rounded-xl text-[10px] font-black transition-all ${
-                        filters.page === pageNum 
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                          : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button 
-                onClick={() => setFilters({ ...filters, page: Math.min(pagination?.totalPages || 1, filters.page + 1) })}
-                disabled={filters.page === pagination?.totalPages || 1 || loading}
-                className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:bg-white/10 transition-all text-zinc-400"
-              >
-                Next
-              </button>
-            </div>
+      {/* Pagination Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-center mt-8 gap-6 pb-12">
+        <div className="flex items-center gap-4">
+          <select 
+            value={filters.limit} 
+            onChange={(e) => setFilters({ ...filters, limit: Number(e.target.value), page: 1 })}
+            className="bg-white/5 border border-white/10 w-max pr-8 pl-4 h-11 rounded-xl text-[10px] font-black text-white outline-none appearance-none cursor-pointer"
+          >
+            {[10, 20, 50, 100].map(v => <option key={v} value={v} className="bg-[#0B1220]">{v} Baris</option>)}
+          </select>
+          <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">
+            Showing <span className="text-white">{(filters.page - 1) * filters.limit + 1}-{Math.min(filters.page * filters.limit, pagination?.totalItems || 0)}</span> / Total <span className="text-blue-500">{pagination?.totalItems || 0}</span> Log
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setFilters({ ...filters, page: Math.max(1, filters.page - 1) })}
+            disabled={filters.page === 1 || loading}
+            className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase disabled:opacity-20 text-zinc-400"
+          >Prev</button>
+          
+          <div className="flex gap-1">
+            {Array.from({ length: Math.min(3, pagination?.totalPages || 1) }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setFilters({ ...filters, page: i + 1 })}
+                className={`w-11 h-11 rounded-xl text-[10px] font-black transition-all ${
+                  filters.page === i + 1 ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-500'
+                }`}
+              >{i + 1}</button>
+            ))}
+          </div>
+
+          <button 
+            onClick={() => setFilters({ ...filters, page: Math.min(pagination?.totalPages || 1, filters.page + 1) })}
+            disabled={filters.page === pagination?.totalPages || loading}
+            className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase disabled:opacity-20 text-zinc-400"
+          >Next</button>
+        </div>
+      </div>
     </div>
   );
 }
