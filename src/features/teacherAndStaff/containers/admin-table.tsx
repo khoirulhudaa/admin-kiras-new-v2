@@ -488,21 +488,21 @@
 
 import { useSchool } from "@/features/schools";
 import { AnimatePresence, motion } from "framer-motion";
-import { 
-  Edit, 
-  Mail, 
-  Plus, 
-  Save, 
-  Search, 
-  Trash2, 
-  User, 
-  UserPlus, 
-  X,
-  GraduationCap,
-  Briefcase
+import {
+  Briefcase,
+  Edit,
+  Mail,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  User,
+  UserPlus,
+  X
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
+import debounce from "lodash/debounce"; 
 
 // --- Types & Constants ---
 interface GuruTendikItem {
@@ -612,17 +612,23 @@ const GuruTendikModal = ({
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed right-0 top-0 z-[10000] h-full w-full max-w-lg bg-[#0B1220] border-l border-white/10 shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
+            <div className="border-b p-8 border-white/8 flex justify-between pb-8 mb-8 items-center bg-[#0B1220] z-10">
               <div>
-                <h2 className="text-xl font-bold text-white italic uppercase tracking-tighter">
-                  {isNew ? "Registration" : "Update Profile"}
-                </h2>
-                <p className="text-xs text-white/40 uppercase tracking-widest font-black">Guru & Tenaga Kependidikan</p>
+                <h3 className="text-4xl font-black tracking-tighter text-white">
+                  {isNew ? "Tambah Tendik" : "Perbarui Profile"}
+                </h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1">
+                  Guru & Tenaga Kependidikan
+                </p>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-white/50 hover:text-white transition-colors">
+              <button
+                onClick={onClose}
+                className="p-3 rounded-2xl bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"
+              >
                 <X size={24} />
               </button>
             </div>
+            
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8">
               {/* Photo Upload Section */}
@@ -747,6 +753,7 @@ export function FormGuruTendik() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<GuruTendikItem | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const school = useSchool();
   const SCHOOL_ID = school?.data?.[0]?.id;
@@ -766,6 +773,25 @@ export function FormGuruTendik() {
   }, [SCHOOL_ID]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const debouncedSetSearch = useMemo(
+    () => debounce((value: string) => {
+      setDebouncedSearch(value);
+    }, 500),
+    []
+  );
+
+  // 3. Handler saat input berubah
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearch(value); // Update teks di kolom input langsung (biar tidak lag)
+    debouncedSetSearch(value); // Tunda pemfilteran selama 500ms
+  };
+
+  // 4. Cleanup saat komponen unmount
+  useEffect(() => {
+    return () => debouncedSetSearch.cancel();
+  }, [debouncedSetSearch]);
 
   const handleSave = async (form: Partial<GuruTendikItem>, file?: File) => {
     const formData = new FormData();
@@ -808,8 +834,8 @@ export function FormGuruTendik() {
   };
 
   const filtered = data.filter((item) =>
-    item.nama.toLowerCase().includes(search.toLowerCase()) ||
-    item.role.toLowerCase().includes(search.toLowerCase())
+    item.nama.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    item.role.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   return (
@@ -833,9 +859,9 @@ export function FormGuruTendik() {
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-500 transition-colors" size={18} />
             <input
               type="text"
-              placeholder="Search by name or role..."
+              placeholder="Cari nama atau role..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-blue-500/50 transition-all placeholder:text-white/20 text-sm"
             />
           </div>

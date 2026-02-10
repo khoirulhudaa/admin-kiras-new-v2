@@ -160,10 +160,10 @@ const AlumniModal = ({
       >
         <div className="p-10 border-b border-white/8 flex justify-between items-center relative top-0 bg-[#0B1220] z-10">
           <div>
-            <h3 className="text-3xl font-black italic tracking-tight text-white">
+            <h3 className="text-4xl font-black tracking-tight text-white">
               {title.includes("Tambah") ? "Tambah" : "Edit"} <span className="text-blue-600">Alumni</span>
             </h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500/80 mt-1 italic">
+            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500/80 mt-1">
               Data Alumni Sekolah
             </p>
           </div>

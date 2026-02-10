@@ -149,7 +149,7 @@ const PengumumanModal = ({
         transition={{ type: "spring", damping: 28, stiffness: 220 }}
         className="fixed right-0 top-0 h-full w-full max-w-xl bg-[#0B1220] border-l border-white/10 shadow-2xl overflow-y-auto z-[100000] flex flex-col"
       >
-        <div className="p-10 border-b border-white/8 flex justify-between items-center sticky top-0 bg-[#0B1220] z-10">
+        <div className="p-10 border-b border-white/8 flex justify-between items-center  top-0 bg-[#0B1220] z-10">
           <div>
             <h3 className="text-4xl font-black tracking-tighter text-white">
               {initialData.id ? "Edit" : "Tambah"} <span className="text-blue-600">Pengumuman</span>
@@ -287,7 +287,7 @@ const PengumumanModal = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="sticky bottom-0 left-0 right-0 bg-[#0B1220] pt-10 pb-6 border-t border-white/8 grid grid-cols-2 gap-6">
+          <div className=" bottom-0 left-0 right-0 bg-[#0B1220] pt-10 pb-6 border-t border-white/8 grid grid-cols-2 gap-6">
             <button
               type="button"
               onClick={onClose}
@@ -300,14 +300,14 @@ const PengumumanModal = ({
             <button
               type="submit"
               disabled={loading}
-              className={`py-4 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all shadow-xl ${
+              className={`p-4 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all shadow-xl ${
                 loading
                   ? "bg-blue-800 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-500 shadow-blue-600/30"
               }`}
             >
               {loading ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
-              {loading ? "Menyimpan..." : initialData.id ? "Update Pengumuman" : "Tambah Pengumuman"}
+              {loading ? "Menyimpan..." : initialData.id ? "Perbarui" : "Tambah"}
             </button>
           </div>
         </form>

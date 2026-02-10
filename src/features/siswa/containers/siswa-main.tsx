@@ -2,11 +2,15 @@ import { useSchool } from "@/features/schools";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from "framer-motion";
 import { jsPDF } from "jspdf";
+import debounce from 'lodash/debounce'; // Import debounce
+
 import {
   CheckCircle2,
   ChevronDown,
   Download,
   Edit,
+  ExternalLink,
+  Eye,
   FileSpreadsheet,
   Palette,
   Plus,
@@ -19,7 +23,8 @@ import {
   X
 } from "lucide-react";
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
 const BASE_URL = "https://be-school.kiraproject.id/siswa";
@@ -246,12 +251,24 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
     <AnimatePresence>
       <motion.div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000]" onClick={onClose} />
       <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="fixed right-0 top-0 h-full w-full max-w-xl bg-[#0B1220] border-l border-white/10 z-[100001] p-10 overflow-y-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-black text-white uppercase tracking-tight">{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-zinc-500"><X/></button>
+        <div className="border-b border-white/8 flex justify-between pb-8 mb-8 items-center bg-[#0B1220] z-10">
+          <div>
+            <h3 className="text-4xl font-black tracking-tighter text-white">
+              {title}
+            </h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 italic">
+              Siswa pilihan sekolah ini
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"
+          >
+            <X size={24} />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 pb-10">
+        <form onSubmit={handleSubmit} className="space-y-6 pb-0">
           {/* Foto Section */}
           <div className="space-y-3">
              <label className="text-[10px] font-black uppercase text-white/30 tracking-widest ml-2">Foto Profil Siswa</label>
@@ -302,15 +319,15 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-white/40 uppercase ml-2">NIS (No. Induk)</label>
-              <input value={form.nis} onChange={e => setForm({...form, nis: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" required />
+              <input value={form.nis} maxLength={10} onChange={e => setForm({...form, nis: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" required />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-white/40 uppercase ml-2">NISN</label>
-              <input value={form.nisn} onChange={e => setForm({...form, nisn: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" />
+              <input value={form.nisn} maxLength={10} onChange={e => setForm({...form, nisn: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-white/40 uppercase ml-2">NIK (Sesuai KK)</label>
-              <input value={form.nik} onChange={e => setForm({...form, nik: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" />
+              <input value={form.nik} maxLength={16} onChange={e => setForm({...form, nik: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-white/40 uppercase ml-2">Jenis Kelamin</label>
@@ -354,7 +371,6 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
 // ──────────────────────────────────────────────────────────────
 export default function StudentManager() {
   const [students, setStudents] = useState<Student[]>([]);
-  // const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [modals, setModals] = useState<any>({ add: false, edit: false, designer: false });
   const [selected, setSelected] = useState<Student | null>(null);
@@ -369,18 +385,35 @@ export default function StudentManager() {
     title: "KARTU PELAJAR",
     subtitle: "SMK NEGERI PRO DIGITAL",
     accentColor: "#2563eb",
-    titleColor: "#ffffff",    // Tambahkan ini
-    subtitleColor: "#ffffff", // Tambahkan ini
+    titleColor: "#ffffff",    
+    subtitleColor: "#ffffff", 
     bgImage: null
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Debounce search agar tidak menembak API setiap ketikan
+  // --- GANTI DENGAN LODASH DEBOUNCE ---
+  const debouncedSetSearch = useMemo(
+    () => debounce((value: string) => {
+      setDebouncedSearch(value);
+      setPage(1); 
+    }, 500),
+    []
+  );
+
+  // Jalankan debounce saat input berubah
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value); // Update UI input secara instan
+    debouncedSetSearch(value); // Jalankan fungsi debounce untuk update API
+  };
+
+  // Pastikan untuk membatalkan debounce jika komponen di-unmount
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 500);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
+    return () => {
+      debouncedSetSearch.cancel();
+    };
+  }, [debouncedSetSearch]);
 
   const schoolQuery = useSchool();
   const schoolId = schoolQuery?.data?.[0]?.id;
@@ -407,28 +440,6 @@ export default function StudentManager() {
       setTotalItems(studentData.pagination?.totalItems || 0);
     }
   }, [studentData]);
-
-  // const fetchStudents = useCallback(async () => {
-  //   if (!schoolId) return;
-  //   setLoading(true);
-  //   try {
-  //     // Tambahkan search ke URL
-  //     const res = await fetch(
-  //       `${BASE_URL}?schoolId=${schoolId}&page=${page}&limit=${limit}&name=${debouncedSearch}`
-  //     );
-  //     const json = await res.json();
-      
-  //     setStudents(json.data || []);
-  //     setTotalPages(json.pagination?.totalPages || 1);
-  //     setTotalItems(json.pagination?.totalItems || 0);
-  //   } catch (err) { 
-  //     console.error(err); 
-  //   } finally { 
-  //     setLoading(false); 
-  //   }
-  // }, [schoolId, page, limit, debouncedSearch]);
-
-  // useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -518,7 +529,8 @@ const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'A
         studentId: student.id,
         schoolId: schoolId,
         status: status,
-        currentClass: student.class
+        currentClass: student.class,
+        userRole: 'student'
       })
     });
 
@@ -650,7 +662,7 @@ const generatePDF = async () => {
       doc.text(`NISN: ${s.nisn || "-"}`, x + 27, y + 31);
 
       // 6. QR Code
-      const qrData = s.qrCodeData || s.nis;
+      const qrData = s.qrCodeData;
       const qr = await QRCode.toDataURL(qrData, { margin: 1, width: 150 });
       doc.addImage(qr, 'PNG', x + 63, y + 33, 18, 18);
 
@@ -701,6 +713,8 @@ const statusStyles: Record<string, string> = {
   "Belum Hadir": "bg-zinc-500/10 text-zinc-500 border border-zinc-500/10",
 };
 
+const navigate = useNavigate();
+
   return (
     <div className="min-h-screen pb-8 text-slate-100">
       {/* Header Utama */}
@@ -737,7 +751,7 @@ const statusStyles: Record<string, string> = {
             type="text" 
             placeholder="Cari nama siswa..." 
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
           />
         </div>
@@ -758,11 +772,11 @@ const statusStyles: Record<string, string> = {
           <thead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 border-b border-white/5 bg-white/[0.03]">
             <tr>
               <th className="pl-6 p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Profil</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kelas / Angkatan</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">NIS / NISN</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kehadiran</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Mark</th>
-              <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right pr-6">Aksi</th>
+              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kelas</th>
+              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">NIS / NISN</th>
+              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kehadiran</th>
+              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Status</th>
+              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -770,45 +784,50 @@ const statusStyles: Record<string, string> = {
               <tr><td colSpan={4} className="px-2 py-20 text-center text-zinc-600 tracking-widest uppercase">Loading...</td></tr>
             ) : students.map(s => (
               <tr key={s.id} className="hover:bg-white/[0.01] transition-colors">
-                <td className="px-2 py-6 pl-6">
+                <td className="py-6 pl-6">
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden">
                       {s.photoUrl ? <img src={s.photoUrl} className="object-cover h-full w-full" /> : <div className="h-full w-full flex items-center justify-center"><User className="text-zinc-700"/></div>}
                     </div>
                     <div>
-                      <div className="font-bold text-white tracking-tight">{s.name}</div>
+                      <div className="font-bold    text-white tracking-tight">{s.name}</div>
                       <div className="text-[9px] text-zinc-500 font-bold uppercase">{s.gender}</div>
                     </div>
                   </div>
                 </td>
-               <td className="px-2 py-6">
-                  <div className="text-blue-400 font-mono text-sm">{s.class}</div>
+               <td className="py-6">
+                  <div className="text-blue-400 w-full truncate font-mono text-sm">{s.class}</div>
                   <div className="text-[10px] text-zinc-500 font-medium tracking-tighter">ANGKATAN: {s.batch || "-"}</div>
                 </td>
-                <td className="px-2 py-6">
-                   <div className="text-blue-400 font-mono text-sm">{s.nis}</div>
-                   <div className="text-[10px] text-zinc-500 font-medium tracking-tighter">NISN: {s.nisn || "-"}</div>
+                <td className="py-6">
+                   <div className="text-blue-400 w-full truncate font-mono text-sm">{s.nis}</div>
+                   <div className="text-[10px] w-full truncate text-zinc-500 font-medium tracking-tighter">NISN: {s.nisn || "-"}</div>
                 </td>
-                <td className="px-2 py-6">
+                <td className="py-6">
                    <span className={`px-4 py-1.5 w-max rounded-full text-[9px] font-black uppercase tracking-widest ${statusStyles[s.statusKehadiran] || statusStyles["Belum Hadir"]}`}>
                       {s.statusKehadiran || "Belum Hadir"}
                    </span>
                 </td>
-                <td className="px-2 py-6">
-                  <div className="flex flex-col gap-2">
+                <td className="py-6">
+                  <div className="flex flex-col gap-3">
                     {/* Tombol Cepat Mark Absence jika belum hadir */}
-                    {s.statusKehadiran !== 'Hadir' && (
-                      <div className="flex gap-1 justify-between">
-                        <button onClick={() => handleMarkAbsence(s, 'Izin')} className="px-2 py-1 bg-amber-500/10 text-amber-500 rounded text-[10px] font-bold hover:bg-amber-500/20">IZIN</button>
-                        <button onClick={() => handleMarkAbsence(s, 'Sakit')} className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-[10px] font-bold hover:bg-blue-500/20">SAKIT</button>
-                        <button onClick={() => handleMarkAbsence(s, 'Alpha')} className="px-2 py-1 bg-red-500/10 text-red-500 rounded text-[10px] font-bold hover:bg-red-500/20">ALPHA</button>
-                      </div>
-                    )}
+                    <div className="flex gap-3 justify-start">
+                      <button onClick={() => handleMarkAbsence(s, 'Izin')} className="px-2 py-1 bg-amber-500/10 text-amber-500 rounded text-[10px] font-bold hover:bg-amber-500/20">IZIN</button>
+                      <button onClick={() => handleMarkAbsence(s, 'Sakit')} className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-[10px] font-bold hover:bg-blue-500/20">SAKIT</button>
+                      <button onClick={() => handleMarkAbsence(s, 'Alpha')} className="px-2 py-1 bg-red-500/10 text-red-500 rounded text-[10px] font-bold hover:bg-red-500/20">ALPHA</button>
+                    </div>
                   </div>
                 </td>
-                <td className="px-2 py-6 text-right space-x-2 pr-6">
-                  <button onClick={() => { setSelected(s); setModals({...modals, edit: true}); }} className="p-3 bg-white/5 rounded-xl hover:text-blue-400"><Edit size={16}/></button>
-                  <button onClick={() => handleDelete(s.id, s.name)} className="p-3 bg-white/5 rounded-xl hover:text-red-400"><Trash2 size={16}/></button>
+                <td className="py-6 text-left gap-2.5 flex">
+                  <button 
+                    onClick={() => navigate(`/detail/${s.id}?role=student`)} 
+                    className="p-3 bg-white/5 hover:bg-white/20 hover:text-white rounded-xl transition-all"
+                    title="Lihat Detail & Riwayat"
+                  >
+                    <Eye size={16}/>
+                  </button>
+                  <button onClick={() => { setSelected(s); setModals({...modals, edit: true}); }} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Edit size={16}/></button>
+                  <button onClick={() => handleDelete(s.id, s.name)} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Trash2 size={16}/></button>
                 </td>
               </tr>
             ))}

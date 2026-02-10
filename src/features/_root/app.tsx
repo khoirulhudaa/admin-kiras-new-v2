@@ -125,6 +125,8 @@ import { ScanLanding } from "../scan/index.js";
 import { AttedanceLanding } from "../kehadiran/pages/kehadiran-landing.js";
 import { KelasLanding } from "../kelas/pages/kelas-landing.js";
 import { GuruLanding } from "../guru/index.js";
+import { DetailUserLanding } from "../detailUser/pages/detailUser-landing.js";
+import { MappingSekolahLanding } from "../mappingSekolah/pages/mappingSekolah-landing.js";
 const router = createBrowserRouter(
   [
     {
@@ -514,12 +516,20 @@ const router = createBrowserRouter(
           element: <ScanLanding />
         },
         {
-          path: "/kehadiran-siswa",
+          path: "/data-kehadiran",
           element: <AttedanceLanding />
         },
         {
           path: "data-siswa",
           element: <SiswaLanding />
+        },
+        {
+          path: "detail/:id",
+          element: <DetailUserLanding />
+        },
+        {
+          path: "sebaran-sekolah",
+          element: <MappingSekolahLanding />
         },
         {
           path: "data-guru",

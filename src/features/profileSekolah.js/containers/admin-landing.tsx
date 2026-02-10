@@ -863,10 +863,10 @@ export function ProfileSekolahMain() {
           <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200"><div className="fixed inset-0 bg-black/90 backdrop-blur-md" /></Transition.Child>
           <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
             <Transition.Child as={Fragment} enter="transform transition ease-in-out duration-500" enterFrom="translate-x-full" enterTo="translate-x-0" leave="transform transition ease-in-out duration-500" leaveFrom="translate-x-0" leaveTo="translate-x-full">
-              <Dialog.Panel className="w-screen max-w-2xl bg-zinc-950 border-l border-white/10 shadow-2xl overflow-y-auto">
+              <Dialog.Panel className="w-screen max-w-2xl bg-[#0B1220] border-l border-white/10 shadow-2xl overflow-y-auto">
                 <div className="p-10">
                   <div className="flex items-center justify-between mb-12">
-                    <h2 className="text-3xl font-black uppercase italic tracking-tighter">Konfigurasi <span className="text-blue-600">Profil</span></h2>
+                    <h2 className="text-3xl font-black uppercase tracking-tighter">Konfigurasi <span className="text-blue-600">Profil</span></h2>
                     <button onClick={() => setIsModalOpen(false)} className="p-3 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-500 transition-all"><X size={20} /></button>
                   </div>
 

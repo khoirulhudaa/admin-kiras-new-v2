@@ -184,8 +184,8 @@
     "id": "MANAJEMEN KELAS"
   },
   "attendance": {
-    "en": "STUDENTS ABSENCE",
-    "id": "KEHADIRAN SISWA"
+    "en": "DATA ABSENCE",
+    "id": "DATA KEHADIRAN"
   },
   "leave": {
     "en": "Leave",
@@ -1052,8 +1052,8 @@
     "en": "Evidence"
   },
   "detail": {
-    "id": "Rincian",
-    "en": "Detail"
+    "id": "PROFILE LENGKAP",
+    "en": "PROFILE DETAIL"
   },
   "first": {
     "id": "Pertama",
@@ -1168,16 +1168,16 @@
     "en": "Total Location Points"
   },
   "student": {
-    "id": "DATA SISWA",
-    "en": "STUDENTS DATA"
+    "id": "MANAJEMEN SISWA",
+    "en": "STUDENTS MANAGEMENT"
   },
   "studentsPerClass": {
     "id": "Siswa per-kelas",
     "en": "Students by class"
   },
    "teacher": {
-    "id": "DATA GURU",
-    "en": "TEACHERS DATA"
+    "id": "MANAJEMEN GURU",
+    "en": "TEACHERS MANAGEMENT"
   },
   "ReportOverview": {
     "id": "Ikhtisar Laporan",
@@ -1736,8 +1736,8 @@
     "en": "Manual absence"
   },
   "studentAbsence": {
-    "id": "KEHADIRAN SISWA",
-    "en": "STUDENT ABSENCE"
+    "id": "DATA KEHADIRAN",
+    "en": "DATA ABSENCE"
   },
   "userAdmin": {
     "id": "Pengguna Admin",

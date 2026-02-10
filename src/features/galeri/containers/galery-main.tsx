@@ -439,10 +439,26 @@ export function GaleriMain() {
           <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"><div className="fixed inset-0 bg-black/90 backdrop-blur-md" /></Transition.Child>
           <div className="fixed inset-y-0 right-0 w-full max-w-lg">
             <Transition.Child as={Fragment} enter="transform transition duration-500 ease-in-out" enterFrom="translate-x-full" enterTo="translate-x-0" leave="transform transition duration-500 ease-in-out" leaveFrom="translate-x-0" leaveTo="translate-x-full">
-              <Dialog.Panel className="h-full bg-zinc-900 border-l border-white/10 p-10 flex flex-col shadow-2xl">
-                <div className="flex justify-between items-center mb-10">
-                  <Dialog.Title className="text-2xl font-black italic uppercase text-white tracking-tighter">{editingAlbumId ? "Edit" : "Buat"} Album</Dialog.Title>
+              <Dialog.Panel className="h-full bg-[#0B1220] border-l border-white/10 p-10 flex flex-col shadow-2xl">
+                {/* <div className="flex justify-between items-center mb-10">
+                  <Dialog.Title className="text-2xl font-black uppercase text-white tracking-tighter">{editingAlbumId ? "Edit" : "Buat"} Album</Dialog.Title>
                   <button onClick={closeAlbumModal} className="h-10 w-10 bg-white/5 rounded-xl flex items-center justify-center text-white/40 hover:text-white"><X size={20}/></button>
+                </div> */}
+                 <div className="pb-8 mb-8 border-b border-white/8 flex justify-between items-center bg-[#0B1220] z-10">
+                  <div>
+                    <h3 className="text-4xl font-black tracking-tighter text-white">
+                      {editingAlbumId ? "Edit" : "Buat"} Album
+                    </h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 italic">
+                      Kenangan sekolah
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeAlbumModal}
+                    className="p-3 rounded-2xl bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
                 </div>
                 <form onSubmit={handleAlbumSubmit} className="space-y-6 flex-1">
                   <Field label="Nama Album"><Input value={albumForm.title} onChange={(e: any) => setAlbumForm({...albumForm, title: e.target.value})} placeholder="..." required /></Field>

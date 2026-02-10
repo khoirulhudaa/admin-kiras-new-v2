@@ -1048,19 +1048,19 @@ export const OsisMain = () => {
               <>
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999]"
+                  className="fixed inset-0 top-0 right-0 bg-black/90 backdrop-blur-md z-[99999]"
                   onClick={() => setModal(null)}
                 />
 
                 <motion.div
                   initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
                   transition={{ type: "spring", damping: 30, stiffness: 200 }}
-                  className="fixed right-0 top-0 h-full w-full max-w-xl bg-[#0B1220] border-l border-white/10 shadow-2xl overflow-y-auto z-[100000] flex flex-col"
+                  className="fixed right-0 top-0 h-full w-full z-[999999] max-w-xl bg-[#0B1220] border-l border-white/10 shadow-2xl overflow-y-auto flex flex-col"
                 >
                   <div className="p-10 border-b border-white/5 flex justify-between items-center bg-[#0B1220] relative top-0 z-10">
                     <div>
-                      <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">Update <span className="text-blue-700">Database</span></h3>
-                      <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mt-1 italic">Internal Management OSIS</p>
+                      <h3 className="text-3xl font-black uppercase tracking-tighter text-white">Perbarui <span className="text-blue-700">Data</span></h3>
+                      <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mt-1">Internal Management OSIS</p>
                     </div>
                     <button onClick={() => setModal(null)} className="p-3 bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-500 rounded-2xl transition-all">
                       <X size={24} />

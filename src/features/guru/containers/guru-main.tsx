@@ -2,21 +2,26 @@ import { useSchool } from "@/features/schools";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import jsPDF from "jspdf";
+import debounce from "lodash/debounce";
 import {
   Briefcase,
+  Check,
+  CheckSquare,
   Clock,
-  Download, Edit, FileSpreadsheet, Mail, Palette,
+  Download, Edit,
+  Eye, FileSpreadsheet, Mail, Palette,
   Plus,
   Printer,
+  RefreshCw,
   Save, Search, Trash2,
   Upload,
-  RefreshCw,
   User,
   X
 } from "lucide-react";
 import QRCode from "qrcode";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FaMars, FaVenus } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -24,6 +29,7 @@ import * as XLSX from "xlsx";
 interface GuruTendikItem {
   id?: number;
   nama: string;
+  nip: string;
   mapel?: string;
   email?: string;
   role: string;
@@ -315,6 +321,7 @@ const GuruTendikModal = ({
     mapel: "",
     jurusan: "",
     email: "",
+    nip: "",
     photoUrl: "",
   });
 
@@ -331,6 +338,7 @@ const GuruTendikModal = ({
         mapel: initialData.mapel || "",
         jurusan: initialData.jurusan || "",
         email: initialData.email || "",
+        nip: initialData.nip || "",
         photoUrl: initialData.photoUrl || "",
       });
       setPreview(initialData.photoUrl || "");
@@ -375,22 +383,27 @@ const GuruTendikModal = ({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 z-[10000] h-full w-full max-w-lg bg-[#0B1220] border-l border-white/10 shadow-2xl flex flex-col"
+            className="fixed right-0 top-0 z-[10000] h-full w-full overflow-y-auto max-w-lg bg-[#0B1220] border-l border-white/10 shadow-2xl flex flex-col"
           >
             {/* Header modal */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
+             <div className="p-8 border-b border-white/8 flex justify-between items-center bg-[#0B1220] z-10">
               <div>
-                <h2 className="text-xl font-bold text-white uppercase tracking-tighter">
-                  {isNew ? "Registration" : "Update Profile"}
-                </h2>
-                <p className="text-xs text-white/40 uppercase tracking-widest font-black">Guru & Tenaga Kependidikan</p>
+                <h3 className="text-4xl font-black tracking-tighter text-white">
+                  {isNew ? "Tambah Guru" : "Update Profile"}
+                </h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 italic">
+                  Guru & Tenaga Kependidikan
+                </p>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-white/50 hover:text-white transition-colors">
+              <button
+                onClick={onClose}
+                className="p-3 rounded-2xl bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"
+              >
                 <X size={24} />
               </button>
             </div>
 
-           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8">
+           <form onSubmit={handleSubmit} className="flex-1 p-8 space-y-8">
               <div className="flex flex-col items-center gap-4 py-4">
                 <div className="relative group">
                   <div className="h-32 w-32 rounded-[2.5rem] overflow-hidden border-2 border-dashed border-white/20 group-hover:border-blue-500 transition-all flex items-center justify-center bg-white/5">
@@ -449,6 +462,28 @@ const GuruTendikModal = ({
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center justify-between">
+                    <span>NIP</span>
+                    <span className="text-red-400/70 text-[9px] font-normal normal-case">
+                      maks. 18 digit • boleh kosong
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={18}
+                    value={form.nip || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      setForm({ ...form, nip: val });
+                    }}
+                    placeholder="Contoh: 196712311234567890"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white 
+                              focus:border-blue-500 outline-none transition-all placeholder:text-white/10 
+                              font-mono tracking-wide"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Email Address</label>
                   <input
                     type="email"
@@ -483,13 +518,13 @@ const GuruTendikModal = ({
             </form>
 
             <div className="p-8 border-t border-white/10 flex gap-4">
-              <button type="button" onClick={onClose} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-all">
+              <button type="button" onClick={onClose} className="flex-1 py-4 font-black text-sm uppercase tracking-widest text-white/30 hover:text-white transition-all">
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={saving}
-                className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="flex-[2] py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
                 {saving ? "Processing..." : <><Save size={16} /> Save Changes</>}
               </button>
@@ -501,6 +536,7 @@ const GuruTendikModal = ({
   );
 };
 
+
 // ────────────────────────────────────────────────
 // MAIN COMPONENT
 // ────────────────────────────────────────────────
@@ -510,6 +546,7 @@ export default function TeacherManager() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<GuruTendikItem | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCardDesigner, setShowCardDesigner] = useState(false);
   const queryClient = useQueryClient();
@@ -546,23 +583,27 @@ export default function TeacherManager() {
     staleTime: 5 * 60 * 1000, // Data fresh selama 5 menit
   });
 
-  // const fetchData = useCallback(async () => {
-  //   if (!SCHOOL_ID) return;
-  //   setLoading(true);
-  //   try {
-  //     const res = await fetch(`${BASE_URL}/absensi?schoolId=${SCHOOL_ID}&limit=100`);
-  //     const json = await res.json();
-  //     if (json.success) {
-  //       setData(json.data || []);
-  //     }
-  //   } catch (err) {
-  //     toast.error("Network Error: Gagal memuat data");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }, [SCHOOL_ID]);
+  // --- LOGIKA DEBOUNCE ---
+  const debouncedSetSearch = useMemo(
+    () => debounce((value: string) => {
+      setDebouncedSearch(value);
+    }, 500),
+    []
+  );
 
-  // useEffect(() => { fetchData(); }, [fetchData]);
+  console.log('teacher data', teacherData)
+
+  // Handler saat input diketik
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearch(value); // Update text di input secara instan
+    debouncedSetSearch(value); // Jalankan filter setelah jeda 500ms
+  };
+
+  // Cleanup saat komponen unmount
+  useEffect(() => {
+    return () => debouncedSetSearch.cancel();
+  }, [debouncedSetSearch]);
 
   const handleSave = async (form: Partial<GuruTendikItem>, file?: File) => {
     const formData = new FormData();
@@ -615,6 +656,7 @@ export default function TeacherManager() {
         Gender: "Laki-laki",
         Email: "kepsek@smkn1contoh.sch.id",
         Mapel: "-",
+        NIP: "123456789123456789",
         Jurusan: "-",
       },
       {
@@ -623,6 +665,7 @@ export default function TeacherManager() {
         Gender: "Perempuan",
         Email: "siti.aminah@smkn1contoh.sch.id",
         Mapel: "Matematika",
+        NIP: "123456789123456789",
         Jurusan: "IPA",
       },
     ];
@@ -655,6 +698,7 @@ export default function TeacherManager() {
           formData.append("jenisKelamin", row["Gender"] || "");
           formData.append("email", row["Email"] || "");
           formData.append("mapel", row["Mapel"] || "");
+          formData.append("nip", row["NIP"] || "");
           formData.append("jurusan", row["Jurusan"] || "");
           formData.append("schoolId", SCHOOL_ID.toString());
 
@@ -676,6 +720,33 @@ export default function TeacherManager() {
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handleMarkAbsence = async (teacher: any, status: 'Izin' | 'Sakit' | 'Alpha') => {
+    if (!confirm(`Tandai ${teacher.nama} sebagai ${status} hari ini?`)) return;
+
+    try {
+      const res = await fetch(`${BASE_URL}/mark-absence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guruId: teacher.id,
+          schoolId: SCHOOL_ID,
+          status: status,
+          userRole: 'teacher' // Memberitahu backend bahwa ini adalah Guru/Pegawai
+        })
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        toast.success(`Berhasil mencatat ${status} untuk ${teacher.nama}`);
+        queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      } else {
+        throw new Error(json.message || "Gagal mencatat");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mencatat ketidakhadiran");
+    }
   };
 
   const generateTeacherCardsPDF = async () => {
@@ -708,49 +779,49 @@ export default function TeacherManager() {
         doc.setFillColor(15, 23, 42);           // ≈ slate-950 / sangat gelap
         doc.rect(x, y, cardWidth, cardHeight, "F");  // background kartu
         // doc.rect(x, y, 90, 50, "F");
-    if (cardConfig.bgImage) {
-  try {
-    const img = new Image();
-    img.src = cardConfig.bgImage;
-    await new Promise((resolve) => { img.onload = resolve; });
+      if (cardConfig.bgImage) {
+        try {
+          const img = new Image();
+          img.src = cardConfig.bgImage;
+          await new Promise((resolve) => { img.onload = resolve; });
 
-    // 1. Buat canvas tersembunyi untuk cropping
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Tentukan resolusi output (gunakan rasio kartu 86:54)
-    canvas.width = 860; 
-    canvas.height = 540;
+          // 1. Buat canvas tersembunyi untuk cropping
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Tentukan resolusi output (gunakan rasio kartu 86:54)
+          canvas.width = 860; 
+          canvas.height = 540;
 
-    const imgRatio = img.width / img.height;
-    const canvasRatio = canvas.width / canvas.height;
+          const imgRatio = img.width / img.height;
+          const canvasRatio = canvas.width / canvas.height;
 
-    let sw, sh, sx, sy;
+          let sw, sh, sx, sy;
 
-    // 2. Logika "Object-fit: Cover" manual
-    if (imgRatio > canvasRatio) {
-      sh = img.height;
-      sw = sh * canvasRatio;
-      sx = (img.width - sw) / 2;
-      sy = 0;
-    } else {
-      sw = img.width;
-      sh = sw / canvasRatio;
-      sx = 0;
-      sy = (img.height - sh) / 2;
-    }
+          // 2. Logika "Object-fit: Cover" manual
+          if (imgRatio > canvasRatio) {
+            sh = img.height;
+            sw = sh * canvasRatio;
+            sx = (img.width - sw) / 2;
+            sy = 0;
+          } else {
+            sw = img.width;
+            sh = sw / canvasRatio;
+            sx = 0;
+            sy = (img.height - sh) / 2;
+          }
 
-    // 3. Gambar ke canvas (Otomatis terpotong di sini)
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          // 3. Gambar ke canvas (Otomatis terpotong di sini)
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
-    // 4. Masukkan hasil canvas ke PDF (Pasti pas dengan ukuran kartu)
-    const croppedImgData = canvas.toDataURL('image/jpeg', 0.9);
-    doc.addImage(croppedImgData, 'JPEG', x, y, cardWidth, cardHeight);
+          // 4. Masukkan hasil canvas ke PDF (Pasti pas dengan ukuran kartu)
+          const croppedImgData = canvas.toDataURL('image/jpeg', 0.9);
+          doc.addImage(croppedImgData, 'JPEG', x, y, cardWidth, cardHeight);
 
-  } catch (e) {
-    console.warn("Gagal render background", e);
-  }
-}
+        } catch (e) {
+          console.warn("Gagal render background", e);
+        }
+      }
 
         // Header accent
         doc.setFillColor(cardConfig.accentColor);
@@ -780,7 +851,7 @@ export default function TeacherManager() {
           doc.setFontSize(7);
           doc.text("FOTO", x + 9, y + 26);
         }
-       
+        
         // Nama & Jabatan
         doc.setTextColor("#0f172a");
         doc.setFontSize(9);
@@ -799,7 +870,7 @@ export default function TeacherManager() {
         }
 
         // QR Code
-        const qrValue = `${t.id || "GURU-" + Date.now()}`;
+        const qrValue = t.qrCodeData;
         const qrDataUrl = await QRCode.toDataURL(qrValue, { margin: 1, width: 180 });
         doc.addImage(qrDataUrl, "PNG", x + 65, y + 33, 18, 18);
       }
@@ -814,32 +885,25 @@ export default function TeacherManager() {
     }
   };
 
-  const getStatusStyle = (status: string | undefined) => {
-    switch (status?.toLowerCase()) {
-      case "hadir":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-      case "izin":
-      case "sakit":
-        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-      case "alpha":
-        return "bg-red-500/10 text-red-400 border-red-500/20";
-      default:
-        return "bg-white/5 text-white/30 border-white/10";
-    }
-  };
+  // Gunakan debouncedSearch sebagai parameter filter, bukan search
+    const filtered = teacherData.filter(
+      (item: any) =>
+        item.nama.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        item.role.toLowerCase().includes(debouncedSearch.toLowerCase())
+    );
 
-  // const filtered = data.filter(
-  //   (item) =>
-  //     item.nama.toLowerCase().includes(search.toLowerCase()) ||
-  //     item.role.toLowerCase().includes(search.toLowerCase())
-  // );
+    const getStatusStyle = (status: string | undefined) => {
+      const s = status?.toLowerCase();
+      if (s === "hadir") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+      if (s === "sakit") return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+      if (s === "izin") return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+      if (s === "alpha") return "bg-red-500/10 text-red-400 border-red-500/20";
+      
+      // Default untuk "Belum Hadir"
+      return "bg-zinc-500/10 text-zinc-500 border-zinc-500/10";
+    };
 
-  // Filter menggunakan data dari useQuery
-  const filtered = teacherData.filter(
-    (item: any) =>
-      item.nama.toLowerCase().includes(search.toLowerCase()) ||
-      item.role.toLowerCase().includes(search.toLowerCase())
-  );
+    const navigate = useNavigate()
 
   return (
     <div className="min-h-screen pb-10">
@@ -902,8 +966,8 @@ export default function TeacherManager() {
               type="text"
               placeholder="Cari nama atau role"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-               className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
+              onChange={handleSearchChange}
+              className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
             />
           </div>
           
@@ -928,7 +992,7 @@ export default function TeacherManager() {
           <p className="text-white/20 text-lg font-medium">No personnel records found.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8">
           {filtered.map((item) => (
             <motion.div
               key={item.id}
@@ -953,14 +1017,14 @@ export default function TeacherManager() {
 
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 truncate">{item.role}</div>
-                  <h3 className="text-md font-bold text-white truncate leading-tight transition-colors">{item.nama}</h3>
+                  <h3 className="text-lg uppercase font-bold text-white truncate leading-tight transition-colors">{item.nama}</h3>
                   
                   <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-tighter ${getStatusStyle(item.statusKehadiran)}`}>
+                    <span className={`text-[12px] px-2 py-0.5 rounded-md border font-bold uppercase tracking-tighter ${getStatusStyle(item.statusKehadiran)}`}>
                       {item.statusKehadiran || 'Belum Hadir'}
                     </span>
                     {item.scanTime && (
-                      <span className="text-[9px] text-white/20 font-mono flex items-center gap-1">
+                      <span className="text-[12px] text-white font-mono flex items-center gap-1">
                         <Clock size={10} /> {item.scanTime}
                       </span>
                     )}
@@ -975,17 +1039,30 @@ export default function TeacherManager() {
 
               <div className="mt-8 pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
                 <div className="bg-black/20 p-4 rounded-2xl">
-                  <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Mapel</div>
-                  <div className="text-[11px] text-white/80 font-bold truncate uppercase tracking-tighter">
+                  <div className="text-[12px] font-black text-white uppercase tracking-widest mb-1">Mata pelajaran</div>
+                  <div className="text-[11px] text-white/70 font-bold truncate uppercase tracking-tighter">
                     {item.mapel || "General"}
                   </div>
                 </div>
                 <div className="bg-black/20 p-4 rounded-2xl">
-                  <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Jurusan</div>
-                  <div className="text-[11px] text-white/80 font-bold truncate uppercase tracking-tighter">
-                    {item.jurusan || "Core"}
+                  <div className="text-[12px] font-black text-white uppercase tracking-widest mb-1">No. Induk Pegawai</div>
+                  <div className="text-[11.5px] text-white/70 font-bold truncate uppercase tracking-tighter">
+                    {item.nip || "-"}
                   </div>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-3">
+                {['Izin', 'Sakit', 'Alpha', 'Hadir'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => handleMarkAbsence(item, st as any)}
+                    className={`flex-1 ${item.statusKehadiran === st ? 'border border-slate-500/70' : 'border border-transparent'} flex items-center gap-3 justify-center py-2 rounded-lg text-[9px] font-black hover:brightness-90 uppercase tracking-tighter transition-all border ${getStatusStyle(st)}`}
+                  >
+                    <CheckSquare size={13} />
+                    {st}
+                  </button>
+                ))}
               </div>
 
               <div className="mt-4 flex gap-3">
@@ -995,6 +1072,13 @@ export default function TeacherManager() {
                 >
                   <Edit size={16} className="group-hover/btn:scale-110 transition-transform" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Perbarui</span>
+                </button>
+                <button
+                  onClick={() => navigate(`/detail/${item.id}?role=teacher`)}
+                  className="w-14 py-4 hover:bg-white/20 bg-white/5 text-white border border-white/10 hover:text-white rounded-2xl flex items-center justify-center transition-all"
+                  title="Lihat Riwayat 1 Tahun"
+                >
+                  <Eye size={16} />
                 </button>
                 <button
                   onClick={() => handleDelete(item.id!)}

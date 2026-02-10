@@ -173,7 +173,7 @@ const FeedModal = ({
         <div className="p-10 border-b border-white/8 flex justify-between items-center relative bg-[#0B1220] z-10">
           <div>
             <h3 className="text-4xl font-black tracking-tighter text-white">
-              {initialData.id ? "Edit" : "Tambah"} <span className="text-blue-600">Feed Instagram</span>
+              {initialData.id ? "Edit" : "Tambah"} <span className="text-blue-600">Feed IG</span>
             </h3>
             <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 italic">
               Postingan Media Sosial Sekolah
@@ -265,8 +265,8 @@ const FeedModal = ({
               disabled={loading}
               className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none"
             >
-              <option value="image">Gambar / Foto</option>
-              <option value="video">Video / Reels</option>
+              <option className="text-black" value="image">Gambar / Foto</option>
+              <option className="text-black" value="video">Video / Reels</option>
             </select>
           </div>
 

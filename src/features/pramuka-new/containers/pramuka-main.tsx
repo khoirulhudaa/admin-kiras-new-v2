@@ -288,17 +288,17 @@ export function Pramuka() {
       <Transition appear show={isModalOpen} as={Fragment}>
         <Dialog as="div" className="relative z-[99999999]" onClose={handleCloseModal}>
           <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
-            <div className="fixed inset-0 bg-black/95 backdrop-blur-xl" />
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xl" />
           </Transition.Child>
 
           <div className="fixed inset-y-0 right-0 w-full max-w-xl">
             <Transition.Child as={Fragment} enter="transform transition duration-500 cubic-bezier(0,0,0.2,1)" enterFrom="translate-x-full" enterTo="translate-x-0" leave="transform transition duration-500 cubic-bezier(0,0,0.2,1)" leaveFrom="translate-x-0" leaveTo="translate-x-full">
-              <Dialog.Panel className="h-full bg-zinc-950 border-l border-white/10 p-10 flex flex-col shadow-2xl overflow-y-auto">
+              <Dialog.Panel className="h-full bg-[#0B1220] border-l border-white/10 p-10 flex flex-col shadow-2xl overflow-y-auto">
                 <div className="flex justify-between items-start mb-12">
                   <div className="space-y-2">
                     <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] block italic">Scout Registry</span>
-                    <Dialog.Title className="text-4xl font-black italic uppercase tracking-tighter text-white">
-                      {editingId ? "Update" : "Add New"} <span className="text-white/30 block text-2xl">Log Kegiatan</span>
+                    <Dialog.Title className="text-4xl font-black uppercase tracking-tighter text-white">
+                      {editingId ? "Perbarui" : "Tambah Data"}
                     </Dialog.Title>
                   </div>
                   <button onClick={handleCloseModal} className="h-12 w-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={20}/></button>

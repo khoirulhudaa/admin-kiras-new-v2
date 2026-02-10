@@ -366,7 +366,7 @@
 //                   </select>
 //                 </div>
 
-//                 <div className="pt-8 sticky bottom-0 bg-slate-950 pb-4">
+//                 <div className="pt-8  bottom-0 bg-slate-950 pb-4">
 //                   <button 
 //                     disabled={loading}
 //                     className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-4 rounded-2xl font-black flex justify-center items-center gap-3 transition-all active:scale-[0.98] shadow-xl shadow-blue-900/40"
@@ -823,7 +823,7 @@ export default function EmployeeManager() {
                   </Select>
                 </div>
 
-                <div className="pt-10 sticky bottom-0 bg-zinc-950 pb-6">
+                <div className="pt-10  bottom-0 bg-zinc-950 pb-6">
                   <button
                     disabled={loading}
                     className="w-full h-14 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-[0_0_30px_-10px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98]"

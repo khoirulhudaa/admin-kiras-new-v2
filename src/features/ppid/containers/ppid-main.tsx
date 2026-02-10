@@ -620,7 +620,7 @@ const PPIDModal = ({
         <div className="p-10 border-b border-white/8 flex justify-between items-center bg-[#0B1220] z-10">
           <div>
             <h3 className="text-4xl font-black tracking-tighter text-white">
-              {initialData.title ? "Edit" : "Tambah"} <span className="text-blue-600">Dokumen PPID</span>
+              {initialData.title ? "Edit" : "Tambah"} <span className="text-blue-600">Dokumen</span>
             </h3>
             <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 italic">
               Informasi Publik PPID

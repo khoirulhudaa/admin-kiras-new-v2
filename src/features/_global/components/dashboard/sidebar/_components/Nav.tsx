@@ -87,7 +87,7 @@ const NavItem = React.memo(({ isCollapsed, isParentManajemenData = false, isChil
               !isMember && isParentManajemenData && props.title === lang.text('event') && 'opacity-40 cursor-not-allowed'
             )
           }
-          end
+          // end
         >
           <div className={cn('flex items-center gap-3', isCollapsed && 'justify-center')}>
             {props.icon && (
