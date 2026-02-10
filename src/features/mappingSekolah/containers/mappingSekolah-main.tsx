@@ -1,12 +1,17 @@
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { debounce } from "lodash";
 import {
+  ArrowLeft,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Database, // Icon baru untuk export
+  Download,
   GraduationCap,
+  Mail,
   Map as MapIcon,
   RefreshCw,
   School,
@@ -15,10 +20,7 @@ import {
   Trash2,
   User,
   Users,
-  CheckCircle2,
-  XCircle,
-  Database,
-  ArrowLeft
+  XCircle
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
@@ -51,6 +53,7 @@ export function SchoolManagementDashboard() {
   const [limit] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   // --- 1. Query: Stats ---
   const { data: stats } = useQuery({
@@ -77,9 +80,7 @@ export function SchoolManagementDashboard() {
     staleTime: 10 * 60 * 1000,
   });
 
-  console.log('data Regional ', masterSchools )
-
-  // --- 3. Query: Schools Paged (Untuk Tabel Tab Sekolah) ---
+  // --- 3. Query: Schools Paged ---
   const { data: pagedSchools, isLoading: isSchoolsLoading } = useQuery({
     queryKey: ['schools-paged', page, debouncedSearch],
     queryFn: async () => {
@@ -90,6 +91,7 @@ export function SchoolManagementDashboard() {
       return res.json();
     },
     enabled: activeTab === 'sekolah',
+    staleTime: 10 * 60 * 1000,
     placeholderData: (prev) => prev,
   });
 
@@ -105,6 +107,7 @@ export function SchoolManagementDashboard() {
       return res.json();
     },
     enabled: activeTab !== 'sekolah' && !!selectedSchoolId,
+    staleTime: 10 * 60 * 1000,
     placeholderData: (prev) => prev,
   });
 
@@ -125,6 +128,48 @@ export function SchoolManagementDashboard() {
     }
   });
 
+  // --- Export Handler ---
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      let url = "";
+      let fileName = "";
+
+      if (activeTab === 'sekolah') {
+        url = `${API_BASE}/sekolah/export/sekolah`;
+        fileName = "Daftar_Seluruh_Sekolah.xlsx";
+      } else if (activeTab === 'siswa') {
+        url = `${API_BASE}/sekolah/export/siswa/${selectedSchoolId}`;
+        fileName = `Data_Siswa_Sekolah_${selectedSchoolId}.xlsx`;
+      } else {
+        url = `${API_BASE}/sekolah/export/guru/${selectedSchoolId}`;
+        fileName = `Data_Guru_Sekolah_${selectedSchoolId}.xlsx`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error("Gagal mengunduh file");
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Export Error:", error);
+      alert("Terjadi kesalahan saat mengekspor data.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // --- Handlers ---
   const debouncedSetSearch = useMemo(
     () => debounce((val: string) => { setDebouncedSearch(val); setPage(1); }, 500),
@@ -136,13 +181,12 @@ export function SchoolManagementDashboard() {
     debouncedSetSearch(e.target.value);
   };
 
-  // Logic Mapping Data & Pagination agar desain tetap konsisten
   const isSekolah = activeTab === 'sekolah';
   const currentTableData = isSekolah ? pagedSchools?.data : listData?.data;
   const currentPagination = isSekolah ? pagedSchools?.pagination : listData?.pagination;
   const isCurrentLoading = isSekolah ? isSchoolsLoading : isListLoading;
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen text-white space-y-12">
@@ -171,14 +215,14 @@ export function SchoolManagementDashboard() {
           >
             <ArrowLeft size={16} /> Data Siswa
           </button>
+          
           <button 
             onClick={() => queryClient.invalidateQueries()} 
-              className="w-max h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
-            >
+            className="w-max h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
+          >
             <RefreshCw size={16} className={isListFetching ? "animate-spin" : ""} />
             {isListFetching ? "Syncing..." : "Refresh"}
           </button>
-
         </div>
       </header>
 
@@ -191,7 +235,6 @@ export function SchoolManagementDashboard() {
         ].map((item, i) => (
           <div key={i} className="bg-white/[0.02] border border-white/5 px-8 py-6 rounded-3xl relative overflow-hidden group">
             <div className="relative z-10 h-full flex flex-col justify-center">
-              {/* <div className={clsx("mb-4", item.color)}>{item.icon}</div> */}
               <div className="text-[10px] font-black uppercase tracking-widest text-white mb-1">{item.label}</div>
               <div className={`text-3xl font-black ${item.color}`}>{item.value}</div>
             </div>
@@ -232,12 +275,12 @@ export function SchoolManagementDashboard() {
                   value={selectedSchoolId}
                   onChange={(e) => { setSelectedSchoolId(e.target.value); setPage(1); }}
                   className={clsx(
-                    "w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-10 py-5 text-[12px] font-bold appearance-none outline-none transition-all",
+                    "w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-10 py-5 text-[12px] font-black appearance-none outline-none transition-all",
                     activeTab === 'sekolah' ? "cursor-not-allowed" : "focus:border-blue-500 hover:bg-white/[0.07]"
                   )}
                 >
                   {masterSchools.map((s: any) => (
-                    <option key={s.id} value={s.id} className="bg-zinc-900 text-white">{s.namaSekolah}</option>
+                    <option key={s.id} value={s.id} className="bg-zinc-900 text-white text-[12px]">{s.namaSekolah}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={14} />
@@ -245,7 +288,7 @@ export function SchoolManagementDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 h-[62px] gap-4 w-full">
+          <div className="grid grid-cols-[1fr_auto] h-[62px] gap-4 w-full">
             <div className="relative h-full">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" size={18} />
               <input 
@@ -253,9 +296,18 @@ export function SchoolManagementDashboard() {
                 placeholder={`Cari ${activeTab}...`} 
                 value={searchTerm}
                 onChange={handleSearchChange}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-5 text-[12px] outline-none focus:border-blue-500"
+                className="w-full bg-white/5 border placeholder:uppercase border-white/10 rounded-2xl pl-14 pr-6 py-5 text-[12px] outline-none focus:border-blue-500"
               />
             </div>
+            {/* Button Export Excel */}
+            <button
+              onClick={handleExportExcel}
+              disabled={isExporting || (activeTab !== 'sekolah' && !selectedSchoolId)}
+              className="w-max h-14 px-5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl flex items-center gap-2 hover:bg-emerald-500/20 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
+            >
+              <Download size={16} className={isExporting ? "animate-bounce" : ""} />
+              {isExporting ? "Exporting..." : "Excel"}
+            </button>
           </div>
         </div>
 
@@ -265,7 +317,7 @@ export function SchoolManagementDashboard() {
             <thead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 border-b border-white/5 bg-white/[0.01]">
               <tr>
                 <th className="p-8">{isSekolah ? 'Informasi Institusi' : 'Profil & Identitas'}</th>
-                <th className="py-8">{isSekolah ? 'Geolokasi' : (activeTab === 'siswa' ? 'Kelas' : 'Jabatan')}</th>
+                <th className="py-8">{isSekolah ? 'Email' : (activeTab === 'siswa' ? 'Kelas' : 'Jabatan')}</th>
                 <th className="py-8 text-center">Status</th>
                 <th className="p-8 text-right">Aksi</th>
               </tr>
@@ -282,14 +334,14 @@ export function SchoolManagementDashboard() {
                       </div>
                       <div>
                         <div className="text-sm font-bold uppercase tracking-tight">{item.namaSekolah || item.name || item.nama}</div>
-                        <div className="text-[10px] text-white/20 font-black uppercase mt-0.5">ID: {item.npsn || item.nis || item.nip || item.id}</div>
+                        <div className="text-[12px] text-white/50 font-black uppercase mt-0.5">ID: {item.npsn || item.nis || item.nip || item.id}</div>
                       </div>
                     </div>
                   </td>
                   <td className="py-8">
-                     <div className="text-[10px] font-mono text-white/40 flex items-center gap-2">
+                     <div className="text-[12px] font-mono text-white/80 flex items-center gap-2">
                        {isSekolah ? (
-                         <><MapIcon size={12} className="text-blue-500/50" /> {item.lat || '0'}, {item.long || '0'}</>
+                         <><Mail size={12} className="text-blue-500/50" />{item.email}</>
                        ) : (
                          item.class || item.position || '-'
                        )}
@@ -333,7 +385,7 @@ export function SchoolManagementDashboard() {
         </div>
       </div>
 
-      {/* Geolocation Section (Menggunakan Master Data) */}
+      {/* Geolocation Section */}
       <div className="bg-white/[0.02] border border-white/5 p-4 rounded-[3rem] overflow-hidden">
         <div className="px-6 py-4 flex items-center gap-2 font-black text-blue-500 uppercase tracking-[0.2em] text-[10px]">
           <MapIcon size={14} /> Regional Distribution

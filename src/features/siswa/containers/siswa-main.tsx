@@ -9,7 +9,6 @@ import {
   ChevronDown,
   Download,
   Edit,
-  ExternalLink,
   Eye,
   FileSpreadsheet,
   Palette,

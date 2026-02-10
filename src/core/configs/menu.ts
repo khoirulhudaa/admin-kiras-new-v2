@@ -497,13 +497,13 @@ export const MENU_STAFF: VokadashProps["menus"] = [
     icon: "Users",
     main: true
   },
-  {
-    // title: lang.text("student"),
-    title: "SEBARAN SEKOLAH",
-    url: "/sebaran-sekolah",
-    icon: "School",
-    main: true
-  },
+  // {
+  //   // title: lang.text("student"),
+  //   title: "SEBARAN SEKOLAH",
+  //   url: "/sebaran-sekolah",
+  //   icon: "School",
+  //   main: true
+  // },
   {
     // title: lang.text("teacher"),
     title: "MANAJEMEN GURU",
