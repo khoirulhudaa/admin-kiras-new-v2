@@ -11,5 +11,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    hmr: {
+      overlay: false, // Menghilangkan overlay merah jika ada error
+    },
+  },
   publicDir: "public",
 });

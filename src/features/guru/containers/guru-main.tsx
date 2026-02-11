@@ -5,7 +5,6 @@ import jsPDF from "jspdf";
 import debounce from "lodash/debounce";
 import {
   Briefcase,
-  Check,
   CheckSquare,
   Clock,
   Download, Edit,
@@ -298,9 +297,6 @@ const CardDesignerModal = ({
   );
 };
 
-// ────────────────────────────────────────────────
-// Modal Edit/Tambah (tetap sama seperti aslinya)
-// ────────────────────────────────────────────────
 const GuruTendikModal = ({
   open,
   onClose,

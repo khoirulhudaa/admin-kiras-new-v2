@@ -478,18 +478,11 @@ export const MENU_STAFF: VokadashProps["menus"] = [
   // },
   {
     // title: lang.text("adminManagement"),
-    title: "MANAJEMN AKUN",
+    title: "MANAJEMEN AKUN",
     url: "/admin/users",
     icon: "Shield",
     main: true
   },
-  // {
-  //   // title: lang.text("attendance"),
-  //   title: "DATA KEHADIRAN",
-  //   url: "/data-kehadiran",
-  //   icon: "Scan",
-  //   main: true
-  // },
   {
     // title: lang.text("student"),
     title: "MANAJEMEN SISWA",
@@ -512,10 +505,24 @@ export const MENU_STAFF: VokadashProps["menus"] = [
     main: true
   },
   {
+    // title: lang.text("attendance"),
+    title: "RIWAYAT KEHADIRAN",
+    url: "/data-kehadiran",
+    icon: "Scan",
+    main: true
+  },
+  {
+    // title: lang.text("class"),
+    title: "PEKERJAAN RUMAH",
+    url: "/pekerjaan-rumah",
+    icon: "ClipboardList",
+    main: true
+  },
+  {
     // title: lang.text("class"),
     title: "MANAJEMEN KELAS",
     url: "/manajemen-kelas",
-    icon: "DoorOpen",
+    icon: "School",
     main: true
   },
   // {

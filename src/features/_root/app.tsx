@@ -127,6 +127,7 @@ import { KelasLanding } from "../kelas/pages/kelas-landing.js";
 import { GuruLanding } from "../guru/index.js";
 import { DetailUserLanding } from "../detailUser/pages/detailUser-landing.js";
 import { MappingSekolahLanding } from "../mappingSekolah/pages/mappingSekolah-landing.js";
+import { TugasLanding } from "../tugas/pages/tugas-landing.js";
 const router = createBrowserRouter(
   [
     {
@@ -514,6 +515,10 @@ const router = createBrowserRouter(
         {
           path: "/scan-qrcode",
           element: <ScanLanding />
+        },
+        {
+          path: "/pekerjaan-rumah",
+          element: <TugasLanding />
         },
         {
           path: "/data-kehadiran",
