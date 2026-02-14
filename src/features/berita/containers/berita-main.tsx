@@ -408,7 +408,7 @@
 
 
 
-  import { useSchool } from "@/features/schools";
+import { useSchool } from "@/features/schools";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus,
@@ -499,12 +499,14 @@ const BeritaModal = ({
   initialData,
   onSubmit,
   loading,
+  schoolId
 }: {
   open: boolean;
   onClose: () => void;
   initialData: NewsItem;
   onSubmit: (formData: FormData) => Promise<void>;
   loading: boolean;
+  schoolId: any
 }) => {
   const [form, setForm] = useState<NewsItem>(initialData);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -541,7 +543,7 @@ const BeritaModal = ({
     const formPayload = new FormData();
     formPayload.append("title", form.title.trim());
     formPayload.append("content", form.content.trim());
-    formPayload.append("schoolId", form.schoolId.toString());
+    formPayload.append("schoolId", schoolId);
     if (form.publishDate) formPayload.append("publishDate", form.publishDate);
     if (form.category) formPayload.append("category", form.category);
     if (form.source) formPayload.append("source", form.source);
@@ -631,11 +633,11 @@ const BeritaModal = ({
                 disabled={loading}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none"
               >
-                <option value="Umum">Umum</option>
-                <option value="Kegiatan Sekolah">Kegiatan Sekolah</option>
-                <option value="Prestasi">Prestasi</option>
-                <option value="Pengumuman Dinas">Pengumuman Dinas</option>
-                <option value="Lainnya">Lainnya</option>
+                <option className="text-black" value="Umum">Umum</option>
+                <option className="text-black" value="Kegiatan Sekolah">Kegiatan Sekolah</option>
+                <option className="text-black" value="Prestasi">Prestasi</option>
+                <option className="text-black" value="Pengumuman Dinas">Pengumuman Dinas</option>
+                <option className="text-black" value="Lainnya">Lainnya</option>
               </select>
             </div>
           </div>
@@ -941,6 +943,7 @@ export default function BeritaPage() {
           setModalOpen(false);
           setEditingItem(null);
         }}
+        schoolId={schoolId}
         initialData={editingItem || DEFAULT_NEWS}
         onSubmit={handleSubmit}
         loading={loading}

@@ -68,7 +68,7 @@ export default function KelasMain() {
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus kelas ini?")) return;
     try {
-      const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/${id}/${schoolId}`, { method: "DELETE" });
       if (res.ok) {
         // REFRESH DATA OTOMATIS
         queryClient.invalidateQueries({ queryKey: ['classes'] });

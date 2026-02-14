@@ -896,7 +896,7 @@ export function FormGuruTendik() {
             >
               <div className="flex items-start gap-6">
                 <div className="relative h-24 w-24 flex-shrink-0">
-                  <div className="h-full w-full rounded-3xl overflow-hidden bg-black/40 border border-white/10 grayscale group-hover:grayscale-0 transition-all duration-700">
+                  <div className="h-full w-full rounded-3xl overflow-hidden bg-black/40 border border-white/10 transition-all duration-700">
                     {item.photoUrl ? (
                       <img src={item.photoUrl} alt={item.nama} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     ) : (

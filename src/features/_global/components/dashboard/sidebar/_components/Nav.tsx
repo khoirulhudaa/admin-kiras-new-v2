@@ -1,7 +1,7 @@
 import { cn, lang } from '@/core/libs';
 import { Icon, SidebarContext } from '@/features/_global';
 import { useProfile } from '@/features/profile';
-import { ChevronDown, ChevronRight, Gem } from 'lucide-react';
+import { ChevronRight, Gem } from 'lucide-react';
 import React, { useCallback, useContext, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItemProps, NavProps } from '../types';
@@ -149,14 +149,40 @@ const NavItem = React.memo(({ isCollapsed, isParentManajemenData = false, isChil
 
 export const Nav = React.memo(
   ({ items = [], mobile = false, isChild = false, isCollapsed, isParentManajemenData }: NavProps & { isCollapsed?: boolean; isParentManajemenData?: boolean }) => {
-    return (
+
+    const profile = useProfile();
+    const userRole = profile?.user?.role;
+
+   const filteredItems = useMemo(() => {
+      // 1. Jika Role adalah superAdmin
+      if (userRole === 'superAdmin') {
+        const excludedTitles = [
+          "WEBSITE SEKOLAH",
+          "MANAJEMEN KELAS",
+          "MANAJEMEN GURU",
+          "RIWAYAT KEHADIRAN",
+          "MANAJEMEN SISWA",
+        ];
+        return items.filter((item: any) => !excludedTitles.includes(item.title));
+      }
+
+      // 2. Jika BUKAN superAdmin (Role: Staff, Admin, dll)
+      // Sembunyikan menu Dashboard/Statistik
+      return items.filter(item => {
+        // Pastikan teks "dashboard" sesuai dengan yang ada di MENU_STAFF (case sensitive)
+        const isDashboard = item.title === "STATISTIK SEKOLAH";
+        return !isDashboard;
+      });
+    }, [items, userRole]);
+
+   return (
       <ul
         className={cn(
           "flex flex-col list-none p-0 m-0",
           isChild && !isCollapsed ? 'mt-0.5' : '',
         )}
       >
-        {items?.map((item, index) => (
+        {filteredItems?.map((item, index) => (
           <NavItem
             key={index}
             {...item}

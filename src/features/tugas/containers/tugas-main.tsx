@@ -104,7 +104,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus tugas ini?")) return;
     try {
-      const res = await fetch(`${API_BASE}/${id}`, { 
+      const res = await fetch(`${API_BASE}/${id}/${schoolId}`, { 
         method: "DELETE",
         headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` }
       });

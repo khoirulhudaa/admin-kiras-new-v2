@@ -365,17 +365,16 @@ export const HomePage = () => {
                 transition={{ delay: 0.1 }}
                 className="text-4xl uppercase md:text-5xl font-extrabold text-white tracking-tight leading-tight"
               >
-                Halo, {profile?.user?.name || "User"}! <span className="animate-pulse">✨</span>
+                DASHBOARD ADMIN 😄
               </motion.h1>
               
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="mt-6 text-sm md:text-md w-[90%] font-normal text-blue-100/60 leading-relaxed"
+                className="mt-6 text-sm md:text-md flex w-max font-normal text-blue-100/60 leading-relaxed"
               >
-                Selamat datang di hub kendali digital <span className="text-blue-400 font-semibold">{school?.namaSekolah || "Sekolah"}</span>. 
-                Pantau performa, kelola administrasi, dan optimalkan ekosistem pendidikan dalam satu platform terintegrasi.
+                Selamat datang di hub kendali digital <span className="text-blue-400 ml-[3px] font-semibold">{school?.namaSekolah || "Sekolah"}</span>. 
               </motion.p>
             </div>
 
