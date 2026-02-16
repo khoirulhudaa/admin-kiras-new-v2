@@ -234,6 +234,13 @@ export const MENU_STAFF: VokadashProps["menus"] = [
     main: true
   },
   {
+    // title: lang.text("student"),
+    title: "MANAJEMEN ORTU",
+    url: "/data-orangtua",
+    icon: "Users2",
+    main: true
+  },
+  {
     // title: lang.text("teacher"),
     title: "MANAJEMEN GURU",
     url: "/data-guru",

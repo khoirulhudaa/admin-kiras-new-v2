@@ -910,7 +910,7 @@ const navigate = useNavigate();
         classList={classList || []} 
         open={modals.add || modals.edit} 
         onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); }} 
-        title={selected ? "Edit Siswa" : "Tambah Siswa"} 
+        title={selected ? "Perbarui Siswa" : "Tambah Siswa"} 
         initialData={selected} 
         schoolId={schoolId} 
         onSubmit={async (fd: FormData) => { 

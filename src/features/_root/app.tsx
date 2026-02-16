@@ -128,6 +128,7 @@ import { GuruLanding } from "../guru/index.js";
 import { DetailUserLanding } from "../detailUser/pages/detailUser-landing.js";
 import { MappingSekolahLanding } from "../mappingSekolah/pages/mappingSekolah-landing.js";
 import { TugasLanding } from "../tugas/pages/tugas-landing.js";
+import { OrangTuaLanding } from "../orangTua/index.js";
 const router = createBrowserRouter(
   [
     {
@@ -511,6 +512,10 @@ const router = createBrowserRouter(
         {
           path: "/manajemen-kelas",
           element: <KelasLanding />
+        },
+        {
+          path: "/data-orangtua",
+          element: <OrangTuaLanding />
         },
         {
           path: "/scan-qrcode",
