@@ -254,13 +254,13 @@ export const MENU_STAFF: VokadashProps["menus"] = [
     icon: "Scan",
     main: true
   },
-  // {
-  //   // title: lang.text("class"),
-  //   title: "PEKERJAAN RUMAH",
-  //   url: "/pekerjaan-rumah",
-  //   icon: "ClipboardList",
-  //   main: true
-  // },
+  {
+    // title: lang.text("class"),
+    title: "PEKERJAAN RUMAH",
+    url: "/pekerjaan-rumah",
+    icon: "ClipboardList",
+    main: true
+  },
   {
     // title: lang.text("class"),
     title: "MANAJEMEN KELAS",

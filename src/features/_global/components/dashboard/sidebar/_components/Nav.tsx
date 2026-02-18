@@ -162,6 +162,8 @@ export const Nav = React.memo(
           "MANAJEMEN GURU",
           "RIWAYAT KEHADIRAN",
           "MANAJEMEN SISWA",
+          "MANAJEMEN ORTU",
+          "PEKERJAAN RUMAH"
         ];
         return items.filter((item: any) => !excludedTitles.includes(item.title));
       }

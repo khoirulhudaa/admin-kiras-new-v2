@@ -202,26 +202,12 @@ export function SchoolManagementDashboard() {
           <p className="text-zinc-500 text-sm font-medium">Kelola sekolah, siswa dan guru</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => navigate('/data-guru')}
-            className="h-14 px-5 bg-white/5 text-zinc-400 border border-white/10 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-black uppercase text-[12px] tracking-widest"
-          >
-            <ArrowLeft size={16} /> Data Guru
-          </button>
-
-          <button
-            onClick={() => navigate('/data-siswa')}
-            className="h-14 px-6 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-2xl flex items-center gap-2 hover:bg-blue-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
-          >
-            <ArrowLeft size={16} /> Data Siswa
-          </button>
-          
           <button 
             onClick={() => queryClient.invalidateQueries()} 
             className="w-max h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
           >
             <RefreshCw size={16} className={isListFetching ? "animate-spin" : ""} />
-            {isListFetching ? "Syncing..." : "Refresh"}
+            {isListFetching ? "Syncing..." : "Refresh Data"}
           </button>
         </div>
       </header>
