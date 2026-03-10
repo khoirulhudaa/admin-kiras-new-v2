@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import jsPDF from "jspdf";
 import debounce from "lodash/debounce";
 import {
+  AlertTriangle,
   Briefcase,
-  CheckSquare,
   Clock,
   Download, Edit,
   Eye, FileSpreadsheet, Mail, Palette,
@@ -546,7 +546,10 @@ export default function TeacherManager() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCardDesigner, setShowCardDesigner] = useState(false);
   const queryClient = useQueryClient();
-
+  const [showDuplicateOnly, setShowDuplicateOnly] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12); // bisa dibuat selectable nanti
+  
   // ─── State untuk custom card ───────────────────────────────
   const [cardConfig, setCardConfig] = useState({
     title: "KARTU PEGAWAI",
@@ -562,21 +565,29 @@ export default function TeacherManager() {
 
   // ─── REACT QUERY: Fetch Data ───────────────────────────────
   const { 
-    data: teacherData = [], 
+    data: teacherResponse, 
     isLoading: loading, 
     refetch, 
     isFetching 
   } = useQuery({
-    queryKey: ['teachers', SCHOOL_ID],
+    queryKey: ['teachers', SCHOOL_ID, debouncedSearch, showDuplicateOnly, currentPage, itemsPerPage],
     queryFn: async () => {
-      if (!SCHOOL_ID) return [];
-      const res = await fetch(`${BASE_URL}/absensi?schoolId=${SCHOOL_ID}&limit=100`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-      return json.data || [];
+      if (!SCHOOL_ID) return { data: [], summary: { totalNipIssues: 0, totalEmailIssues: 0 }, pagination: {} };
+
+      const params = new URLSearchParams({
+        schoolId: SCHOOL_ID.toString(),
+        name: debouncedSearch.trim(),
+        isDuplicateOnly: showDuplicateOnly ? 'true' : 'false',
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
+
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      if (!res.ok) throw new Error("Gagal mengambil data guru/tendik");
+      return await res.json();
     },
     enabled: !!SCHOOL_ID,
-    staleTime: 5 * 60 * 1000, // Data fresh selama 5 menit
+    staleTime: 0,
   });
 
   // --- LOGIKA DEBOUNCE ---
@@ -587,7 +598,7 @@ export default function TeacherManager() {
     []
   );
 
-  console.log('teacher data', teacherData)
+  // console.log('teacher data', teacherData)
 
   // Handler saat input diketik
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -601,10 +612,10 @@ export default function TeacherManager() {
     return () => debouncedSetSearch.cancel();
   }, [debouncedSetSearch]);
 
-  const handleSave = async (form: Partial<GuruTendikItem>, file?: File) => {
+ const handleSave = async (form: Partial<GuruTendikItem>, file?: File) => {
     const formData = new FormData();
     Object.entries(form).forEach(([key, value]) => {
-      if (value !== undefined) formData.append(key, value.toString());
+      if (value !== undefined && value !== null) formData.append(key, value.toString());
     });
     if (SCHOOL_ID) formData.append("schoolId", SCHOOL_ID.toString());
     if (file) formData.append("photo", file);
@@ -612,18 +623,48 @@ export default function TeacherManager() {
     const url = selectedItem?.id ? `${BASE_URL}/${selectedItem.id}` : BASE_URL;
     const method = selectedItem?.id ? "PUT" : "POST";
 
-    const res = await fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-      body: formData,
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+        body: formData,
+      });
 
-    const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message || "Gagal menyimpan");
+      const json = await res.json();
 
-    toast.success("Data berhasil disimpan");
-    queryClient.invalidateQueries({ queryKey: ['teachers'] });
-    // fetchData();
+      if (!res.ok) {
+        // Tangkap pesan duplikat secara spesifik dari backend
+        if (json.message?.includes("NIP") || json.message?.includes("Email")) {
+          toast.error(json.message, {
+            duration: 8000, // lebih lama agar bisa dibaca
+            icon: <AlertTriangle className="text-red-500" size={20} />,
+            style: {
+              border: "1px solid #ef4444",
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+            },
+          });
+        } else {
+          // Error lain (misal server error, validation lain)
+          toast.error(json.message || "Gagal menyimpan data", {
+            duration: 6000,
+          });
+        }
+        return; // Jangan tutup modal jika gagal
+      }
+
+      // Sukses
+      toast.success("Data berhasil disimpan", {
+        duration: 4000,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      setModalOpen(false);
+      setSelectedItem(null);
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan server", {
+        duration: 6000,
+      });
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -881,25 +922,27 @@ export default function TeacherManager() {
     }
   };
 
-  // Gunakan debouncedSearch sebagai parameter filter, bukan search
-    const filtered = teacherData.filter(
-      (item: any) =>
-        item.nama.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        item.role.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
+  const teachers = teacherResponse?.data || [];
+  const duplicateSummary = teacherResponse?.summary || { totalNipIssues: 0, totalEmailIssues: 0 };
+  const pagination = teacherResponse?.pagination || {
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    perPage: itemsPerPage
+  };
 
-    const getStatusStyle = (status: string | undefined) => {
-      const s = status?.toLowerCase();
-      if (s === "hadir") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-      if (s === "sakit") return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-      if (s === "izin") return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-      if (s === "alpha") return "bg-red-500/10 text-red-400 border-red-500/20";
-      
-      // Default untuk "Belum Hadir"
-      return "bg-zinc-500/10 text-zinc-500 border-zinc-500/10";
-    };
+  const getStatusStyle = (status: string | undefined) => {
+    const s = status?.toLowerCase();
+    if (s === "hadir") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+    if (s === "sakit") return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+    if (s === "izin") return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    if (s === "alpha") return "bg-red-500/10 text-red-400 border-red-500/20";
+    
+    // Default untuk "Belum Hadir"
+    return "bg-zinc-500/10 text-zinc-500 border-zinc-500/10";
+  };
 
-    const navigate = useNavigate()
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen pb-10">
@@ -955,6 +998,21 @@ export default function TeacherManager() {
 
         </div>
       </div>
+
+      {duplicateSummary.totalNipIssues > 0 || duplicateSummary.totalEmailIssues > 0 ? (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-4 animate-pulse">
+            <AlertTriangle size={20} className="text-red-400" />
+            <div>
+              <h4 className="text-sm font-black uppercase text-red-400">Duplikat Terdeteksi!</h4>
+              <p className="text-xs text-zinc-300 mt-1">
+                Terdapat <strong className="text-white">{duplicateSummary.totalNipIssues} NIP</strong> dan 
+                <strong className="text-white"> {duplicateSummary.totalEmailIssues} Email</strong> yang sama.
+                {showDuplicateOnly ? " (sedang menampilkan hanya duplikat)" : ""}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <div className="relative flex-1 w-full mb-6 group flex items-center gap-3 justify-between">
           <div className="w-[80%]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
@@ -966,6 +1024,27 @@ export default function TeacherManager() {
               className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
             />
           </div>
+
+          <button
+            onClick={() => {
+              setShowDuplicateOnly(prev => {
+                const newValue = !prev;
+                // Paksa refetch setelah state berubah
+                setTimeout(() => refetch(), 0);  // refetch setelah render selesai
+                return newValue;
+              });
+            }}
+            className={`px-5 h-14 px-5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
+              showDuplicateOnly
+                ? 'bg-red-600/30 text-red-300 border border-red-500/50 hover:bg-red-600/40'
+                : 'bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10'
+            }`}
+          >
+            <AlertTriangle size={14} />
+            <p className="w-max flex items-center">
+              {showDuplicateOnly ? 'Hanya Duplikat' : 'Hanya Duplikat Saja'}
+            </p>
+          </button>
           
           <button 
             onClick={() => refetch()} 
@@ -978,115 +1057,195 @@ export default function TeacherManager() {
       </div>
 
       {/* Content */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-40 opacity-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
-          <p className="text-[10px] font-black uppercase tracking-widest">Accessing Records...</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-40 bg-white/[0.02] rounded-[3rem] border border-dashed border-white/10">
-          <p className="text-white/20 text-lg font-medium">No personnel records found.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8">
-          {filtered.map((item) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/[0.03] border border-white/5 rounded-[2.5rem] p-6 transition-all duration-500"
-            >
-              {/* ... isi kartu sama persis seperti kode asli ... */}
-              <div className="flex items-start gap-6">
-                <div className="relative h-24 w-24 flex-shrink-0">
-                  <div className="h-full w-full rounded-3xl overflow-hidden bg-black/40 border border-white/10 transition-all duration-700">
-                    {item.photoUrl ? (
-                      <img src={item.photoUrl} alt={item.nama} className="h-full w-full object-cover transition-transform duration-700" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-white/5"><User size={32} /></div>
-                    )}
+      {loading || isFetching ? (
+          <div className="flex flex-col items-center justify-center py-40 opacity-70">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500 mb-6"></div>
+            <p className="text-sm font-black uppercase tracking-widest text-zinc-400">
+              Memuat Data Guru & Tendik...
+            </p>
+          </div>
+        ) : teachers.length === 0 ? (
+          <div className="text-center py-40 bg-white/[0.03] rounded-[3rem] border border-dashed border-white/15 shadow-inner">
+            <div className="mx-auto w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+              <User size={32} className="text-zinc-500" />
+            </div>
+            <p className="text-xl font-bold text-zinc-300 mb-2">Tidak ada data ditemukan</p>
+            <p className="text-sm text-zinc-500 max-w-md mx-auto">
+              {showDuplicateOnly 
+                ? "Tidak ada duplikat NIP atau Email pada sekolah ini." 
+                : debouncedSearch 
+                  ? `Tidak ditemukan hasil untuk pencarian "${debouncedSearch}"` 
+                  : "Belum ada guru atau tendik yang terdaftar di sekolah ini."}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 lg:gap-8">
+              {teachers.map((item: GuruTendikItem) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="bg-white/[0.04] border border-white/10 rounded-[2.5rem] p-6 backdrop-blur-sm hover:bg-white/[0.06] transition-all duration-300 group"
+                >
+                  {/* Foto + Gender Badge */}
+                  <div className="flex items-start gap-5">
+                    <div className="relative h-28 w-28 flex-shrink-0">
+                      <div className="h-full w-full rounded-3xl overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-white/10 shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:shadow-2xl">
+                        {item.photoUrl ? (
+                          <img 
+                            src={item.photoUrl} 
+                            alt={item.nama} 
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-white/20">
+                            <User size={40} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Gender Icon Badge */}
+                      <div 
+                        className={`absolute -bottom-3 -right-3 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg border-4 border-[#0B1220] text-white text-xl font-black
+                          ${item.jenisKelamin === "Laki-laki" ? 'bg-blue-600' : 'bg-pink-600'}`}
+                      >
+                        {item.jenisKelamin === "Laki-laki" ? <FaMars /> : <FaVenus />}
+                      </div>
+                    </div>
+
+                    {/* Info Utama */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">
+                        {item.role || "Staff"}
+                      </div>
+                      <h3 className="text-xl font-black text-white truncate leading-tight group-hover:text-blue-300 transition-colors">
+                        {item.nama}
+                      </h3>
+
+                      {/* Status Kehadiran + Waktu Scan */}
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <span 
+                          className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getStatusStyle(item.statusKehadiran)}`}
+                        >
+                          {item.statusKehadiran || 'Belum Hadir'}
+                        </span>
+
+                        {item.scanTime && (
+                          <span className="text-xs text-zinc-400 font-mono flex items-center gap-1.5">
+                            <Clock size={14} className="text-zinc-500" />
+                            {item.scanTime}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Email */}
+                      <div className="mt-3 flex items-center gap-2 text-zinc-400 text-sm group-hover:text-zinc-300 transition-colors">
+                        <Mail size={14} />
+                        <span className="truncate">{item.email || "Tidak ada email"}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className={`absolute -bottom-2 -right-2 ${item.jenisKelamin === "Laki-laki" ? 'bg-blue-600' : 'bg-pink-700'} text-[8px] font-black text-white px-2 py-2 flex justify-center items-center w-[30px] h-[30px] rounded-md uppercase shadow-lg`}>
-                    {item.jenisKelamin === "Laki-laki" ? <FaMars size={18} /> : <FaVenus size={18} />}
+
+                  {/* Info Tambahan (Mapel & NIP) */}
+                  <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 gap-4">
+                    <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/5">
+                      <div className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">Mata Pelajaran</div>
+                      <div className="text-sm font-bold text-white truncate">
+                        {item.mapel || "Umum / Tidak Ada"}
+                      </div>
+                    </div>
+
+                    <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/5">
+                      <div className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">NIP</div>
+                      <div className="text-sm font-mono font-bold text-white truncate">
+                        {item.nip || "-"}
+                        {item.isNipDuplicate && (
+                          <AlertTriangle size={14} className="inline ml-2 text-red-400" />
+                        )}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Tombol Aksi Kehadiran */}
+                  <div className="mt-6 grid grid-cols-4 gap-2">
+                    {['Hadir', 'Izin', 'Sakit', 'Alpha'].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => handleMarkAbsence(item, st as any)}
+                        className={`py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border
+                          ${item.statusKehadiran === st 
+                            ? 'border-slate-400/70 bg-slate-700/30' 
+                            : 'border-transparent hover:bg-white/5'} 
+                          ${getStatusStyle(st)}`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tombol Aksi Utama */}
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => { setSelectedItem(item); setModalOpen(true); }}
+                      className="flex-1 py-3.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 rounded-2xl flex items-center justify-center gap-2 transition-all font-medium text-sm"
+                    >
+                      <Edit size={16} />
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => navigate(`/detail/${item.id}?role=teacher`)}
+                      className="w-14 py-3.5 bg-white/5 hover:bg-white/15 text-white rounded-2xl flex items-center justify-center transition-all"
+                      title="Lihat Detail & Riwayat"
+                    >
+                      <Eye size={18} />
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(item.id!)}
+                      className="w-14 py-3.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-2xl flex items-center justify-center transition-all"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {pagination.totalPages && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-12 px-4">
+                <div className="text-sm text-zinc-400">
+                  Menampilkan <strong className="text-white">{teachers.length}</strong> dari <strong className="text-white">{pagination.totalItems}</strong> data
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 truncate">{item.role}</div>
-                  <h3 className="text-lg uppercase font-bold text-white truncate leading-tight transition-colors">{item.nama}</h3>
-                  
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-[12px] px-2 py-0.5 rounded-md border font-bold uppercase tracking-tighter ${getStatusStyle(item.statusKehadiran)}`}>
-                      {item.statusKehadiran || 'Belum Hadir'}
-                    </span>
-                    {item.scanTime && (
-                      <span className="text-[12px] text-white font-mono flex items-center gap-1">
-                        <Clock size={10} /> {item.scanTime}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-3 text-white/30 group-hover:text-white/60 transition-colors">
-                    <Mail size={12} />
-                    <span className="text-xs truncate">{item.email || "no-email@id"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
-                <div className="bg-black/20 p-4 rounded-2xl">
-                  <div className="text-[12px] font-black text-white uppercase tracking-widest mb-1">Mata pelajaran</div>
-                  <div className="text-[11px] text-white/70 font-bold truncate uppercase tracking-tighter">
-                    {item.mapel || "General"}
-                  </div>
-                </div>
-                <div className="bg-black/20 p-4 rounded-2xl">
-                  <div className="text-[12px] font-black text-white uppercase tracking-widest mb-1">No. Induk Pegawai</div>
-                  <div className="text-[11.5px] text-white/70 font-bold truncate uppercase tracking-tighter">
-                    {item.nip || "-"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mt-3">
-                {['Izin', 'Sakit', 'Alpha', 'Hadir'].map((st) => (
+                <div className="flex items-center gap-3">
                   <button
-                    key={st}
-                    onClick={() => handleMarkAbsence(item, st as any)}
-                    className={`flex-1 ${item.statusKehadiran === st ? 'border border-slate-500/70' : 'border border-transparent'} flex items-center gap-3 justify-center py-2 rounded-lg text-[9px] font-black hover:brightness-90 uppercase tracking-tighter transition-all border ${getStatusStyle(st)}`}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={pagination.currentPage === 1 || isFetching}
+                    className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl disabled:opacity-40 text-sm font-medium hover:bg-white/10 transition-all flex items-center gap-2"
                   >
-                    <CheckSquare size={13} />
-                    {st}
+                    ← Prev
                   </button>
-                ))}
-              </div>
 
-              <div className="mt-4 flex gap-3">
-                <button
-                  onClick={() => { setSelectedItem(item); setModalOpen(true); }}
-                  className="flex-1 py-4 hover:bg-blue-700/40 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center gap-2 transition-all group/btn"
-                >
-                  <Edit size={16} className="group-hover/btn:scale-110 transition-transform" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Perbarui</span>
-                </button>
-                <button
-                  onClick={() => navigate(`/detail/${item.id}?role=teacher`)}
-                  className="w-14 py-4 hover:bg-white/20 bg-white/5 text-white border border-white/10 hover:text-white rounded-2xl flex items-center justify-center transition-all"
-                  title="Lihat Riwayat 1 Tahun"
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  onClick={() => handleDelete(item.id!)}
-                  className="w-14 py-4 hover:bg-red-700/40 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-all"
-                >
-                  <Trash2 size={16} />
-                </button>
+                  <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl text-sm font-medium">
+                    Halaman <strong className="text-blue-400">{pagination.currentPage}</strong> / {pagination.totalPages}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                    disabled={pagination.currentPage === pagination.totalPages || isFetching}
+                    className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl disabled:opacity-40 text-sm font-medium hover:bg-white/10 transition-all flex items-center gap-2"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+            )}
+          </>
+        )}
 
       <GuruTendikModal
         open={modalOpen}

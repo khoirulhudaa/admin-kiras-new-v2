@@ -746,7 +746,7 @@ export function Ekstrakurikuler() {
 
       {/* 2. HEADER SECTION */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-b border-white/10 pb-10">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <div className="flex items-center gap-2 mb-3 font-black text-blue-500 uppercase tracking-[0.4em] text-[10px]">
             <Users size={14} />
             Student Development
@@ -833,7 +833,7 @@ export function Ekstrakurikuler() {
                 <div className="flex justify-between items-center mb-12">
                   <div>
                     <span className="text-blue-500 text-[10px] font-black uppercase tracking-[0.4em] mb-2 block italic italic">Management Console</span>
-                    <Dialog.Title className="text-4xl font-black uppercase tracking-tighter text-white">
+                    <Dialog.Title className="text-3xl font-black uppercase tracking-tighter text-white">
                       {editingId ? "Perbarui" : "Tambah"} <span className="text-white/30 text-3xl">Ekskul</span>
                     </Dialog.Title>
                   </div>

@@ -469,6 +469,10 @@ const router = createBrowserRouter(
           path: "ekstrakurikuler",
           element: <EkstraLanding />,
         },
+        // {
+        //   path: "perpustakaan-online",
+        //   element: <LibraryHomePage />,
+        // },
         {
           path: "scout/member",
           element: <ScoutLanding />,

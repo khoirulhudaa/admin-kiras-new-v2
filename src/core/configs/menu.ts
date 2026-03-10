@@ -254,6 +254,13 @@ export const MENU_STAFF: VokadashProps["menus"] = [
     icon: "Scan",
     main: true
   },
+  // {
+  //   // title: lang.text("attendance"),
+  //   title: "PERPUSTAKAAN",
+  //   url: "/perpustakaan-online",
+  //   icon: "Library",
+  //   main: true
+  // },
   {
     // title: lang.text("class"),
     title: "PEKERJAAN RUMAH",

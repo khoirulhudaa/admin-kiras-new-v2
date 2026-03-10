@@ -1151,6 +1151,14 @@
     "id": "Data guru tidak tersedia",
     "en": "Teacher data is not available"
   },
+  "tugas": {
+    "id": "MANAJEMEN TUGAS",
+    "en": "TASK MANAGEMENT"
+  },
+  "statistik": {
+    "id": "DATA STATISTIK",
+    "en": "STISTIC DATA"
+  },
   "studentNull": {
     "id": "Data siswa tidak tersedia",
     "en": "Student data is not available"

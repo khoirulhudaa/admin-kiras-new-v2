@@ -745,6 +745,7 @@ export default function BeritaPage() {
   const [editingItem, setEditingItem] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const schoolQuery = useSchool();
   const schoolId = schoolQuery?.data?.[0]?.id;
@@ -805,7 +806,8 @@ export default function BeritaPage() {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm("Yakin ingin menghapus berita ini?")) return;
-    setLoading(true);
+    
+    setDeletingId(id); // Set ID yang sedang dihapus
     try {
       const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus");
@@ -814,7 +816,7 @@ export default function BeritaPage() {
     } catch (err: any) {
       showAlert(`Gagal menghapus: ${err.message}`);
     } finally {
-      setLoading(false);
+      setDeletingId(null); // Reset setelah selesai
     }
   };
 
@@ -872,21 +874,50 @@ export default function BeritaPage() {
               key={item.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              // Tambahkan opacity condisional di sini saat ada proses delete
+              style={{ opacity: deletingId === item.id ? 0.5 : 1 }}
               transition={{ delay: index * 0.05 }}
               className="group relative bg-white/[0.03] h-[424px] border border-white/8 rounded-3xl overflow-hidden backdrop-blur-sm hover:border-blue-500/30 transition-all duration-300"
             >
-              {item.imageUrl && (
-                <div className="relative h-48 overflow-hidden">
-                  <span className="absolute top-4 z-[2] right-4 flex-shrink-0 px-3 py-1 bg-blue-700 text-white shadow-lg text-xs font-black rounded-full border border-blue-500/20 uppercase">
-                    {item.category || "Umum"}
-                  </span>
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+            {item.imageUrl && (
+              <div className="relative h-48 overflow-hidden group">
+                {/* Label Kategori */}
+                <span className="absolute top-4 z-[10] right-4 flex-shrink-0 px-3 py-1 bg-blue-700 text-white shadow-lg text-xs font-black rounded-full border border-blue-500/20 uppercase">
+                  {item.category || "Umum"}
+                </span>
+
+                <img
+                  src={item.imageUrl}
+                  alt={item.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+
+                {/* --- EFEK SHADOW OVERLAY (Baru) --- */}
+                <div className="absolute inset-0 bottom-0 h-[100%] bg-gradient-to-t from-black/80 via-transparent to-transparent z-[1]" />
+                {/* ---------------------------------- */}
+
+                <div className="absolute bottom-1 left-0 w-max flex gap-3 py-3 px-5 h-max z-[10]">
+                  <button
+                    onClick={() => handleEdit(item)}
+                    disabled={loading}
+                    className="flex-1 border border-white shadow-2xl w-max p-3 rounded-xl bg-blue-600 hover:bg-blue-800 text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    disabled={loading || deletingId === item.id}
+                    className="flex-1 border border-white shadow-2xl w-max p-3 rounded-xl bg-red-600 hover:bg-red-800 text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {deletingId === item.id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
               <div className="pt-6 pb-0 px-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
@@ -913,23 +944,7 @@ export default function BeritaPage() {
                 <p className="text-sm text-zinc-300 leading-relaxed line-clamp-4">
                   {item.content}
                 </p>
-
-                <div className="flex gap-3 pt-4 border-t h-max border-white/8">
-                  <button
-                    onClick={() => handleEdit(item)}
-                    disabled={loading}
-                    className="flex-1 py-3 rounded-2xl bg-blue-900/30 hover:bg-blue-800/50 text-blue-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <Edit size={16} /> Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    disabled={loading}
-                    className="flex-1 py-3 rounded-2xl bg-red-900/30 hover:bg-red-800/50 text-red-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={16} /> Hapus
-                  </button>
-                </div>
+                
               </div>
             </motion.div>
           ))}

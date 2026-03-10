@@ -1,16 +1,20 @@
 import { useSchool } from "@/features/schools";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from "framer-motion";
-import { jsPDF } from "jspdf";
 import debounce from 'lodash/debounce'; // Import debounce
+import { Toaster, toast } from "sonner"; // Pastikan sudah install: npm i sonner
 
 import {
+  AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   Download,
   Edit,
   Eye,
   FileSpreadsheet,
+  FileText,
+  GraduationCap,
   Palette,
   Plus,
   Printer,
@@ -21,10 +25,11 @@ import {
   User,
   X
 } from "lucide-react";
-import QRCode from "qrcode";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import GraduationModal from "../components/graduationModal";
+import { generateStudentCardsPDF } from "../utils/generateStudentCards";
 
 const BASE_URL = "https://be-school.kiraproject.id/siswa";
 // const BASE_URL = "http://localhost:5005/siswa";
@@ -44,6 +49,8 @@ interface Student {
   photoUrl: string;
   qrCodeData: string;
   statusKehadiran: "Hadir" | "Belum Hadir";
+  isNisDuplicate?: boolean;
+  isNisnDuplicate?: boolean;
 }
 
 const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isProcessing }: any) => {
@@ -226,19 +233,25 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
       if (!schoolId) throw new Error("ID Sekolah tidak ditemukan");
       
       const fd = new FormData();
-      console.log("Data yang akan dikirim:", form);
-      // Loop untuk memasukkan semua data form ke FormData
       Object.entries(form).forEach(([k, v]) => { 
-        if(k !== 'preview' && k !== 'photo' && v) fd.append(k, v as string); 
+        // Pastikan data yang dikirim tidak undefined/null agar tidak error di backend
+        if(k !== 'preview' && k !== 'photo' && v !== null && v !== undefined) {
+          fd.append(k, v.toString()); 
+        }
       });
       
       fd.append("schoolId", schoolId.toString());
       if (form.photo) fd.append("photo", form.photo);
 
+      // Menunggu eksekusi onSubmit. Jika di sana ada 'throw Error', 
+      // maka eksekusi akan langsung lompat ke blok catch di bawah ini.
       await onSubmit(fd); 
-      onClose();
+      
+      onClose(); // Hanya tutup modal jika onSubmit berhasil (tidak throw error)
     } catch (err: any) { 
-      alert(err.message); 
+      // Alert ini sekarang akan menampilkan pesan spesifik: 
+      // "NIS 12345 sudah terdaftar atas nama Budi"
+      toast.error("Gagal Menyimpan: " + err.message); 
     } finally { 
       setSaving(false); 
     }
@@ -354,19 +367,6 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
   );
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ──────────────────────────────────────────────────────────────
 export default function StudentManager() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -374,11 +374,25 @@ export default function StudentManager() {
   const [modals, setModals] = useState<any>({ add: false, edit: false, designer: false });
   const [selected, setSelected] = useState<Student | null>(null);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20); // Default 20 data per halaman
+  const [limit, setLimit] = useState(50); // Default 20 data per halaman
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0); // Tambahan untuk info total
   const [classList, setClassList] = useState<any[]>([]);
   const queryClient = useQueryClient();
+  // Di dalam komponen StudentManager
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [graduationModal, setGraduationModal] = useState(false);
+  const [duplicateSummary, setDuplicateSummary] = useState({ uniqueNisDuplicates: 0, uniqueNisnDuplicates: 0 });
+  const [gradData, setGradData] = useState({ year: new Date().getFullYear(), note: "", batch: "" });
+
+  // Filter tambahan untuk UI (opsional tapi disarankan)
+  const [filterClass, setFilterClass] = useState("");
+  const [filterBatch, setFilterBatch] = useState("");
+
+  const [progress, setProgress] = useState(0);
+  const [showProgress, setShowProgress] = useState(false);
+  // Tambahkan baris ini di bagian deklarasi state
+  const [showDuplicateOnly, setShowDuplicateOnly] = useState(false);
 
   const [cardConfig, setCardConfig] = useState<any>({
     title: "KARTU PELAJAR",
@@ -418,17 +432,37 @@ export default function StudentManager() {
   const schoolId = schoolQuery?.data?.[0]?.id;
 
   // GANTI DENGAN INI
+
   const { data: studentData, isLoading: loading, refetch, isFetching } = useQuery({
-    queryKey: ['students', schoolId, page, limit, debouncedSearch],
+    queryKey: [
+      'students', 
+      schoolId, 
+      page, 
+      limit, 
+      debouncedSearch, 
+      filterClass, 
+      filterBatch,
+      showDuplicateOnly   // ← tambahkan ini
+    ],
     queryFn: async () => {
-      const res = await fetch(
-        `${BASE_URL}?schoolId=${schoolId}&page=${page}&limit=${limit}&name=${debouncedSearch}`
-      );
+      const params = new URLSearchParams({
+        schoolId: schoolId.toString(),
+        page: page.toString(),
+        limit: limit.toString(),
+        name: debouncedSearch,
+        isDuplicateOnly: showDuplicateOnly ? 'true' : 'false',   // ← tambahkan ini
+      });
+
+      if (filterClass) params.append("class", filterClass);
+      if (filterBatch) params.append("batch", filterBatch);
+
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      if (!res.ok) throw new Error("Gagal mengambil data siswa");
       return res.json();
     },
     enabled: !!schoolId,
-    staleTime: 5 * 60 * 1000, // Data "Fresh" selama 5 menit (tidak akan hit API jika balik ke hal ini)
-    gcTime: 10 * 60 * 1000,    // Data tetap di memori selama 10 menit
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   // Update state lokal (Hanya jika kamu masih butuh state terpisah untuk UI table)
@@ -437,6 +471,7 @@ export default function StudentManager() {
       setStudents(studentData.data || []);
       setTotalPages(studentData.pagination?.totalPages || 1);
       setTotalItems(studentData.pagination?.totalItems || 0);
+      setDuplicateSummary(studentData.summary || { uniqueNisDuplicates: 0, uniqueNisnDuplicates: 0 });
     }
   }, [studentData]);
 
@@ -447,6 +482,7 @@ export default function StudentManager() {
         const res = await fetch(`https://be-school.kiraproject.id/kelas?schoolId=${schoolId}`);
         const json = await res.json();
         if (json.success) setClassList(json.data);
+        console.log('json kelas', json)
       } catch (err) {
         console.error("Gagal mengambil daftar kelas:", err);
       }
@@ -476,233 +512,183 @@ export default function StudentManager() {
     XLSX.writeFile(wb, "Template_Siswa.xlsx");
   };
 
-const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file || !schoolId) return;
-  setIsProcessing(true);
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !schoolId) return;
+      setIsProcessing(true);
 
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    try {
-      const dataBinary = evt.target?.result;
-      const wb = XLSX.read(dataBinary, { type: "binary" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data: any[] = XLSX.utils.sheet_to_json(ws, { raw: false, dateNF: "yyyy-mm-dd" });
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const dataBinary = evt.target?.result;
+          const wb = XLSX.read(dataBinary, { type: "binary" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const data: any[] = XLSX.utils.sheet_to_json(ws, { raw: false, dateNF: "yyyy-mm-dd" });
 
-      for (const row of data) {
-        const fd = new FormData();
-        fd.append("name", row["Nama"] || "");
-        fd.append("gender", row["Gender"] || "");
-        fd.append("nik", row["NIK"] ? row["NIK"].toString() : "");
-        fd.append("nisn", row["NISN"] ? row["NISN"].toString() : "");
-        fd.append("nis", row["NIS"] ? row["NIS"].toString() : "");
-        fd.append("birthPlace", row["TempatLahir"] || "");
-        fd.append("birthDate", row["TanggalLahir"] || "");
-        fd.append("class", row["Kelas"] || "");     // <--- Kirim ke Backend
-        fd.append("batch", row["Angkatan"] || "");  // <--- Kirim ke Backend
-        fd.append("schoolId", schoolId.toString());
+          for (const row of data) {
+            const fd = new FormData();
+            fd.append("name", row["Nama"] || "");
+            fd.append("gender", row["Gender"] || "");
+            fd.append("nik", row["NIK"] ? row["NIK"].toString() : "");
+            fd.append("nisn", row["NISN"] ? row["NISN"].toString() : "");
+            fd.append("nis", row["NIS"] ? row["NIS"].toString() : "");
+            fd.append("birthPlace", row["TempatLahir"] || "");
+            fd.append("birthDate", row["TanggalLahir"] || "");
+            fd.append("class", row["Kelas"] || "");
+            fd.append("batch", row["Angkatan"] || "");
+            fd.append("schoolId", schoolId.toString());
 
-        await fetch(BASE_URL, { method: "POST", body: fd });
-      }
+            const res = await fetch(BASE_URL, { method: "POST", body: fd });
+            const json = await res.json();
 
-      alert("Impor selesai");
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      // fetchStudents();
-    } catch (e) {
-      alert("Gagal impor data");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  reader.readAsBinaryString(file);
-};
+            if (!res.ok) {
+              toast.error(json.message || "Gagal menambahkan siswa dari file", {
+                duration: 8000,
+              });
+            }
+          }
+
+          toast.success("Impor selesai");
+          queryClient.invalidateQueries({ queryKey: ['students'] });
+        } catch (e: any) {
+          toast.error(e.message || "Terjadi kesalahan saat membaca file.");
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+      reader.readAsBinaryString(file);
+    };
 
 const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'Alpha') => {
-  if (!window.confirm(`Tandai ${student.name} sebagai ${status} hari ini?`)) return;
+    if (!window.confirm(`Tandai ${student.name} sebagai ${status} hari ini?`)) return;
 
+    try {
+      const res = await fetch(`${BASE_URL}/mark-absence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: student.id,
+          schoolId: schoolId,
+          status,
+          currentClass: student.class,
+          userRole: 'student'
+        })
+      });
+
+      const json = await res.json();
+
+      if (res.ok && json.success) {
+        toast.success(`${student.name} ditandai sebagai ${status} hari ini.`);
+        queryClient.invalidateQueries({ queryKey: ['students'] });
+      } else {
+        toast.error(json.message || "Gagal mencatat kehadiran");
+      }
+    } catch (err: any) {
+      toast.error("Gagal mencatat ketidakhadiran", {
+      });
+    }
+  };
+
+const handleProcessGraduation = async () => {
+  if (selectedIds.length === 0) {
+    toast.warning("Pilih siswa terlebih dahulu");
+    return;
+  }
+
+  const batchRegex = /^\d{4}$/;
+  if (!batchRegex.test(gradData.batch)) {
+    toast.error("Angkatan (Batch) harus berupa 4 digit angka (Contoh: 2024)");
+    return;
+  }
+
+  if (!window.confirm(`Luluskan ${selectedIds.length} siswa yang dipilih?`)) return;
+
+  setIsProcessing(true);
   try {
-    const res = await fetch(`${BASE_URL}/mark-absence`, {
+    const selectedStudentsData = students
+      .filter(s => selectedIds.includes(s.id))
+      .map(s => ({ id: s.id, nis: s.nis }));
+
+    const res = await fetch(`${BASE_URL}/process-graduation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        studentId: student.id,
-        schoolId: schoolId,
-        status: status,
-        currentClass: student.class,
-        userRole: 'student'
+        studentIds: selectedStudentsData,
+        graduationYear: gradData.year,
+        description: gradData.note,
+        batch: gradData.batch,
+        schoolId: schoolId
       })
     });
 
-    if (res.ok) {
-      alert(`Berhasil mencatat ${status}`);
+    const result = await res.json();
+    if (result.success) {
+      toast.success(result.message || "Siswa berhasil diluluskan");
+      setSelectedIds([]);
+      setGraduationModal(false);
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      // fetchStudents(); // Refresh data untuk update status di tabel
+    } else {
+      toast.error(result.message || "Gagal memproses kelulusan");
     }
-  } catch (err) {
-    alert("Gagal mencatat ketidakhadiran");
-  }
-};
-
-const generatePDF = async () => {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  setIsProcessing(true);
-
-  const cardWidth = 86;
-  const cardHeight = 54;
-  const spacing = 6; // Jarak antar kartu (Horizontal & Vertikal)
-  const marginLeft = 10;
-  const marginTop = 10;
-
-  try {
-    for (let i = 0; i < students.length; i++) {
-      const s = students[i];
-      const idxInPage = i % 8;
-      const col = idxInPage % 2;
-      const row = Math.floor(idxInPage / 2);
-
-      if (i > 0 && idxInPage === 0) doc.addPage();
-
-      const x = marginLeft + col * (cardWidth + spacing);
-      const y = marginTop + row * (cardHeight + spacing);
-
-      // 1. Background Dasar (Putih)
-      doc.setFillColor(255, 255, 255);
-      doc.rect(x, y, cardWidth, cardHeight, 'F');
-
-      // 2. Background Custom dengan Pre-Crop Canvas (Object-fit: Cover)
-      if (cardConfig.bgImage) {
-        try {
-          const img = new Image();
-          img.crossOrigin = "anonymous"; // Hindari isu CORS
-          img.src = cardConfig.bgImage;
-
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-          });
-
-          // Proses Cropping di Canvas
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          // Gunakan resolusi tinggi agar tidak pecah di PDF
-          canvas.width = 860; 
-          canvas.height = 540;
-
-          const imgRatio = img.width / img.height;
-          const canvasRatio = canvas.width / canvas.height;
-
-          let sw, sh, sx, sy;
-
-          // Hitung area crop (Center Crop)
-          if (imgRatio > canvasRatio) {
-            sh = img.height;
-            sw = sh * canvasRatio;
-            sx = (img.width - sw) / 2;
-            sy = 0;
-          } else {
-            sw = img.width;
-            sh = sw / canvasRatio;
-            sx = 0;
-            sy = (img.height - sh) / 2;
-          }
-
-          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-          
-          // Masukkan ke PDF (Pasti pas, tidak akan meluber)
-          const croppedImgData = canvas.toDataURL('image/jpeg', 0.9);
-          doc.addImage(croppedImgData, 'JPEG', x, y, cardWidth, cardHeight);
-          
-        } catch (e) {
-          console.warn("Gagal render background custom:", e);
-        }
-      }
-
-      // 3. Header Accent
-      doc.setFillColor(cardConfig.accentColor);
-      doc.rect(x, y, cardWidth, 12, 'F');
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(cardConfig.title, x + cardWidth / 2, y + 6, { align: 'center' });
-
-      doc.setFontSize(6);
-      doc.text(cardConfig.subtitle, x + cardWidth / 2, y + 10, { align: 'center' });
-
-      // 4. Foto Siswa
-      const photoX = x + 5;
-      const photoY = y + 15; // Disesuaikan sedikit agar lebih rapi
-      const photoW = 18;
-      const photoH = 22;
-
-      if (s.photoUrl) {
-        try {
-          doc.addImage(s.photoUrl, 'JPEG', photoX, photoY, photoW, photoH);
-        } catch (e) {
-          doc.setFillColor(240, 240, 240);
-          doc.rect(photoX, photoY, photoW, photoH, 'F');
-        }
-      } else {
-        doc.setFillColor(240, 240, 240);
-        doc.rect(photoX, photoY, photoW, photoH, 'F');
-      }
-
-      // 5. Data Teks (NIS & NISN)
-      doc.setTextColor(30, 41, 59);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.text(s.name.toUpperCase(), x + 27, y + 21, { maxWidth: 50 });
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(100, 116, 139);
-      doc.text(`NIS : ${s.nis}`, x + 27, y + 27);
-      doc.text(`NISN: ${s.nisn || "-"}`, x + 27, y + 31);
-
-      // 6. QR Code
-      const qrData = s.qrCodeData;
-      const qr = await QRCode.toDataURL(qrData, { margin: 1, width: 150 });
-      doc.addImage(qr, 'PNG', x + 63, y + 33, 18, 18);
-
-      // 7. Border kartu (tipis)
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.1);
-      doc.rect(x, y, cardWidth, cardHeight, 'D');
-    }
-
-    doc.save(`Kartu_Siswa_${new Date().toISOString().slice(0, 10)}.pdf`);
-    setModals(p => ({ ...p, designer: false }));
-  } catch (e) {
-    console.error(e);
-    alert("Gagal membuat PDF.");
+  } catch (err: any) {
+    toast.error(err.message);
   } finally {
     setIsProcessing(false);
   }
 };
 
-const handleDelete = async (id: number, name: string) => {
-  // Konfirmasi ke user agar tidak tidak sengaja terhapus
-  if (!window.confirm(`Apakah Anda yakin ingin menghapus siswa "${name}"?`)) return;
-
-  try {
-    const res = await fetch(`${BASE_URL}/${id}`, {
-      method: "DELETE",
-    });
-
-    if (res.ok) {
-      // Refresh data setelah berhasil hapus
-      // fetchStudents();
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      alert("Siswa berhasil dihapus");
-    } else {
-      throw new Error("Gagal menghapus data di server");
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Terjadi kesalahan saat menghapus data.");
+// Fungsi helper untuk bulk selection per halaman
+const toggleSelectAll = () => {
+  if (selectedIds.length === students.length) {
+    setSelectedIds([]);
+  } else {
+    setSelectedIds(students.map(s => s.id));
   }
 };
+
+const handleGeneratePDF = async () => {
+    setIsProcessing(true);
+    setShowProgress(true);
+    setProgress(0);
+
+    try {
+      const res = await fetch(`${BASE_URL}/all-no-pagination?schoolId=${schoolId}`);
+      const json = await res.json();
+      const allStudents: Student[] = json.data || [];
+
+      if (allStudents.length === 0) {
+        toast.warning("Tidak ada data siswa untuk dicetak");
+        return;
+      }
+
+      await generateStudentCardsPDF(allStudents, cardConfig, (pct) => setProgress(pct));
+
+      setTimeout(() => setShowProgress(false), 800);
+      toast.success("PDF kartu siswa berhasil dibuat");
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat generate file.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+      if (!window.confirm(`Apakah Anda yakin ingin menghapus siswa "${name}"?`)) return;
+
+      try {
+        const res = await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
+        const json = await res.json();
+
+        if (res.ok) {
+          toast.success(`Siswa "${name}" berhasil dihapus`);
+          queryClient.invalidateQueries({ queryKey: ['students'] });
+        } else {
+          toast.error(json.message || "Gagal menghapus siswa");
+        }
+      } catch (err: any) {
+        toast.error(err.message || "Periksa koneksi atau hubungi admin.");
+      }
+    };
 
 const statusStyles: Record<string, string> = {
   Hadir: "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20",
@@ -712,10 +698,19 @@ const statusStyles: Record<string, string> = {
   "Belum Hadir": "bg-zinc-500/10 text-zinc-500 border border-zinc-500/10",
 };
 
+const selectByCriteria = (className: string, batch: string) => {
+  const filtered = students.filter(s => 
+    (className ? s.class === className : true) && 
+    (batch ? s.batch === batch : true)
+  );
+  setSelectedIds(filtered.map(s => s.id));
+};
+
 const navigate = useNavigate();
 
   return (
     <div className="min-h-screen pb-8 text-slate-100">
+      <Toaster position="top-right" richColors />
       {/* Header Utama */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-12 border-b border-white/5 pb-10">
         <div className="space-y-2 text-left">
@@ -735,11 +730,23 @@ const navigate = useNavigate();
             <input type="file" hidden accept=".xlsx, .xls" onChange={handleBulkUpload} />
           </label>
           <button onClick={() => setModals({ ...modals, designer: true })} className="h-14 px-6 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl flex items-center gap-2 hover:bg-red-500/20 transition-all font-black uppercase text-[12px] tracking-widest">
-            <Palette size={16}/> Cetak Kartu
+            <Palette size={16}/> Kartu
           </button>
-          <button onClick={() => setModals({ ...modals, add: true })} className="h-14 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-blue-600/30">
-            <Plus size={16}/> Tambah
-          </button>
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={() => setGraduationModal(true)} 
+              className="h-14 px-6 bg-amber-500 text-black rounded-2xl flex items-center gap-2 hover:bg-amber-400 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-amber-500/20"
+            >
+              <GraduationCap size={18}/> Luluskan ({selectedIds.length})
+            </button>
+          )}
+          {
+            selectedIds.length === 0 && (
+              <button onClick={() => setModals({ ...modals, add: true })} className="h-14 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-blue-600/30">
+                <Plus size={16}/> Tambah
+              </button>
+            )
+          }
         </div>
       </div>
 
@@ -763,47 +770,151 @@ const navigate = useNavigate();
           <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
           {isFetching ? "Syncing..." : "Refresh"}
         </button>
+    </div>
+
+    {/* Letakkan di bawah Search Bar, di atas Tabel */}
+    <div className="mb-4 flex flex-wrap gap-4 items-center bg-white/[0.03] p-4 rounded-3xl border border-white/5">
+        <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest ml-2">Pilih Cepat:</span>
+        
+        {/* Dropdown Kelas */}
+        <select 
+          value={filterClass}
+          onChange={(e) => {
+            setFilterClass(e.target.value);
+            setPage(1); // Reset ke hal 1 saat filter berubah
+          }}
+          className="bg-zinc-800 border border-white/10 px-4 py-2 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500"
+        >
+          <option value="">Semua Kelas</option>
+          {classList.map(c => (
+            <option key={c.id} value={c.className}>{c.className}</option>
+          ))}
+        </select>
+
+        {/* Input Angkatan */}
+        <input 
+          type="text"
+          placeholder="Angkatan..."
+          value={filterBatch}
+          onChange={(e) => {
+            setFilterBatch(e.target.value);
+            setPage(1); // Reset ke hal 1 saat filter berubah
+          }}
+          className="bg-zinc-800 border border-white/10 px-4 py-2 rounded-xl text-xs font-bold text-white outline-none w-32 focus:border-blue-500"
+        />
+
+        <button
+          onClick={() => {
+            setShowDuplicateOnly(prev => !prev);
+            setPage(1);           // reset ke halaman 1
+          }}
+          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
+            showDuplicateOnly 
+              ? 'bg-red-600/20 text-red-400 border border-red-500/40 hover:bg-red-600/30' 
+              : 'bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10'
+          }`}
+        >
+          <AlertTriangle size={14} />
+          {showDuplicateOnly ? "Hanya Tampilkan Duplikat" : "Tampilkan Duplikat Saja"}
+        </button>
+
+        {/* Tombol Select All untuk data yang SUDAH terfilter di tabel */}
+        <button 
+          onClick={() => {
+            const matchedIds = students.map(s => s.id);
+            setSelectedIds(prev => Array.from(new Set([...prev, ...matchedIds])));
+          }}
+          className="px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase hover:bg-blue-500/40 transition-all"
+        >
+          Centang Semua di Halaman Ini
+        </button>
       </div>
 
+      {showDuplicateOnly && (
+        <div className="mt-5 mb-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center gap-3 text-sm">
+          <AlertCircle size={18} className="text-amber-400" />
+          <span className="font-medium text-amber-300">
+            Saat ini hanya menampilkan siswa dengan <strong>NIS</strong> atau <strong>NISN duplikat</strong>
+          </span>
+          <button 
+            onClick={() => setShowDuplicateOnly(false)}
+            className="ml-auto text-amber-400 hover:text-amber-300 text-xs underline"
+          >
+            Tampilkan Semua
+          </button>
+        </div>
+      )}
       {/* Tabel dengan Status Kehadiran */}
       <div className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
         <table className="w-full text-left">
           <thead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 border-b border-white/5 bg-white/[0.03]">
             <tr>
-              <th className="pl-6 p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Profil</th>
-              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kelas</th>
-              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">NIS / NISN</th>
-              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kehadiran</th>
-              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Status</th>
-              <th className="py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Aksi</th>
+              {/* Kolom profil dibiarkan fleksibel atau beri batas tertentu */}
+              <th className="pl-6 p-6 text-zinc-500 w-[30%]">Profil</th> 
+              
+              <th className="py-6 text-zinc-500 w-[15%]">Kelas</th>
+              <th className="py-6 text-zinc-500 w-[15%]">NIS / NISN</th>
+              <th className="py-6 text-zinc-500 w-[12%]">Kehadiran</th>
+              <th className="py-6 text-zinc-500 w-[15%]">Status</th>
+              
+              {/* Checkbox dan Aksi harus sempit */}
+              <th className="pl-6 p-6 w-[50px]">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 relative top-[1.2px] rounded border-white/10 bg-white/5" 
+                  checked={selectedIds.length === students.length && students.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
+              <th className="py-6 text-zinc-500 w-[10%]">Aksi Lainnya</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr><td colSpan={4} className="px-2 py-20 text-center text-zinc-600 tracking-widest uppercase">Loading...</td></tr>
-            ) : students.map(s => (
-              <tr key={s.id} className="hover:bg-white/[0.01] transition-colors">
-                <td className="py-6 pl-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-                      {s.photoUrl ? <img src={s.photoUrl} className="object-cover h-full w-full" /> : <div className="h-full w-full flex items-center justify-center"><User className="text-zinc-700"/></div>}
+            ) : students.map(s => {
+              const isRowDuplicate = s.isNisDuplicate || s.isNisnDuplicate;
+              
+              return (
+              <tr key={s.id} 
+              className={`transition-colors ${
+                isRowDuplicate 
+                ? 'bg-red-500/[0.05] hover:bg-red-500/[0.08]' 
+                : 'hover:bg-white/[0.01]'
+              }`}>
+               <td className="py-6 pl-6">
+                  <div className="flex items-center gap-4 max-w-[250px]"> {/* Tambahkan max-width */}
+                    <div className="h-10 w-10 shrink-0 rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+                      {s.photoUrl ? (
+                        <img src={s.photoUrl} className="object-cover h-full w-full" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center"><User className="text-zinc-700" size={16}/></div>
+                      )}
                     </div>
-                    <div>
-                      <div className="font-bold    text-white tracking-tight">{s.name}</div>
+                    <div className="min-w-0"> {/* Penting agar truncate bekerja di dalam flex */}
+                      <div className="font-bold text-white tracking-tight truncate">{s.name}</div>
                       <div className="text-[9px] text-zinc-500 font-bold uppercase">{s.gender}</div>
                     </div>
                   </div>
                 </td>
                <td className="py-6">
                   <div className="text-blue-400 w-full truncate font-mono text-sm">{s.class}</div>
-                  <div className="text-[10px] text-zinc-500 font-medium tracking-tighter">ANGKATAN: {s.batch || "-"}</div>
+                  <div className="text-[10px] text-zinc-500 font-medium tracking-tighter">{s.batch || "-"}</div>
                 </td>
                 <td className="py-6">
-                   <div className="text-blue-400 w-full truncate font-mono text-sm">{s.nis}</div>
-                   <div className="text-[10px] w-full truncate text-zinc-500 font-medium tracking-tighter">NISN: {s.nisn || "-"}</div>
+                  <div className="flex flex-col">
+                    <div className={`font-mono text-xs flex items-center gap-1 ${s.isNisDuplicate ? 'text-red-500 font-bold' : 'text-blue-400'}`}>
+                      {s.nis}
+                      {/* {s.isNisDuplicate && <AlertCircle size={12} />} */}
+                    </div>
+                    <div className={`text-[10px] font-medium tracking-tighter flex items-center gap-1 ${s.isNisnDuplicate ? 'text-red-400' : 'text-zinc-500'}`}>
+                      NISN: {s.nisn || "-"}
+                      {/* {s.isNisnDuplicate && <AlertCircle size={10} />} */}
+                    </div>
+                  </div>
                 </td>
                 <td className="py-6">
-                   <span className={`px-4 py-1.5 w-max rounded-full text-[9px] font-black uppercase tracking-widest ${statusStyles[s.statusKehadiran] || statusStyles["Belum Hadir"]}`}>
+                   <span className={`px-4 py-1.5 w-max flex rounded-full text-[8px] font-black uppercase tracking-widest ${statusStyles[s.statusKehadiran] || statusStyles["Belum Hadir"]}`}>
                       {s.statusKehadiran || "Belum Hadir"}
                    </span>
                 </td>
@@ -817,7 +928,19 @@ const navigate = useNavigate();
                     </div>
                   </div>
                 </td>
-                <td className="py-6 text-left gap-2.5 flex">
+                <td className="pl-6">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded border-white/10 bg-white/5"
+                    checked={selectedIds.includes(s.id)}
+                    onChange={() => {
+                      setSelectedIds(prev => 
+                        prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                      );
+                    }}
+                  />
+                </td>
+                <td className="py-6 text-left gap-2.5 flex pr-6">
                   <button 
                     onClick={() => navigate(`/detail/${s.id}?role=student`)} 
                     className="p-3 bg-white/5 hover:bg-white/20 hover:text-white rounded-xl transition-all"
@@ -829,7 +952,7 @@ const navigate = useNavigate();
                   <button onClick={() => handleDelete(s.id, s.name)} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Trash2 size={16}/></button>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
@@ -905,30 +1028,89 @@ const navigate = useNavigate();
         </div>
       </div>
 
+      {/* Progress Modal */}
+      {showProgress && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md text-center shadow-2xl">
+            <div className="mb-6">
+              <div className="h-20 w-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <FileText className="text-blue-500" size={32} />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tighter text-white">
+                Sedang Menyiapkan PDF
+              </h3>
+              <p className="text-zinc-500 text-sm mt-1">Jangan tutup halaman ini</p>
+            </div>
+
+            {/* Progress Bar Container */}
+            <div className="relative w-full h-4 bg-white/5 rounded-full overflow-hidden border border-white/10">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            
+            <div className="mt-4 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+              <span className="text-blue-500">{progress}% Selesai</span>
+              <span className="text-zinc-600">Total {totalItems || students?.length || 0} Siswa</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {graduationModal && (
+        <GraduationModal
+          open={graduationModal}
+          onClose={() => setGraduationModal(false)}
+          selectedCount={selectedIds.length}
+          onConfirm={handleProcessGraduation}
+          isProcessing={isProcessing}
+        />
+      )}
+
       {/* Side Modals */}
       <StudentModal 
-        classList={classList || []} 
-        open={modals.add || modals.edit} 
-        onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); }} 
-        title={selected ? "Perbarui Siswa" : "Tambah Siswa"} 
-        initialData={selected} 
-        schoolId={schoolId} 
-        onSubmit={async (fd: FormData) => { 
+          classList={classList || []} 
+          open={modals.add || modals.edit} 
+          onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); }} 
+          title={selected ? "Perbarui Siswa" : "Tambah Siswa"} 
+          initialData={selected} 
+          schoolId={schoolId} 
+          onSubmit={async (fd: FormData) => { 
           const res = await fetch(selected ? `${BASE_URL}/${selected.id}` : BASE_URL, {
             method: selected ? 'PUT' : 'POST', 
             body: fd
           });
 
-          if (res.ok) {
-            // INI KUNCINYA: Memberitahu React Query bahwa data siswa sudah berubah
-            queryClient.invalidateQueries({ queryKey: ['students'] });
-            
-            // Jika modal ingin langsung ditutup setelah sukses
-            setModals({...modals, add: false, edit: false});
+          const result = await res.json(); // Ambil body response
+
+          if (!res.ok) {
+            // Lempar pesan error dari backend agar ditangkap oleh catch di modal
+            throw new Error(result.message || "Terjadi kesalahan pada server");
           }
+
+          // Jika sukses
+          queryClient.invalidateQueries({ queryKey: ['students'] });
+          setModals({...modals, add: false, edit: false});
+          toast.success('Data berhasil tersimpan!')
         }} 
       />
-      <CardDesignerModal open={modals.designer} onClose={() => setModals((p: any) => ({ ...p, designer: false }))} config={cardConfig} setConfig={setCardConfig} onGenerate={generatePDF} isProcessing={isProcessing} />
+      <CardDesignerModal open={modals.designer} onClose={() => setModals((p: any) => ({ ...p, designer: false }))} config={cardConfig} setConfig={setCardConfig} onGenerate={handleGeneratePDF} isProcessing={isProcessing} />
+
+      {/* Alert Duplikat */}
+      {(duplicateSummary.uniqueNisDuplicates > 0 || duplicateSummary.uniqueNisnDuplicates > 0) && (
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 animate-pulse">
+          <div className="h-10 w-10 bg-red-500/20 rounded-xl flex items-center justify-center text-red-500">
+            <AlertTriangle size={20} />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-black uppercase tracking-tight text-red-500">Data Duplikat Terdeteksi!</h4>
+            <p className="text-xs text-zinc-400">
+              Terdapat <span className="text-white font-bold">{duplicateSummary.uniqueNisDuplicates} NIS</span> dan <span className="text-white font-bold">{duplicateSummary.uniqueNisnDuplicates} NISN</span> yang ganda. Mohon periksa baris yang berwarna merah.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

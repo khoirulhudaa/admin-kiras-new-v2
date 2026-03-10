@@ -6,14 +6,14 @@ import { SchoolManagementDashboard } from "../containers/mappingSekolah-main";
 export const MappingSekolahLanding = () => {
   return (
     <DashboardPageLayout
-      siteTitle={`${lang.text("class")} | ${APP_CONFIG.appName}`}
+      siteTitle={`${lang.text("statistik")} | ${APP_CONFIG.appName}`}
       breadcrumbs={[
         {
-          label: lang.text("class"),
-          url: "/manajemen-sekolah",
+          label: lang.text("statistik"),
+          url: "/sebaran-sekolah",
         },
       ]}
-      title={lang.text("class")}
+      title={lang.text("statistik")}
     >
       <SchoolManagementDashboard />
       {/* <div className="pb-16 sm:pb-0" /> */}

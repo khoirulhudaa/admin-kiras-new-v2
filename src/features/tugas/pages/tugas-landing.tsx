@@ -6,14 +6,14 @@ import TugasMain from "../containers/tugas-main";
 export const TugasLanding = () => {
   return (
     <DashboardPageLayout
-      siteTitle={`${lang.text("class")} | ${APP_CONFIG.appName}`}
+      siteTitle={`${lang.text("tugas")} | ${APP_CONFIG.appName}`}
       breadcrumbs={[
         {
-          label: lang.text("class"),
-          url: "/calendar",
+          label: lang.text("tugas"),
+          url: "/pekerjaan-rumah",
         },
       ]}
-      title={lang.text("class")}
+      title={lang.text("tugas")}
     >
       <TugasMain />
       {/* <div className="pb-16 sm:pb-0" /> */}

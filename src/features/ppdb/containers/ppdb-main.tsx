@@ -549,7 +549,7 @@ function PPDBManager() {
                   <Dialog.Panel className="w-full max-w-2xl h-full bg-[#0B1220] border-l border-white/10 shadow-2xl overflow-y-auto">
                     <div className="p-10 border-b border-white/8 flex justify-between items-center sticky top-0 bg-[#0B1220] z-10">
                       <div>
-                        <Dialog.Title className="text-4xl font-black tracking-tighter text-white">
+                        <Dialog.Title className="text-3xl font-black tracking-tighter text-white">
                           Konfigurasi <span className="text-blue-600">PPDB</span>
                         </Dialog.Title>
                         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 italic">
