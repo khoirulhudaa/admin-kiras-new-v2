@@ -8,6 +8,7 @@ export interface Student {
   nisn: string;
   gender: string;
   nik: string;
+  rfidUid: string;
   birthPlace: string;
   birthDate: string;
   photoUrl: string;

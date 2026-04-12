@@ -72,32 +72,69 @@
 
 
 
+
 import { useAuth } from "@/features/auth/hooks/useAuth";
 // import { useAuth } from "@/features/auth/hooks";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 // hooks/useProfile.ts
-export const useProfile = () => {
-  const auth = useAuth();
+// export const useProfile = () => {
+//   const auth = useAuth();
   
+//   const query = useQuery({
+//     queryKey: ["profile"],
+//     queryFn: async () => {
+//       // const res = await axios.get("http://localhost:5005/auth/profile", {
+//       const res = await axios.get("https://be-school.kiraproject.id/auth/profile", {
+//         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+//       });
+//       if (res.data && res.data.data) {
+//         return res.data.data;
+//       }
+//       console.log('res data', res.data)
+      
+//       // Jika backend mengirim { name: '...' } langsung di body
+//       return res.data;
+//       // return res.data.data; // Mengambil object { id, name, sekolah, ... }
+//     },
+//     enabled: auth.isAuthenticated()
+//   });
+  
+//   const profileData = query.data;
+//   console.log('res data', profileData)
+
+//   return {
+//     query,
+//     user: profileData, // Ini yang dipakai di HomePage (profile?.user?.name)
+//     sekolah: profileData?.sekolah,
+//     isLoading: query.isLoading
+//   };
+// };
+
+export const useProfile = () => {
   const query = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
       const res = await axios.get("https://be-school.kiraproject.id/auth/profile", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
-      return res.data.data; // Mengambil object { id, name, sekolah, ... }
+      // Backend mengirim { success: true, data: { ... } }
+      return res.data.data; 
     },
-    enabled: auth.isAuthenticated()
+    enabled: !!localStorage.getItem("token"), 
+    // staleTime: 1 * 60 * 1000, 
+    // gcTime: 2 * 60 * 1000,
   });
-
+  
   const profileData = query.data;
 
   return {
     query,
-    user: profileData, // Ini yang dipakai di HomePage (profile?.user?.name)
+    // Jika di HomePage pakai profile.user?.name, maka mappingnya begini:
+    user: profileData, 
     sekolah: profileData?.sekolah,
+    visiMission: profileData?.visionMission,
     isLoading: query.isLoading
   };
 };

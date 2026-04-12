@@ -270,6 +270,13 @@ export const MENU_STAFF: VokadashProps["menus"] = [
   },
   {
     // title: lang.text("class"),
+    title: "MANAJEMEN ADMIN",
+    url: "/manajemen-admin",
+    icon: "ClipboardList",
+    main: true
+  },
+  {
+    // title: lang.text("class"),
     title: "MANAJEMEN KELAS",
     url: "/manajemen-kelas",
     icon: "School",

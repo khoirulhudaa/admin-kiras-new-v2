@@ -6,7 +6,7 @@ export const useProfileAction = () => {
   const profile = useProfile();
 
   const alert = useAlert();
-  const isLoading = profile.mutation.isPending;
+  const isLoading = profile?.mutation?.isPending;
 
   const onInputFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,

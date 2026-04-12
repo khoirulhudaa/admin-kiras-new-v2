@@ -1,6 +1,11 @@
 import { lang } from "@/core/libs";
 import z from "zod";
 
+const coordinateSchema = z.union([
+  z.string().regex(/^-?\d*\.?\d*$/, { message: "Format koordinat tidak valid" }),
+  z.number()
+]);
+
 export const schoolCreationFormSchema = z
   .object({
     alamatSekolah: z.string().min(1, { message: "Alamat sekolah harus diisi" }),
@@ -20,8 +25,8 @@ export const schoolCreationFormSchema = z
     tokenMoodle: z.string().optional(),
     libraryServer: z.string().optional(),
     location: z.object({
-      lat: z.number(),
-      lng: z.number(),
+      lat: coordinateSchema,
+      lng: coordinateSchema,
     }),
     email: z
       .string()

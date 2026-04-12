@@ -7,16 +7,19 @@ import { Toaster, toast } from "sonner"; // Pastikan sudah install: npm i sonner
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowLeft,
+  ArrowLeftRight,
   CheckCircle2,
   ChevronDown,
   Download,
   Edit,
   Eye,
+  EyeOff,
   FileSpreadsheet,
   FileText,
   GraduationCap,
-  Palette,
-  Plus,
+  IdCard,
+  PlusCircle,
   Printer,
   RefreshCw,
   Search,
@@ -25,11 +28,12 @@ import {
   User,
   X
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import GraduationModal from "../components/graduationModal";
 import { generateStudentCardsPDF } from "../utils/generateStudentCards";
+import { useProfile } from "@/features/profile";
 
 const BASE_URL = "https://be-school.kiraproject.id/siswa";
 // const BASE_URL = "http://localhost:5005/siswa";
@@ -41,6 +45,7 @@ interface Student {
   nis: string;
   class: string;
   batch: any;
+  rfidUid?: string; 
   nisn: string;
   gender: string;
   nik: string;
@@ -56,158 +61,484 @@ interface Student {
 const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isProcessing }: any) => {
   if (!open) return null;
 
-  // Generate list bg1.png sampai bg12.png
+  // const [activeTab, setActiveTab] = React.useState<'depan' | 'belakang'>('depan');
   const bgPresets = Array.from({ length: 12 }, (_, i) => `/bg${i + 1}.png`);
 
   return (
     <AnimatePresence>
       <motion.div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000]" onClick={onClose} />
+      
       <motion.div 
-        initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-        className="fixed right-0 top-0 h-full w-full max-w-2xl bg-[#0B1220] border-l border-white/10 z-[100001] p-10 overflow-y-auto"
+        initial={{ x: "100%" }} 
+        animate={{ x: 0 }} 
+        exit={{ x: "100%" }}
+        className="fixed right-0 top-0 h-full w-full max-w-7xl bg-[#0B1220] border-l border-white/10 z-[100001] py-6 pl-6 overflow-hidden"
       >
-        <div className="flex justify-between items-center mb-10">
+        {/* <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-tight">Design Kartu</h2>
-            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Sesuaikan tampilan kartu pelajar</p>
+            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">
+              Sesuaikan tampilan kartu pelajar
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-zinc-500"><X/></button>
-        </div>
-
-        <div className="space-y-10">
-          {/* Live Preview */}
-          <div className="flex flex-col items-center justify-center p-8 py-12 bg-white/5 rounded-3xl border border-white/10 relative">
-            <div 
-              className="w-[320px] h-[200px] rounded-xl shadow-2xl overflow-hidden relative bg-white border border-white/20"
-              style={{ 
-                backgroundImage: config.bgImage ? `url(${config.bgImage})` : 'none',
-                backgroundSize: 'cover', 
-                backgroundPosition: 'center'
-              }}
-            >
-              {/* Header dengan Accent Color */}
-              <div className="h-10 flex flex-col items-center shadow-none justify-center" style={{ backgroundColor: config.accentColor }}>
-                <div 
-                  className="text-[10px] font-black tracking-widest uppercase"
-                  style={{ color: config.titleColor }} // Warna dinamis
-                >
-                  {config.title}
-                </div>
-                <div 
-                  className="text-[6px] font-bold opacity-80 uppercase"
-                  style={{ color: config.subtitleColor }} // Warna dinamis
-                >
-                  {config.subtitle}
-                </div>
-              </div>
-
-              {/* Content Area */}
-              <div className="p-4 flex gap-4 h-[calc(100%-40px)] relative">
-                {/* Foto Siswa */}
-                <div className="w-20 h-24 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                  <User size={40} className="text-slate-300"/>
-                </div>
-
-                {/* Informasi Teks */}
-                <div className="flex-1 space-y-1.5 pt-1">
-                  <div className="leading-tight">
-                    <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nama Lengkap</div>
-                    <div className="text-[10px] font-black text-slate-800 uppercase truncate">NAMA SISWA LENGKAP</div>
-                  </div>
-                  <div className="leading-tight">
-                    <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nomor Induk</div>
-                    <div className="text-[8px] font-bold text-slate-700">NIS: 123456789</div>
-                    <div className="text-[7px] font-semibold text-slate-500">NISN: 00987654321</div>
-                  </div>
-                  <div className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[5px] font-black rounded-full uppercase">
-                    Status: Aktif
-                  </div>
-                </div>
-
-                {/* QR Code di Sudut Kanan Bawah */}
-                <div className="absolute bottom-4 right-4 w-12 h-12 border border-slate-200 flex items-center justify-center p-1 bg-white rounded-md shadow-sm">
-                  <div className="text-[5px] font-bold text-slate-300">QR CODE</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Warna Judul</label>
-              <input 
-                type="color" 
-                value={config.titleColor} 
-                onChange={e => setConfig({...config, titleColor: e.target.value})} 
-                className="w-full h-14 bg-transparent border-none cursor-pointer" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Warna Subtitle</label>
-              <input 
-                type="color" 
-                value={config.subtitleColor} 
-                onChange={e => setConfig({...config, subtitleColor: e.target.value})} 
-                className="w-full h-14 bg-transparent border-none cursor-pointer" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Judul Kartu</label>
-              <input value={config.title} onChange={e => setConfig({...config, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Warna Aksen</label>
-              <input type="color" value={config.accentColor} onChange={e => setConfig({...config, accentColor: e.target.value})} className="w-full h-14 bg-transparent border-none cursor-pointer" />
-            </div>
-          </div>
-
-          {/* BACKGROUND PRESETS */}
-          <div className="space-y-4">
-            <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Pilih Background Preset</label>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-              {bgPresets.map((bg, index) => (
-                <button
-                  key={index}
-                  onClick={() => setConfig({ ...config, bgImage: bg })}
-                  className={`aspect-video rounded-lg border-2 overflow-hidden transition-all ${config.bgImage === bg ? 'border-blue-500 scale-95' : 'border-white/10 hover:border-white/30'}`}
-                >
-                  <img src={bg} alt={`BG ${index + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-              
-              {/* Custom Upload Button */}
-              <label className="aspect-video rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/5 hover:border-white/30 transition-all">
-                <Upload size={16} className="text-zinc-500" />
-                <input type="file" hidden accept="image/*" onChange={e => {
-                  const file = e.target.files?.[0];
-                  if(file) {
-                    const reader = new FileReader();
-                    reader.onload = (re) => setConfig({...config, bgImage: re.target?.result as string});
-                    reader.readAsDataURL(file);
-                  }
-                }} />
-              </label>
-            </div>
-          </div>
-
-          <button onClick={onGenerate} disabled={isProcessing} className="w-full py-5 bg-red-600 rounded-2xl font-black uppercase tracking-widest text-white hover:bg-red-500 transition-all flex items-center justify-center gap-3">
-            <Printer size={20}/> {isProcessing ? "Proses..." : "Cetak Kartu PDF"}
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-zinc-500">
+            <X size={24} />
           </button>
+        </div> */}
+
+        <div className="flex gap-8 h-full">
+          
+          {/* ==================== LIVE PREVIEW (KIRI) ==================== */}
+          <div className="flex-1 flex flex-col">
+            {/* <div className="text-sm font-bold text-white/70 mb-4">LIVE PREVIEW</div> */}
+            
+            <div className="flex-1 bg-white/5 rounded-3xl border border-white/10 p-8 overflow-auto">
+              <div className="flex flex-col items-center gap-10">
+
+                {/* KARTU DEPAN */}
+                <div>
+                  <div className="text-xs font-bold text-white uppercase tracking-widest mb-3 text-center">KARTU DEPAN</div>
+                  <div 
+                    className="w-[320px] h-[200px] rounded-xl shadow-2xl overflow-hidden relative bg-white border border-white/20"
+                    style={{ 
+                      backgroundImage: config.bgImage ? `url(${config.bgImage})` : 'none', 
+                      backgroundSize: 'cover', 
+                      backgroundPosition: 'center' 
+                    }}
+                  >
+                    {config.bgImage && (
+                      <div 
+                        className="absolute inset-0 bg-white z-0" 
+                        style={{ opacity: config.bgOpacityFront ?? 0.40 }} 
+                      />
+                    )}
+
+                    {/* Header */}
+                    <div 
+                      className="relative z-10 h-[50px] flex items-center justify-between px-3"
+                      style={{ 
+                        backgroundColor: config.accentColor === "transparent" ? "transparent" : config.accentColor 
+                      }}
+                    >
+                      {config.logoSchool ? (
+                        <img src={config.logoSchool} className="h-7 w-7 object-contain" alt="logo sekolah" />
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-white/20" />
+                      )}
+
+                      <div className="flex flex-col items-center flex-1 mx-2">
+                        <div className="text-[9px] font-black tracking-widest uppercase leading-tight" style={{ color: config.titleColor }}>
+                          {config.title || "KARTU TANDA SISWA"}
+                        </div>
+                        <div className="text-[6px] font-bold uppercase leading-tight" style={{ color: config.subtitleColor }}>
+                          {config.subtitle || "SMK NEGERI"}
+                        </div>
+                        {config.schoolAddress && (
+                          <div className="text-[5px] opacity-80 text-center leading-tight" style={{ color: config.subtitleColor }}>
+                            {config.schoolAddress}
+                          </div>
+                        )}
+                      </div>
+
+                      {config.logoDinas ? (
+                        <img src={config.logoDinas} className="h-7 w-7 object-contain" alt="logo dinas" />
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-white/20" />
+                      )}
+                    </div>
+
+                    {/* Body Depan */}
+                    <div className="relative z-10 p-3 flex gap-3 h-[calc(100%-50px)]">
+                      <div className="w-16 h-20 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
+                        <User size={32} className="text-slate-300"/>
+                      </div>
+                      <div className="flex-1 space-y-1 pt-1">
+                        <div className="text-[9px] font-black text-slate-800 uppercase truncate">NAMA SISWA LENGKAP</div>
+                        <div className="text-[7px] font-bold text-slate-600">NIS: 123456789</div>
+                        <div className="text-[7px] font-semibold text-slate-500">KLS: 10-RPL-1</div>
+                        <div className="text-[7px] font-semibold text-slate-500">RFID: A1 B2 C3 D4</div>
+                      </div>
+                      <div className="absolute bottom-3 right-3 w-10 h-10 border border-slate-200 flex items-center justify-center bg-white rounded-md shadow-sm">
+                        <div className="text-[4px] font-bold text-slate-300">QR</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KARTU BELAKANG */}
+                <div>
+                  <div className="text-xs font-bold text-white uppercase tracking-widest mb-3 text-center">KARTU BELAKANG</div>
+                  <div 
+                    className="w-[320px] h-[200px] rounded-xl shadow-2xl overflow-hidden relative bg-white border border-white/20"
+                    style={{ 
+                      backgroundImage: config.bgImage ? `url(${config.bgImage})` : 'none', 
+                      backgroundSize: 'cover', 
+                      backgroundPosition: 'center' 
+                    }}
+                  >
+                    {config.bgImage && (
+                      <div 
+                        className="absolute inset-0 bg-white z-0" 
+                        style={{ opacity: config.bgOpacityBack ?? 0.40 }} 
+                      />
+                    )}
+
+                    <div className="relative z-10 p-5 h-full flex flex-col gap-4">
+                      {/* VISI */}
+                      <div>
+                        <div 
+                          className="font-black uppercase mb-1 tracking-wider"
+                          style={{ 
+                            color: config.vmTitleColor || "#000000",
+                            fontSize: `${config.vmTitleFontSize || 7}px`
+                          }}
+                        >
+                          VISI
+                        </div>
+                        <div 
+                          className="leading-tight"
+                          style={{ 
+                            color: config.vmTextColor || "#1e293b",
+                            fontSize: `${config.vmVisionFontSize || 6}px`
+                          }}
+                        >
+                          {config.visionMission?.vision || 
+                            <span className="italic text-slate-400">Visi belum diisi...</span>
+                          }
+                        </div>
+                      </div>
+
+                      {/* MISI */}
+                      <div>
+                        <div 
+                          className="font-black uppercase mb-1 tracking-wider"
+                          style={{ 
+                            color: config.vmTitleColor || "#000000",
+                            fontSize: `${config.vmTitleFontSize || 7}px`
+                          }}
+                        >
+                          MISI
+                        </div>
+                        <div className="space-y-0.5">
+                          {(() => {
+                            const getBullet = (i: number) => {
+                              switch (config.missionBulletStyle ?? "number") {
+                                case "dot":   return "• ";
+                                case "dash":  return "— ";
+                                case "arrow": return "→ ";
+                                default:      return `${i + 1}. `;
+                              }
+                            };
+
+                            const fontSize = config.vmMissionFontSize || 5.5;
+                            const missionSpacing = config.missionSpacing ?? 2.6;
+                            // Sama persis: font size px * multiplier = line height px
+                            const lineHeightPx = fontSize * missionSpacing;
+
+                            return config.visionMission?.missions?.slice(0, 5).map((m: string, i: number) => (
+                              <div
+                                key={i}
+                                className="leading-tight"
+                                style={{
+                                  color: config.vmTextColor || "#1e293b",
+                                  fontSize: `${fontSize}px`,
+                                  marginBottom: `${lineHeightPx * 0.15}px`, // sedikit gap antar item
+                                  lineHeight: `${lineHeightPx}px`,           // line height konsisten
+                                }}
+                              >
+                                {getBullet(i)}{m}
+                              </div>
+                            )) ?? <div className="italic text-slate-400 text-[6px]">Misi belum diisi...</div>;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* ==================== CONTROLS (KANAN) ==================== */}
+          <div className="w-1/2 flex-shrink-0 overflow-y-auto pr-6 custom-scrollbar">
+            <div className="w-full flex justify-between items-center mb-5">
+              <div onClick={onClose} className="text-sm flex items-center gap-3 cursor-pointer active:scale-[0.98] hover:text-red-500/90 font-bold text-red-400">
+                <ArrowLeft />
+                KEMBALI
+              </div>
+              <div className="text-sm font-bold text-white/70">PENGATURAN KARTU</div>
+              {/* <X className="text-red-400" /> */}
+            </div>
+            
+            <div className="space-y-8">
+              {/* Warna & Teks Dasar */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Warna Judul</label>
+                  <input type="color" value={config.titleColor} onChange={e => setConfig({...config, titleColor: e.target.value})} className="w-full h-12 bg-transparent border-none cursor-pointer rounded" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Warna Subtitle</label>
+                  <input type="color" value={config.subtitleColor} onChange={e => setConfig({...config, subtitleColor: e.target.value})} className="w-full h-12 bg-transparent border-none cursor-pointer rounded" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Judul Kartu</label>
+                  <input value={config.title} onChange={e => setConfig({...config, title: e.target.value})} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-blue-500" />
+                </div>
+
+                {/* Warna Aksen */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Warna Aksen (Header)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={config.accentColor === "transparent" ? "#2563eb" : config.accentColor}
+                      onChange={e => setConfig({...config, accentColor: e.target.value})}
+                      className="w-14 h-12 bg-transparent border-none cursor-pointer rounded"
+                    />
+                    <button
+                      onClick={() => setConfig({...config, accentColor: "transparent"})}
+                      className={`flex-1 h-12 rounded-xl border-2 text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-all ${
+                        config.accentColor === "transparent" ? "border-blue-500 bg-blue-500/10 text-blue-400" : "border-white/20 hover:border-white/40 bg-white/5 text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      {config.accentColor === "transparent" ? "✓ Transparent" : "Transparent"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pengaturan Visi & Misi */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase">Warna Judul Visi & Misi</label>
+                    <input type="color" value={config.vmTitleColor || "#000000"} onChange={e => setConfig({...config, vmTitleColor: e.target.value})} className="w-full h-12 bg-transparent border-none cursor-pointer rounded" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase">Warna Teks Visi & Misi</label>
+                    <input type="color" value={config.vmTextColor || "#1e293b"} onChange={e => setConfig({...config, vmTextColor: e.target.value})} className="w-full h-12 bg-transparent border-none cursor-pointer rounded" />
+                  </div>
+                </div>
+
+                {/* Ukuran Font Visi & Misi */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase">Ukuran Judul Visi & Misi</label>
+                    <input type="range" min="6" max="9" step="0.1" value={config.vmTitleFontSize || 7} onChange={e => setConfig({...config, vmTitleFontSize: parseFloat(e.target.value)})} className="w-full accent-blue-500" />
+                    <div className="text-center text-xs text-white/60">{config.vmTitleFontSize || 7} pt</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase">Ukuran Teks Visi</label>
+                    <input type="range" min="5" max="7" step="0.1" value={config.vmVisionFontSize || 6} onChange={e => setConfig({...config, vmVisionFontSize: parseFloat(e.target.value)})} className="w-full accent-blue-500" />
+                    <div className="text-center text-xs text-white/60">{config.vmVisionFontSize || 6} pt</div>
+                  </div>
+
+                </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase">Ukuran Teks Misi</label>
+                    <input type="range" min="4.5" max="6.5" step="0.1" value={config.vmMissionFontSize || 5.5} onChange={e => setConfig({...config, vmMissionFontSize: parseFloat(e.target.value)})} className="w-full accent-blue-500" />
+                    <div className="text-center text-xs text-white/60">{config.vmMissionFontSize || 5.5} pt</div>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Jarak Antar Misi */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Jarak Antar Misi</label>
+                  <div className="space-y-2">
+                    <input
+                      type="range" min="2" max="3" step="0.1"
+                      value={config.missionSpacing ?? 2.6}
+                      onChange={e => setConfig({...config, missionSpacing: parseFloat(e.target.value)})}
+                      className="w-full accent-blue-500"
+                    />
+                    <div className="text-center text-xs text-white/60">{(config.missionSpacing ?? 2.6).toFixed(1)} mm</div>
+                  </div>
+                </div>
+
+                {/* Style Bullet Misi */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Style List Misi</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: "number", label: "1. 2. 3." },
+                      { value: "dot",    label: "• • •" },
+                      { value: "dash",   label: "— — —" },
+                      { value: "arrow",  label: "→ → →" },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setConfig({...config, missionBulletStyle: opt.value})}
+                        className={`py-3 rounded-xl border-2 text-xs font-bold transition-all ${
+                          (config.missionBulletStyle ?? "number") === opt.value
+                            ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                            : "border-white/10 bg-white/5 text-zinc-500 hover:border-white/30"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Opacity Background */}
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase block mb-2">Opacity BG Depan</label>
+                  <div className="flex-col flex gap-4">
+                    <input type="range" min="0.1" max="0.9" step="0.05" value={config.bgOpacityFront ?? 0.40} onChange={e => setConfig({...config, bgOpacityFront: parseFloat(e.target.value)})} className="flex-1 accent-blue-500" />
+                    <span className="font-mono text-center text-sm text-white/70 w-12 mx-auto">{(config.bgOpacityFront ?? 0.40).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase block mb-2">Opacity BG Belakang</label>
+                  <div className="flex-col flex gap-4">
+                    <input type="range" min="0.1" max="0.9" step="0.05" value={config.bgOpacityBack ?? 0.40} onChange={e => setConfig({...config, bgOpacityBack: parseFloat(e.target.value)})} className="flex-1 accent-blue-500" />
+                    <span className="font-mono text-center text-sm text-white/70 w-12 mx-auto">{(config.bgOpacityBack ?? 0.40).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Logo Sekolah & Dinas */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Logo Sekolah (Kiri)</label>
+                  <label className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-blue-500/50 overflow-hidden">
+                    {config.logoSchool ? (
+                      <img src={config.logoSchool} className="h-full object-contain p-2" />
+                    ) : (
+                      <div className="text-center text-zinc-500"><Upload size={24} className="mx-auto mb-2"/><span className="text-xs">Upload Logo</span></div>
+                    )}
+                    <input type="file" hidden accept="image/*" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = ev => setConfig({...config, logoSchool: ev.target?.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                  </label>
+                  {/* {config.logoSchool && <button onClick={() => setConfig({...config, logoSchool: null})} className="text-red-400 text-xs hover:text-red-300">Hapus</button>} */}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Logo Dinas (Kanan)</label>
+                  <label className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-blue-500/50 overflow-hidden">
+                    {config.logoDinas ? (
+                      <img src={config.logoDinas} className="h-full object-contain p-2" />
+                    ) : (
+                      <div className="text-center text-zinc-500"><Upload size={24} className="mx-auto mb-2"/><span className="text-xs">Upload Logo</span></div>
+                    )}
+                    <input type="file" hidden accept="image/*" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = ev => setConfig({...config, logoDinas: ev.target?.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                  </label>
+                  {/* {config.logoDinas && <button onClick={() => setConfig({...config, logoDinas: null})} className="text-red-400 text-xs hover:text-red-300">Hapus</button>} */}
+                </div>
+              </div>
+
+              {/* Alamat Sekolah */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/40 uppercase">Alamat Sekolah</label>
+                <input 
+                  value={config.schoolAddress || ""} 
+                  onChange={e => setConfig({...config, schoolAddress: e.target.value})} 
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500"
+                  placeholder="Jl. Contoh No. 1, Kec. X, Kota Y"
+                />
+              </div>
+
+              {/* Background Presets */}
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold text-white/40 uppercase">Pilih Background</label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                  {bgPresets.map((bg, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setConfig({ ...config, bgImage: bg })}
+                      className={`aspect-video rounded-lg border-2 overflow-hidden transition-all ${
+                        config.bgImage === bg ? 'border-blue-500 scale-95 shadow-lg' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <img src={bg} alt={`BG ${index + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                  <label className="aspect-video rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/5 hover:border-white/30">
+                    <Upload size={18} className="text-zinc-500" />
+                    <input type="file" hidden accept="image/*" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setConfig({...config, bgImage: ev.target?.result as string});
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 border-t gap-3 border-white/20 pt-6">
+                <button 
+                  onClick={onClose} 
+                  disabled={isProcessing} 
+                  className="w-full hover:bg-slate-100/20 active:scale-[0.98] py-4 bg-slate-100/10 rounded-2xl font-black uppercase tracking-widest text-white flex items-center justify-center gap-3 disabled:opacity-50 transition-all"
+                >
+                  <ArrowLeft size={21}/> 
+                  Batal
+                </button>
+                {/* Tombol Generate */}
+                <button 
+                  onClick={onGenerate} 
+                  disabled={isProcessing} 
+                  className="w-full py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest text-white flex items-center justify-center gap-3 disabled:opacity-50 transition-all"
+                >
+                  <Printer size={20}/> 
+                  {isProcessing ? "Sedang Memproses..." : "CETAK KARTU PDF"}
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </motion.div>
     </AnimatePresence>
   );
 };
 
-const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, classList }: any) => {
+const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubmit, schoolId, classList }: any) => {
   const [form, setForm] = useState({
     name: "", nis: "", nisn: "", nik: "", gender: "Laki-laki",
     birthPlace: "", birthDate: "", 
-    class: "", batch: "", // <--- Tambahkan ini
+    class: "", batch: "",
+    rfidUid: "", 
+    email: "", password: "", // <--- Tambahkan ini
     photo: null as File | null, preview: ""
   });
+  
+  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // 1. Effect khusus untuk update RFID saat scan (baik Add maupun Edit)
+  useEffect(() => {
+    if (open && prefilledRfid) {
+      setForm(prev => ({ ...prev, rfidUid: prefilledRfid }));
+    }
+  }, [prefilledRfid, open]);
+
+  // 2. Effect utama untuk load data awal (hanya jalankan sekali saat modal dibuka)
   useEffect(() => {
     if (open) {
       setForm({
@@ -218,13 +549,16 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
         gender: initialData?.gender || "Laki-laki",
         birthPlace: initialData?.birthPlace || "",
         birthDate: initialData?.birthDate || "",
-        class: initialData?.class || "", // Pastikan ini sesuai dengan key dari backend
+        class: initialData?.class || "", 
         batch: initialData?.batch || "",
+        email: initialData?.email || "",    
+        password: "",                
+        rfidUid: initialData?.rfidUid || prefilledRfid || "",       
         photo: null,
         preview: initialData?.photoUrl || "",
       });
     }
-  }, [open, initialData]);
+  }, [open, initialData]);   // ← Hapus prefilledRfid dari dependency
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); 
@@ -234,8 +568,13 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
       
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => { 
-        // Pastikan data yang dikirim tidak undefined/null agar tidak error di backend
-        if(k !== 'preview' && k !== 'photo' && v !== null && v !== undefined) {
+        if (k === 'preview' || k === 'photo') return;
+        
+        // Khusus field opsional: skip kalau kosong
+        const optionalFields = ['rfidUid', 'nisn', 'nik', 'birthPlace', 'birthDate', 'email', 'password'];
+        if (optionalFields.includes(k) && (v === null || v === undefined || v === '')) return;
+        
+        if (v !== null && v !== undefined) {
           fd.append(k, v.toString()); 
         }
       });
@@ -324,7 +663,30 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
                     <ChevronDown size={18} />
                   </div>
                 </div>
-              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase ml-2">
+                RFID UID (Tap Kartu)
+              </label>
+              <input 
+                autoComplete="off"
+                name="rfid-uid-scanner"
+                readOnly                          // ← tambah ini
+                onFocus={e => e.target.removeAttribute('readOnly')} 
+                value={form.rfidUid}
+                onChange={e => setForm({...form, rfidUid: e.target.value})}
+                maxLength={20}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+
+                    toast.success(`RFID terbaca: ${form.rfidUid}`);
+                  }
+                }}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500"
+                placeholder="Silakan tap kartu..."
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-white/40 uppercase ml-2">Angkatan (Batch)</label>
               <input value={form.batch} onChange={e => setForm({...form, batch: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" placeholder="2023/2024" required />
@@ -356,6 +718,43 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
               <label className="text-[10px] font-bold text-white/40 uppercase ml-2">Tanggal Lahir</label>
               <input type="date" value={form.birthDate} onChange={e => setForm({...form, birthDate: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" />
             </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase ml-2">Email Siswa (Opsional)</label>
+              <input 
+                type="text"
+                value={form.email} 
+                onChange={e => setForm({...form, email: e.target.value})} 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" 
+                placeholder="contoh@gmail.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase ml-2">
+                Password Akun
+              </label>
+              <div className="relative group">
+                <input 
+                  type={showPassword ? "text" : "password"} // Dinamis berdasarkan state
+                  autoComplete="new-password"
+                  name="student-new-password"
+                  readOnly                          // ← tambah ini
+                  onFocus={e => e.target.removeAttribute('readOnly')}
+                  value={form.password} 
+                  onChange={e => setForm({...form, password: e.target.value})} 
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 pr-12 text-white outline-none focus:border-blue-500 transition-all" 
+                  placeholder={initialData ? "Isi hanya jika ingin ganti" : "Default: sekolah123"}
+                />
+                
+                {/* Tombol Icon Mata */}
+                <button
+                  type="button" // Pastikan type="button" agar tidak men-submit form
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
           </div>
 
           <button type="submit" disabled={saving} className="w-full py-5 bg-blue-600 rounded-2xl font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/30">
@@ -367,10 +766,194 @@ const StudentModal = ({ open, onClose, title, initialData, onSubmit, schoolId, c
   );
 };
 
+const ConfirmDangerModal = ({ open, title, description, confirmLabel, onConfirm, onClose }: any) => {
+  if (!open) return null;
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200000] flex items-center justify-center p-6"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="fixed inset-0 z-[200001] flex items-center justify-center p-6 pointer-events-none"
+      >
+        <div className="bg-[#0B1220] border border-red-500/20 rounded-3xl p-8 w-full max-w-md shadow-2xl pointer-events-auto">
+          {/* Icon */}
+          <div className="h-16 w-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Trash2 size={28} className="text-red-400" />
+          </div>
+
+          {/* Text */}
+          <h3 className="text-xl font-black uppercase tracking-tight text-white text-center mb-2">
+            {title}
+          </h3>
+          <p className="text-zinc-400 text-sm text-center leading-relaxed mb-8">
+            {description}
+          </p>
+
+          {/* Warning badge */}
+          <div className="flex items-center gap-2 bg-red-500/10 text-center justify-center border border-red-500/20 rounded-xl px-4 py-3 mb-6">
+            {/* <AlertTriangle size={14} className="text-red-400 shrink-0" /> */}
+            <span className="text-[11px] text-red-400 font-bold uppercase tracking-wider">
+              Tindakan ini tidak dapat dibatalkan
+            </span>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-zinc-400 font-black uppercase text-[11px] tracking-widest hover:bg-white/10 transition-all"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => { onConfirm(); onClose(); }}
+              className="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest transition-all shadow-lg shadow-red-600/30"
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 // ──────────────────────────────────────────────────────────────
+
+const BulkChangeClassModal = ({ 
+  open, 
+  onClose, 
+  classList, 
+  selectedCount,
+  selectedBatch,
+  onSubmit,
+  isProcessing
+}: {
+  open: boolean;
+  onClose: () => void;
+  classList: any[];
+  selectedCount: number;
+  selectedBatch?: string; // untuk mode "by batch"
+  onSubmit: (newClass: string) => Promise<void>;
+  isProcessing: boolean;
+}) => {
+  const [targetClass, setTargetClass] = useState("");
+
+  // Reset saat modal dibuka
+  useEffect(() => {
+    if (open) setTargetClass("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const isByBatch = !!selectedBatch && selectedCount === 0;
+
+  return (
+    <AnimatePresence>
+      <motion.div 
+        className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000]" 
+        onClick={onClose} 
+      />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="fixed inset-0 z-[100001] flex items-center justify-center p-6 pointer-events-none"
+      >
+        <div className="bg-[#0B1220] border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl pointer-events-auto">
+          {/* Icon */}
+          <div className="h-16 w-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <ArrowLeftRight size={28} className="text-blue-400" />
+          </div>
+
+          {/* Title */}
+          <h3 className="text-2xl font-black uppercase tracking-tighter text-white text-center mb-1">
+            Pindah Kelas
+          </h3>
+          <p className="text-zinc-500 text-xs text-center mb-6 uppercase tracking-widest">
+            {isByBatch 
+              ? `Semua siswa Angkatan ${selectedBatch}`
+              : `${selectedCount} siswa terpilih`
+            }
+          </p>
+
+          {/* Target Class Select */}
+          <div className="space-y-2 mb-6">
+            <label className="text-[10px] font-bold text-white/40 uppercase ml-1">
+              Pilih Kelas Tujuan
+            </label>
+            <div className="relative">
+              <select
+                value={targetClass}
+                onChange={(e) => setTargetClass(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-blue-500 appearance-none font-bold cursor-pointer"
+              >
+                <option value="" disabled className="bg-[#0B1220]">
+                  -- Pilih Kelas Tujuan --
+                </option>
+                {classList.map((c: any) => (
+                  <option key={c.id} value={c.className} className="bg-[#0B1220]">
+                    {c.className}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown 
+                size={16} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500" 
+              />
+            </div>
+          </div>
+
+          {/* Warning */}
+          {targetClass && (
+            <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 mb-6">
+              <AlertCircle size={14} className="text-blue-400 shrink-0" />
+              <span className="text-[11px] text-blue-300 font-bold">
+                {isByBatch 
+                  ? `Semua siswa angkatan ${selectedBatch} → ${targetClass}`
+                  : `${selectedCount} siswa terpilih → ${targetClass}`
+                }
+              </span>
+            </div>
+          )}
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-zinc-400 font-black uppercase text-[11px] tracking-widest hover:bg-white/10 transition-all"
+            >
+              Batal
+            </button>
+            <button
+              onClick={async () => {
+                if (!targetClass) return;
+                await onSubmit(targetClass);
+              }}
+              disabled={!targetClass || isProcessing}
+              className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest transition-all shadow-lg shadow-blue-600/30 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? "Memproses..." : "Pindahkan"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 export default function StudentManager() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing2, setIsProcessing2] = useState(false);
   const [modals, setModals] = useState<any>({ add: false, edit: false, designer: false });
   const [selected, setSelected] = useState<Student | null>(null);
   const [page, setPage] = useState(1);
@@ -384,28 +967,141 @@ export default function StudentManager() {
   const [graduationModal, setGraduationModal] = useState(false);
   const [duplicateSummary, setDuplicateSummary] = useState({ uniqueNisDuplicates: 0, uniqueNisnDuplicates: 0 });
   const [gradData, setGradData] = useState({ year: new Date().getFullYear(), note: "", batch: "" });
-
+  // const [manualRFID, setManualRFID] = useState("");
+  // const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
   // Filter tambahan untuk UI (opsional tapi disarankan)
   const [filterClass, setFilterClass] = useState("");
   const [filterBatch, setFilterBatch] = useState("");
+  const [bulkNotifs, setBulkNotifs] = useState<{id: number, type: 'warning' | 'error', title: string, list: string[]}[]>([]);
+  const [showDeleteMenu, setShowDeleteMenu] = useState(false);
+  const [deleteBatch, setDeleteBatch] = useState("");
+  const [changeClassModal, setChangeClassModal] = useState(false);
+  const [changeClassBatch, setChangeClassBatch] = useState(""); // untuk mode by-batch
+  const [isChangingClass, setIsChangingClass] = useState(false);
+  const [showMoveClassMenu, setShowMoveClassMenu] = useState(false);
+  const [moveClassBatch, setMoveClassBatch] = useState("");
+  const [moveClassTarget, setMoveClassTarget] = useState("");
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  }>({ open: false, title: "", description: "", confirmLabel: "", onConfirm: () => {} });
+  
+  const profile = useProfile()
+
+  console.log('profile', profile)
+  // Tambah useEffect untuk close saat klik luar
+  useEffect(() => {
+    if (!showDeleteMenu) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.delete-menu-wrapper')) {
+        setShowDeleteMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDeleteMenu]);
+
+  useEffect(() => {
+    if (!showMoveClassMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.move-class-menu-wrapper')) {
+        setShowMoveClassMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMoveClassMenu]);
+
+  const addBulkNotif = (type: 'warning' | 'error', title: string, list: string[]) => {
+    const id = Date.now();
+    setBulkNotifs(prev => [...prev, { id, type, title, list }]);
+  };
+
+  const removeBulkNotif = (id: number) => {
+    setBulkNotifs(prev => prev.filter(n => n.id !== id));
+  };
 
   const [progress, setProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
   // Tambahkan baris ini di bagian deklarasi state
   const [showDuplicateOnly, setShowDuplicateOnly] = useState(false);
+  const [prefilledRfid, setPrefilledRfid] = useState("");
+
+
+  console.log('schppl', profile.user.visionMission)
 
   const [cardConfig, setCardConfig] = useState<any>({
     title: "KARTU PELAJAR",
-    subtitle: "SMK NEGERI PRO DIGITAL",
+    subtitle: profile?.sekolah?.namaSekolah,
     accentColor: "#2563eb",
     titleColor: "#ffffff",    
     subtitleColor: "#ffffff", 
-    bgImage: null
+    schoolAddress: "Jl. Contoh No. 1, Kec. X, Kota Y",
+    logoSchool: null,
+    logoDinas: null,
+    bgImage: null,
+    visionMission: profile?.user?.visionMission || null, // ← tambahkan ini
+    vmTitleColor: "#000000",   // ← warna judul VISI / MISI
+    vmTextColor: "#1e293b",
+    vmTitleFontSize: 7,
+    vmVisionFontSize: 6,
+    vmMissionFontSize: 5.5,
+    bgOpacityFront: 0.40,
+    bgOpacityBack: 0.40, 
+    missionSpacing: 2.6,       // ← BARU: jarak antar misi (mm)
+    missionBulletStyle: "number",
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // --- GANTI DENGAN LODASH DEBOUNCE ---
+  
+  useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = Date.now();
+
+    const handleKey = (e: KeyboardEvent) => {
+      const now = Date.now();
+      if (now - lastKeyTime > 50) buffer = "";
+      lastKeyTime = now;
+
+      if (e.key === "Enter" && buffer.length > 5) {
+        const scanned = buffer.trim();
+        toast.success(`RFID terbaca: ${scanned}`);
+
+        if (modals.edit && selected?.id) {
+          // Update selected state
+          setSelected(prev => prev ? { ...prev, rfidUid: scanned } : null);
+          toast.info("✅ RFID berhasil diupdate di form Edit", { duration: 1800 });
+        } else {
+          // Mode Tambah
+          setSelected(null);
+          setModals((prev: any) => ({ ...prev, add: true }));
+          setTimeout(() => {
+            setPrefilledRfid(scanned);
+          }, 80);
+        }
+
+        buffer = "";
+        return;
+      }
+
+      if (e.key.length === 1) buffer += e.key;
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [modals.edit, selected?.id]);   // Gunakan selected?.id agar lebih stabil
+  
   const debouncedSetSearch = useMemo(
     () => debounce((value: string) => {
       setDebouncedSearch(value);
@@ -434,22 +1130,13 @@ export default function StudentManager() {
   // GANTI DENGAN INI
 
   const { data: studentData, isLoading: loading, refetch, isFetching } = useQuery({
-    queryKey: [
-      'students', 
-      schoolId, 
-      page, 
-      limit, 
-      debouncedSearch, 
-      filterClass, 
-      filterBatch,
-      showDuplicateOnly   // ← tambahkan ini
-    ],
+   queryKey: ['students', schoolId, page, limit, debouncedSearch, filterClass, filterBatch, showDuplicateOnly],
     queryFn: async () => {
       const params = new URLSearchParams({
         schoolId: schoolId.toString(),
         page: page.toString(),
         limit: limit.toString(),
-        name: debouncedSearch,
+        search: debouncedSearch,
         isDuplicateOnly: showDuplicateOnly ? 'true' : 'false',   // ← tambahkan ini
       });
 
@@ -475,6 +1162,10 @@ export default function StudentManager() {
     }
   }, [studentData]);
 
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['students'] });
+  };
+
   useEffect(() => {
     const fetchClasses = async () => {
       if (!schoolId) return;
@@ -488,22 +1179,25 @@ export default function StudentManager() {
       }
     };
 
-    if (open) { // Hanya fetch saat modal terbuka
+    // if (open) { // Hanya fetch saat modal terbuka
+    //   fetchClasses();
+    // }
+    if (modals.add || modals.edit || showMoveClassMenu) {
       fetchClasses();
     }
-  }, [open, schoolId]);
+  }, [modals.add, modals.edit, showMoveClassMenu, schoolId]);
 
   const handleDownloadTemplate = () => {
     const templateData = [
-      { Nama: "Ahmad Fauzi", Gender: "Laki-laki", NIK: "3201010101010001", NISN: "0012345678", NIS: "2425001", TempatLahir: "Jakarta", TanggalLahir: "2008-05-12", Kelas: "10-RPL-1", Angkatan: "2024" },
-      { Nama: "Siti Aminah", Gender: "Perempuan", NIK: "3201010101010002", NISN: "0012345679", NIS: "2425002", TempatLahir: "Bandung", TanggalLahir: "2008-08-20", Kelas: "10-RPL-1", Angkatan: "2024" },
-      { Nama: "Budi Santoso", Gender: "Laki-laki", NIK: "3201010101010003", NISN: "0012345680", NIS: "2425003", TempatLahir: "Surabaya", TanggalLahir: "2007-12-05", Kelas: "11-TKJ-2", Angkatan: "2023" },
-      { Nama: "Dewa Made", Gender: "Laki-laki", NIK: "3201010101010004", NISN: "0012345681", NIS: "2425004", TempatLahir: "Denpasar", TanggalLahir: "2008-01-15", Kelas: "10-RPL-2", Angkatan: "2024" },
-      { Nama: "Putri Lestari", Gender: "Perempuan", NIK: "3201010101010005", NISN: "0012345682", NIS: "2425005", TempatLahir: "Medan", TanggalLahir: "2009-03-10", Kelas: "10-RPL-1", Angkatan: "2024" },
-      { Nama: "Rizky Ramadhan", Gender: "Laki-laki", NIK: "3201010101010006", NISN: "0012345683", NIS: "2425006", TempatLahir: "Makassar", TanggalLahir: "2008-09-25", Kelas: "11-TKJ-1", Angkatan: "2023" },
-      { Nama: "Maya Indah", Gender: "Perempuan", NIK: "3201010101010007", NISN: "0012345684", NIS: "2425007", TempatLahir: "Yogyakarta", TanggalLahir: "2008-07-07", Kelas: "10-RPL-2", Angkatan: "2024" },
-      { Nama: "Andi Wijaya", Gender: "Laki-laki", NIK: "3201010101010008", NISN: "0012345685", NIS: "2425008", TempatLahir: "Semarang", TanggalLahir: "2007-11-30", Kelas: "12-RPL-1", Angkatan: "2022" },
-      { Nama: "Larasati", Gender: "Perempuan", NIK: "3201010101010009", NISN: "0012345686", NIS: "2425009", TempatLahir: "Malang", TanggalLahir: "2008-04-14", Kelas: "10-TKJ-1", Angkatan: "2024" },
+      { Nama: "Ahmad Fauzi", Gender: "Laki-laki", NIK: "3201010101010001", NISN: "0012345678", NIS: "2425001", TempatLahir: "Jakarta", TanggalLahir: "2008-05-12", Kelas: "10-RPL-1", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Siti Aminah", Gender: "Perempuan", NIK: "3201010101010002", NISN: "0012345679", NIS: "2425002", TempatLahir: "Bandung", TanggalLahir: "2008-08-20", Kelas: "10-RPL-1", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Budi Santoso", Gender: "Laki-laki", NIK: "3201010101010003", NISN: "0012345680", NIS: "2425003", TempatLahir: "Surabaya", TanggalLahir: "2007-12-05", Kelas: "11-TKJ-2", Angkatan: "2023", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Dewa Made", Gender: "Laki-laki", NIK: "3201010101010004", NISN: "0012345681", NIS: "2425004", TempatLahir: "Denpasar", TanggalLahir: "2008-01-15", Kelas: "10-RPL-2", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Putri Lestari", Gender: "Perempuan", NIK: "3201010101010005", NISN: "0012345682", NIS: "2425005", TempatLahir: "Medan", TanggalLahir: "2009-03-10", Kelas: "10-RPL-1", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Rizky Ramadhan", Gender: "Laki-laki", NIK: "3201010101010006", NISN: "0012345683", NIS: "2425006", TempatLahir: "Makassar", TanggalLahir: "2008-09-25", Kelas: "11-TKJ-1", Angkatan: "2023", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Maya Indah", Gender: "Perempuan", NIK: "3201010101010007", NISN: "0012345684", NIS: "2425007", TempatLahir: "Yogyakarta", TanggalLahir: "2008-07-07", Kelas: "10-RPL-2", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Andi Wijaya", Gender: "Laki-laki", NIK: "3201010101010008", NISN: "0012345685", NIS: "2425008", TempatLahir: "Semarang", TanggalLahir: "2007-11-30", Kelas: "12-RPL-1", Angkatan: "2022", Email: "xxx@gmail.com", Password: 'sekolah123' },
+      { Nama: "Larasati", Gender: "Perempuan", NIK: "3201010101010009", NISN: "0012345686", NIS: "2425009", TempatLahir: "Malang", TanggalLahir: "2008-04-14", Kelas: "10-TKJ-1", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
       { Nama: "Farhan Hakim", Gender: "Laki-laki", NIK: "3201010101010100", NISN: "0012345687", NIS: "2425010", TempatLahir: "Palembang", TanggalLahir: "2008-02-28", Kelas: "11-RPL-1", Angkatan: "2023" }
     ];
     const ws = XLSX.utils.json_to_sheet(templateData);
@@ -512,52 +1206,170 @@ export default function StudentManager() {
     XLSX.writeFile(wb, "Template_Siswa.xlsx");
   };
 
+  const handleBulkChangeClass = async (newClass: string) => {
+    setIsChangingClass(true);
+    try {
+      const body: any = { schoolId, newClass };
+
+      if (selectedIds.length > 0) {
+        // Mode: by checkbox
+        body.studentIds = selectedIds;
+      } else if (changeClassBatch) {
+        // Mode: by batch
+        body.batch = changeClassBatch;
+      }
+
+      const res = await fetch(`${BASE_URL}/class/bulk-update-class`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json.message || "Gagal memindahkan kelas");
+
+      toast.success(json.message);
+      setChangeClassModal(false);
+      setSelectedIds([]);
+      setChangeClassBatch("");
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsChangingClass(false);
+    }
+  };
+
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !schoolId) return;
-      setIsProcessing(true);
+  const file = e.target.files?.[0];
+  if (!file || !schoolId) return;
 
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const dataBinary = evt.target?.result;
-          const wb = XLSX.read(dataBinary, { type: "binary" });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const data: any[] = XLSX.utils.sheet_to_json(ws, { raw: false, dateNF: "yyyy-mm-dd" });
+  setIsProcessing2(true);
+  setUploadProgress(0);
 
-          for (const row of data) {
-            const fd = new FormData();
-            fd.append("name", row["Nama"] || "");
-            fd.append("gender", row["Gender"] || "");
-            fd.append("nik", row["NIK"] ? row["NIK"].toString() : "");
-            fd.append("nisn", row["NISN"] ? row["NISN"].toString() : "");
-            fd.append("nis", row["NIS"] ? row["NIS"].toString() : "");
-            fd.append("birthPlace", row["TempatLahir"] || "");
-            fd.append("birthDate", row["TanggalLahir"] || "");
-            fd.append("class", row["Kelas"] || "");
-            fd.append("batch", row["Angkatan"] || "");
-            fd.append("schoolId", schoolId.toString());
+  // Wadah untuk akumulasi hasil dari semua batch
+  const report = {
+    berhasil: 0,
+    dilewati: 0,
+    gagal: 0,
+    detail: {
+      nisDuplikat: [] as any[],
+      rfidDuplikat: [] as any[],
+      gagal: [] as any[],
+    }
+  };
 
-            const res = await fetch(BASE_URL, { method: "POST", body: fd });
-            const json = await res.json();
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    try {
+      const dataBinary = evt.target?.result;
+      const wb = XLSX.read(dataBinary, { type: "binary" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawData: any[] = XLSX.utils.sheet_to_json(ws, { raw: false });
 
-            if (!res.ok) {
-              toast.error(json.message || "Gagal menambahkan siswa dari file", {
-                duration: 8000,
-              });
-            }
+      if (rawData.length === 0) throw new Error("File Excel kosong.");
+
+      const allStudents = rawData.map((row) => {
+        let rawDate = row["TanggalLahir"] || "";
+        let formattedDate = null;
+        if (rawDate && rawDate !== "Invalid date") {
+          const parts = String(rawDate).trim().split("-");
+          if (parts.length === 3) {
+            const p1 = parts[0], p2 = parts[1], p3 = parts[2];
+            if (p1.length === 4) formattedDate = `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+            else if (p3.length === 4) formattedDate = `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
           }
-
-          toast.success("Impor selesai");
-          queryClient.invalidateQueries({ queryKey: ['students'] });
-        } catch (e: any) {
-          toast.error(e.message || "Terjadi kesalahan saat membaca file.");
-        } finally {
-          setIsProcessing(false);
         }
-      };
-      reader.readAsBinaryString(file);
-    };
+        return {
+          name: row["Nama"] || "",
+          gender: row["Gender"] || "",
+          nik: row["NIK"]?.toString() || "",
+          nisn: row["NISN"]?.toString() || "",
+          nis: row["NIS"]?.toString() || "",
+          birthPlace: row["TempatLahir"] || "",
+          birthDate: formattedDate,
+          class: row["Kelas"] || "",
+          batch: row["Angkatan"] || "",
+          email: row["Email"] || "",
+          password: row["Password"] || "",
+        };
+      });
+
+      const totalData = allStudents.length;
+      const chunkSize = 50;
+
+      for (let i = 0; i < totalData; i += chunkSize) {
+        const chunk = allStudents.slice(i, i + chunkSize);
+        
+        const res = await fetch(`${BASE_URL}/bulk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ students: chunk, schoolId }),
+        });
+
+        const json = await res.json();
+
+        if (res.ok) {
+          // 1. Akumulasi summary
+          report.berhasil += json.summary.berhasil;
+          report.dilewati += json.summary.dilewati;
+          report.gagal += json.summary.gagal;
+
+          // 2. Akumulasi detail (INI PENTING)
+          // Walaupun berhasil 0, json.detail.nisDuplikat tetap ada isinya dari backend
+          if (json.detail.nisDuplikat) report.detail.nisDuplikat.push(...json.detail.nisDuplikat);
+          if (json.detail.rfidDuplikat) report.detail.rfidDuplikat.push(...json.detail.rfidDuplikat);
+          if (json.detail.gagal) report.detail.gagal.push(...json.detail.gagal);
+          
+          setUploadProgress(Math.round(((i + chunk.length) / totalData) * 100));
+        }
+      }
+
+      // TAMPILKAN NOTIFIKASI AKHIR
+      toast.success(
+        `Import selesai: ${report.berhasil} berhasil, ${report.dilewati} dilewati, ${report.gagal} gagal`,
+        { duration: 6000 }
+      );
+
+      if (report.detail.nisDuplikat.length > 0) {
+        addBulkNotif(
+          'warning',
+          `NIS Duplikat (${report.detail.nisDuplikat.length} siswa)`,
+          report.detail.nisDuplikat.map((s: any) => `• ${s.name} — [NIS: ${s.nis}]`)
+        );
+      }
+
+      if (report.detail.rfidDuplikat.length > 0) {
+        addBulkNotif(
+          'warning',
+          `RFID Duplikat (${report.detail.rfidDuplikat.length} siswa)`,
+          report.detail.rfidDuplikat.map((s: any) => `• ${s.name} — [RFID: ${s.rfidUid}]`)
+        );
+      }
+
+      if (report.detail.gagal.length > 0) {
+        addBulkNotif(
+          'error',
+          `Gagal Diproses (${report.detail.gagal.length} siswa)`,
+          report.detail.gagal.map((s: any) => `• ${s.name} — ${s.reason}`)
+        );
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+
+    } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTimeout(() => {
+        setIsProcessing2(false);
+        setUploadProgress(0);
+        if (e.target) e.target.value = "";
+      }, 1000);
+    }
+  };
+  reader.readAsBinaryString(file);
+};
 
 const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'Alpha') => {
     if (!window.confirm(`Tandai ${student.name} sebagai ${status} hari ini?`)) return;
@@ -647,6 +1459,7 @@ const toggleSelectAll = () => {
 };
 
 const handleGeneratePDF = async () => {
+    setModals((p: any) => ({ ...p, designer: false }))
     setIsProcessing(true);
     setShowProgress(true);
     setProgress(0);
@@ -670,6 +1483,72 @@ const handleGeneratePDF = async () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleDeleteByBatch = async () => {
+    if (!deleteBatch.trim()) {
+      toast.error("Masukkan angkatan yang ingin dihapus");
+      return;
+    }
+
+    setConfirmModal({
+      open: true,
+      title: `Hapus Angkatan ${deleteBatch}`,
+      description: `Semua siswa angkatan ${deleteBatch} akan dihapus secara permanen dari database. Data kehadiran terkait juga akan ikut terhapus.`,
+      confirmLabel: `Hapus Angkatan ${deleteBatch}`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${BASE_URL}/batch/remove`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ schoolId, batch: deleteBatch }),
+          });
+          const json = await res.json();
+          if (res.ok) {
+            toast.success(json.message, {
+              duration: 5000,
+            });
+            setDeleteBatch("");
+            setShowDeleteMenu(false);
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+          } else {
+            toast.error(json.message || "Gagal menghapus");
+          }
+        } catch (err: any) {
+          toast.error(err.message);
+        }
+      }
+    });
+  };
+
+  const handleDeleteAll = async () => {
+    setConfirmModal({
+      open: true,
+      title: "Hapus Semua Siswa",
+      description: "Seluruh data siswa di sekolah ini akan dihapus secara permanen. Semua data termasuk foto, QR code, dan riwayat kehadiran tidak dapat dipulihkan.",
+      confirmLabel: "Hapus Semua Permanen",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${BASE_URL}/all/remove`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ schoolId }),
+          });
+          const json = await res.json();
+          if (res.ok) {
+            toast.success(json.message, {
+              duration: 5000,
+            });
+            setShowDeleteMenu(false);
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+          } else {
+            toast.error(json.message || "Gagal menghapus");
+          }
+        } catch (err: any) {
+          toast.error(err.message);
+        }
+      }
+    });
   };
 
   const handleDelete = async (id: number, name: string) => {
@@ -698,14 +1577,6 @@ const statusStyles: Record<string, string> = {
   "Belum Hadir": "bg-zinc-500/10 text-zinc-500 border border-zinc-500/10",
 };
 
-const selectByCriteria = (className: string, batch: string) => {
-  const filtered = students.filter(s => 
-    (className ? s.class === className : true) && 
-    (batch ? s.batch === batch : true)
-  );
-  setSelectedIds(filtered.map(s => s.id));
-};
-
 const navigate = useNavigate();
 
   return (
@@ -722,28 +1593,224 @@ const navigate = useNavigate();
         </div>
 
         <div className="flex flex-wrap gap-3">
+          {/* <button
+            onClick={handleSimulateRFID}
+            className="h-14 px-5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-2xl flex items-center gap-2 hover:bg-purple-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
+          >
+            📡 Simulasi RFID
+          </button> */}
           <button onClick={handleDownloadTemplate} className="h-14 px-5 bg-white/5 text-zinc-400 border border-white/10 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-black uppercase text-[12px] tracking-widest">
-            <Download size={16}/> Template
+            <Download size={16}/>
           </button>
           <label className="h-14 px-5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-emerald-500/20 transition-all font-black uppercase text-[12px] tracking-widest">
-            <FileSpreadsheet size={16}/> Import
+            <FileSpreadsheet size={16}/>
             <input type="file" hidden accept=".xlsx, .xls" onChange={handleBulkUpload} />
           </label>
-          <button onClick={() => setModals({ ...modals, designer: true })} className="h-14 px-6 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl flex items-center gap-2 hover:bg-red-500/20 transition-all font-black uppercase text-[12px] tracking-widest">
-            <Palette size={16}/> Kartu
+          <button onClick={() => setModals({ ...modals, designer: true })} className="h-14 px-5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-2xl flex items-center gap-2 hover:bg-cyan-500/20 transition-all font-black uppercase text-[12px] tracking-widest">
+            <IdCard size={16}/> 
+            {/* Kartu */}
           </button>
+          {/* Tombol Danger Delete */}
+          <div className="relative delete-menu-wrapper">
+            <button
+              onClick={() => setShowDeleteMenu(prev => !prev)}
+              className="h-14 px-5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl flex items-center gap-2 hover:bg-red-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
+            >
+              <Trash2 size={16}/> 
+              {/* Hapus */}
+            </button>
+
+            {showDeleteMenu && (
+              <div className="absolute right-0 top-16 w-72 bg-[#0B1220] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 space-y-4">
+                <p className="text-[10px] font-black uppercase text-red-400 tracking-widest">⚠️ Zona Berbahaya</p>
+
+                {/* Delete by batch */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Hapus per Angkatan</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Contoh: 2024"
+                      value={deleteBatch}
+                      onChange={e => setDeleteBatch(e.target.value)}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs outline-none focus:border-red-500"
+                    />
+                    <button
+                      onClick={handleDeleteByBatch}
+                      className="px-3 py-2 bg-red-600/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-black hover:bg-red-600/40 transition-all"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                {/* Delete all */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/40 uppercase">Hapus Semua Siswa</label>
+                  <button
+                    onClick={handleDeleteAll}
+                    className="w-full py-3 bg-red-600/20 text-red-400 border border-red-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    🗑️ Hapus Semua Permanen
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setShowDeleteMenu(false)}
+                  className="flex w-max mx-auto items-center gap-2 py-2 text-white text-[12px] hover:text-zinc-400 transition-all"
+                >
+                  {/* <ArrowLeft size={13} /> */}
+                  <p>
+                    Batal
+                  </p>
+                </button>
+              </div>
+            )}
+          </div>
+            {
+              selectedIds.length === 0 && (
+                <div className="relative move-class-menu-wrapper">
+                      <button
+                        onClick={() => {
+                          setShowMoveClassMenu(prev => !prev);
+                          // Fetch classList jika belum ada
+                          if (classList.length === 0 && schoolId) {
+                            fetch(`https://be-school.kiraproject.id/kelas?schoolId=${schoolId}`)
+                              .then(r => r.json())
+                              .then(j => { if (j.success) setClassList(j.data); });
+                          }
+                        }}
+                        className="h-14 px-5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-2xl flex items-center gap-2 hover:bg-blue-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
+                      >
+                        <ArrowLeftRight size={16}/> Pindah Kelas
+                      </button>
+                  
+
+                  {showMoveClassMenu && (
+                    <div className="absolute right-0 top-16 w-72 bg-[#0B1220] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 space-y-4">
+                      <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">
+                        🔀 Pindah Kelas
+                      </p>
+
+                      {/* Input Angkatan */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-white/40 uppercase">Angkatan</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: 2024"
+                          value={moveClassBatch}
+                          onChange={e => setMoveClassBatch(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      {/* Select Kelas Tujuan */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-white/40 uppercase">Kelas Tujuan</label>
+                        <div className="relative">
+                          <select
+                            value={moveClassTarget}
+                            onChange={e => setMoveClassTarget(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                          >
+                            <option value="" disabled className="bg-[#0B1220]">-- Pilih Kelas --</option>
+                            {classList.map((c: any) => (
+                              <option key={c.id} value={c.className} className="bg-[#0B1220]">{c.className}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500" />
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-white/10" />
+                    
+                      {/* Tombol Eksekusi */}
+                      <button
+                        onClick={async () => {
+                          if (!moveClassBatch.trim()) {
+                            toast.warning("Isi angkatan terlebih dahulu");
+                            return;
+                          }
+                          if (!moveClassTarget) {
+                            toast.warning("Pilih kelas tujuan terlebih dahulu");
+                            return;
+                          }
+
+                          setConfirmModal({
+                            open: true,
+                            title: `Pindah Angkatan ${moveClassBatch}`,
+                            description: `Semua siswa angkatan ${moveClassBatch} akan dipindahkan ke kelas ${moveClassTarget}.`,
+                            confirmLabel: `Pindahkan ke ${moveClassTarget}`,
+                            onConfirm: async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/class/bulk-update-class`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ 
+                                    schoolId, 
+                                    batch: moveClassBatch, 
+                                    newClass: moveClassTarget 
+                                  }),
+                                });
+                                const json = await res.json();
+                                if (res.ok) {
+                                  toast.success(json.message);
+                                  setMoveClassBatch("");
+                                  setMoveClassTarget("");
+                                  setShowMoveClassMenu(false);
+                                  queryClient.invalidateQueries({ queryKey: ['students'] });
+                                } else {
+                                  toast.error(json.message || "Gagal memindahkan kelas");
+                                }
+                              } catch (err: any) {
+                                toast.error(err.message);
+                              }
+                            }
+                          });
+                        }}
+                        className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all"
+                      >
+                        🔀 Pindahkan Kelas
+                      </button>
+
+                      <button
+                        onClick={() => setShowMoveClassMenu(false)}
+                        className="flex w-max mx-auto items-center gap-2 py-2 text-white text-[12px] hover:text-zinc-400 transition-all"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+          {/* Letakkan setelah tombol Luluskan */}
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={() => {
+                setChangeClassBatch(""); // mode by checkbox
+                setChangeClassModal(true);
+              }}
+              className="h-14 px-6 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-2xl flex items-center gap-2 hover:bg-blue-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
+            >
+              <ArrowLeftRight size={16}/> Pindah Kelas ({selectedIds.length})
+            </button>
+          )}
           {selectedIds.length > 0 && (
             <button 
               onClick={() => setGraduationModal(true)} 
               className="h-14 px-6 bg-amber-500 text-black rounded-2xl flex items-center gap-2 hover:bg-amber-400 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-amber-500/20"
             >
-              <GraduationCap size={18}/> Luluskan ({selectedIds.length})
+              <GraduationCap size={18}/> Lulus ({selectedIds.length})
             </button>
           )}
           {
             selectedIds.length === 0 && (
               <button onClick={() => setModals({ ...modals, add: true })} className="h-14 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-blue-600/30">
-                <Plus size={16}/> Tambah
+                <PlusCircle size={16}/>
+                Tambah
               </button>
             )
           }
@@ -755,7 +1822,7 @@ const navigate = useNavigate();
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
           <input 
             type="text" 
-            placeholder="Cari nama siswa..." 
+            placeholder="Cari nama atau NIS siswa..." 
             value={searchTerm}
             onChange={handleSearchChange}
             className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all text-white"
@@ -763,7 +1830,7 @@ const navigate = useNavigate();
         </div>
 
         <button 
-          onClick={() => refetch()} 
+          onClick={handleRefresh} 
           disabled={isFetching}
           className="flex-1 h-14 px-5 justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center gap-2 hover:bg-amber-500/30 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50"
         >
@@ -892,7 +1959,7 @@ const navigate = useNavigate();
                       )}
                     </div>
                     <div className="min-w-0"> {/* Penting agar truncate bekerja di dalam flex */}
-                      <div className="font-bold text-white tracking-tight truncate">{s.name}</div>
+                      <div className="font-bold text-white tracking-tight truncate" title={s.name}>{s.name}</div>
                       <div className="text-[9px] text-zinc-500 font-bold uppercase">{s.gender}</div>
                     </div>
                   </div>
@@ -1052,7 +2119,7 @@ const navigate = useNavigate();
             
             <div className="mt-4 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
               <span className="text-blue-500">{progress}% Selesai</span>
-              <span className="text-zinc-600">Total {totalItems || students?.length || 0} Siswa</span>
+              <span className="text-zinc-500">Total {totalItems || students?.length || 0} Siswa</span>
             </div>
           </div>
         </div>
@@ -1068,11 +2135,80 @@ const navigate = useNavigate();
         />
       )}
 
+      <ConfirmDangerModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmLabel={confirmModal.confirmLabel}
+        onConfirm={confirmModal.onConfirm}
+        onClose={() => setConfirmModal(prev => ({ ...prev, open: false }))}
+      />
+
+      {isProcessing2 && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md transition-all duration-300">
+          <div className="bg-white/90 border border-white shadow-[0_20px_50px_rgba(30,64,175,0.3)] p-8 rounded-3xl w-full max-w-md text-center">
+            
+            {/* Modern Circular Progress */}
+            <div className="relative mx-auto w-24 h-24 mb-6">
+              <svg className="w-full h-full" viewBox="0 0 100 100">
+                {/* Background Circle */}
+                <circle 
+                  className="text-slate-400 stroke-current" 
+                  strokeWidth="8" 
+                  cx="50" cy="50" r="40" fill="transparent"
+                ></circle>
+                {/* Progress Circle */}
+                <circle 
+                  className="text-blue-600 stroke-current transition-all duration-500 ease-out" 
+                  strokeWidth="8" 
+                  strokeLinecap="round"
+                  cx="50" cy="50" r="40" fill="transparent"
+                  strokeDasharray="251.2"
+                  strokeDashoffset={251.2 - (251.2 * uploadProgress) / 100}
+                  transform="rotate(-90 50 50)"
+                ></circle>
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center font-extrabold text-xl text-slate-800">
+                {uploadProgress}%
+              </div>
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-800 mb-2">
+              Mensinkronisasi Data
+            </h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Jangan tutup browser. Sedang mengunggah data siswa secara real-time.
+            </p>
+
+            {/* Horizontal Progress Bar with Shimmer */}
+            <div className="relative w-full bg-slate-200 rounded-full h-2.5 mb-2 overflow-hidden shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 relative"
+                style={{ width: `${uploadProgress}%` }}
+              >
+                {/* Efek Kilau Animasi (Pure Tailwind) */}
+                <div className="absolute inset-0 bg-[length:200%_100%] bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+              </div>
+            </div>
+
+            <div className="flex justify-center items-center mt-3">
+              <span className="text-[10px] bg-transparent text-blue-700 px-[2px] py-0.5 rounded-full font-bold uppercase">
+                Proses: {uploadProgress}%
+              </span>
+              {/* <span className="text-[10px] text-slate-400 font-medium italic">
+                KiraProject Engine
+              </span> */}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Side Modals */}
       <StudentModal 
           classList={classList || []} 
           open={modals.add || modals.edit} 
-          onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); }} 
+          prefilledRfid={prefilledRfid}
+          onClose={() => { setModals({...modals, add:false, edit:false}); setSelected(null); setPrefilledRfid("") }} 
           title={selected ? "Perbarui Siswa" : "Tambah Siswa"} 
           initialData={selected} 
           schoolId={schoolId} 
@@ -1111,6 +2247,62 @@ const navigate = useNavigate();
           </div>
         </div>
       )}
+
+      {/* Bulk Import Notifications — bottom right, persistent */}
+      {
+        bulkNotifs.length > 0 && (
+          <div className="fixed bottom-12 right-6 z-[99999] h-[40vh] flex flex-col gap-3 max-w-sm w-full">
+            {bulkNotifs.map(notif => (
+              <div
+                key={notif.id}
+                className={`rounded-2xl border p-4 shadow-2xl backdrop-blur-xl ${
+                  notif.type === 'warning'
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-red-500/10 border-red-500/30'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle
+                      size={14}
+                      className={notif.type === 'warning' ? 'text-amber-400' : 'text-red-400'}
+                    />
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${
+                      notif.type === 'warning' ? 'text-amber-400' : 'text-red-400'
+                    }`}>
+                      {notif.title}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removeBulkNotif(notif.id)}
+                    className="active:scale-[0.98] hover:text-white/60 text-white hover:text-white transition-colors shrink-0"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                  {notif.list.map((item, i) => (
+                    <div key={i} className="text-[11px] text-zinc-300 font-medium">{item}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      }
+
+      <BulkChangeClassModal
+        open={changeClassModal}
+        onClose={() => {
+          setChangeClassModal(false);
+          setChangeClassBatch("");
+        }}
+        classList={classList}
+        selectedCount={selectedIds.length}
+        selectedBatch={changeClassBatch}
+        onSubmit={handleBulkChangeClass}
+        isProcessing={isChangingClass}
+      />
     </div>
   );
 }

@@ -1,9 +1,10 @@
+import { drawBack, drawFront } from "@/features/siswa/utils/generateStudentCards";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
+import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
 import {
   Activity,
-  BookOpen,
   Briefcase,
   CalendarDays,
   CheckCircle2,
@@ -12,21 +13,23 @@ import {
   Clock,
   FileText,
   GraduationCap,
-  Hash,
   Home,
   IdCard,
   Loader2,
   Mail,
   MapPin,
   Palette,
+  Phone,
   Printer,
   Upload,
   User,
+  Users,
   X
 } from "lucide-react";
 import moment from "moment";
 import QRCode from "qrcode";
 import { useState } from "react";
+import Barcode from "react-barcode";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 
@@ -42,6 +45,7 @@ export default function DetailUser() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [isExporting, setIsExporting] = useState(false);
   const [showCardDesigner, setShowCardDesigner] = useState(false);
+  const [zoomBarcode, setZoomBarcode] = useState(null);
 
   const limit = 10;
 
@@ -56,15 +60,14 @@ export default function DetailUser() {
     accentColor: "#2563eb",
     titleColor: "#ffffff",
     subtitleColor: "#ffffff",
-    bgImage: null as string | null, // bisa URL preset atau data URL dari upload
+    bgImage: null as string | null,
   });
 
   const { data, isLoading, isPlaceholderData, isError } = useQuery({
-    queryKey: ["user-detail", id, role, page],
+    queryKey: ["user-detail", id, role, page, selectedYear],
     queryFn: async () => {
-      const response = await fetch(
-        `https://be-school.kiraproject.id/${apiPath}/detail/${id}?role=${role}&page=${page}&limit=${limit}`
-      );
+      const url = `https://be-school.kiraproject.id/${apiPath}/detail/${id}?role=${role}&page=${page}&limit=${limit}&year=${selectedYear}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Gagal mengambil data");
       const json = await response.json();
       return json.success ? json.data : null;
@@ -78,104 +81,178 @@ export default function DetailUser() {
 
   const { profile, statistics, attendanceHistory, pagination } = data;
 
-  // ────────────────────────────────────────────────
-  //                GENERATE PDF (menggunakan config)
-  // ────────────────────────────────────────────────
-  const generateCustomCardPDF = async () => {
-    if (!profile) return;
+  const generateBarcodeImage = (value: string) => {
+    const canvas = document.createElement("canvas");
 
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    JsBarcode(canvas, value, {
+      format: "CODE128",
+      width: 2,
+      height: 40,
+      displayValue: false,
+      margin: 0,
+    });
 
-    const cardWidth = 86;
-    const cardHeight = 54;
-    const x = (210 - cardWidth) / 2;
-    const y = 20;
-
-    try {
-      // Background putih dasar
-      doc.setFillColor(255, 255, 255);
-      doc.rect(x, y, cardWidth, cardHeight, "F");
-
-      // Background custom
-      if (cardConfig.bgImage) {
-        try {
-          doc.addImage(cardConfig.bgImage, "PNG", x, y, cardWidth, cardHeight);
-        } catch (err) {
-          console.warn("Gagal load background:", err);
-        }
-      }
-
-      // Header accent
-      doc.setFillColor(cardConfig.accentColor);
-      doc.rect(x, y, cardWidth, 12, "F");
-
-      doc.setTextColor(cardConfig.titleColor);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(cardConfig.title, x + cardWidth / 2, y + 5, { align: "center" });
-
-      doc.setTextColor(cardConfig.subtitleColor);
-      doc.setFontSize(6);
-      doc.text(cardConfig.subtitle, x + cardWidth / 2, y + 9.5, { align: "center" });
-
-      // Foto
-      const photoX = x + 5;
-      const photoY = y + 14;
-      const photoW = 18;
-      const photoH = 22;
-
-      if (profile.photoUrl) {
-        try {
-          doc.addImage(profile.photoUrl, "JPEG", photoX, photoY, photoW, photoH);
-        } catch {
-          doc.setFillColor(240, 240, 240);
-          doc.rect(photoX, photoY, photoW, photoH, "F");
-        }
-      } else {
-        doc.setFillColor(240, 240, 240);
-        doc.rect(photoX, photoY, photoW, photoH, "F");
-      }
-
-      // Data teks
-      doc.setTextColor(30, 41, 59);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text((profile.name || profile.nama || "—").toUpperCase(), x + 27, y + 22, { maxWidth: 50 });
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(100, 116, 139);
-
-      if (isStudent) {
-        doc.text(`NIS : ${profile.nis || "—"}`, x + 27, y + 28);
-        doc.text(`NISN: ${profile.nisn || "—"}`, x + 27, y + 32);
-      } else {
-        doc.text(`NIP : ${profile.nip || profile.id || "—"}`, x + 27, y + 28);
-        doc.text(`Mapel: ${profile.mapel || "—"}`, x + 27, y + 32);
-      }
-
-      // QR Code
-      const qrData = profile.qrCodeData;
-      if (qrData) {
-        const qrUrl = await QRCode.toDataURL(qrData, { margin: 1, width: 150 });
-        doc.addImage(qrUrl, "PNG", x + 63, y + 32, 18, 18);
-      }
-
-      // Border
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.1);
-      doc.rect(x, y, cardWidth, cardHeight, "D");
-
-      const fileName = `Kartu_${isStudent ? "Siswa" : "Guru"}_${(profile.name || "").replace(/\s+/g, "_")}.pdf`;
-      doc.save(fileName);
-    } catch (err) {
-      console.error(err);
-      alert("Gagal membuat PDF kartu.");
-    }
+    return canvas.toDataURL("image/png");
   };
 
+  // const generateCustomCardPDF = async () => {
+  //   if (!profile) return;
+
+  //   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  //   const cardWidth = 86;
+  //   const cardHeight = 54;
+  //   const x = (210 - cardWidth) / 2;
+  //   const y = 20;
+
+  //   try {
+  //     doc.setFillColor(255, 255, 255);
+  //     doc.rect(x, y, cardWidth, cardHeight, "F");
+
+  //     if (cardConfig.bgImage) {
+  //       try {
+  //         doc.addImage(cardConfig.bgImage, "PNG", x, y, cardWidth, cardHeight);
+  //       } catch (err) {
+  //         console.warn("Gagal load background:", err);
+  //       }
+  //     }
+
+  //     // doc.setFillColor(cardConfig.accentColor);
+  //     // doc.rect(x, y, cardWidth, 12, "F");
+
+  //     if (cardConfig.accentColor !== "transparent") {
+  //       // parse hex ke rgb (atau gunakan library kecil kalau mau lebih aman)
+  //       const hex = cardConfig.accentColor.replace("#", "");
+  //       const r = parseInt(hex.substr(0,2), 16);
+  //       const g = parseInt(hex.substr(2,2), 16);
+  //       const b = parseInt(hex.substr(4,2), 16);
+
+  //       doc.setFillColor(r, g, b);
+  //       doc.rect(x, y, cardWidth, 12, "F");
+  //     }
+
+  //     doc.setTextColor(cardConfig.titleColor);
+  //     doc.setFont("helvetica", "bold");
+  //     doc.setFontSize(10);
+  //     doc.text(cardConfig.title, x + cardWidth / 2, y + 5, { align: "center" });
+
+  //     doc.setTextColor(cardConfig.subtitleColor);
+  //     doc.setFontSize(6);
+  //     doc.text(cardConfig.subtitle, x + cardWidth / 2, y + 9.5, { align: "center" });
+
+  //     const photoX = x + 5;
+  //     const photoY = y + 14;
+  //     const photoW = 18;
+  //     const photoH = 22;
+
+  //     if (profile.photoUrl) {
+  //       try {
+  //         doc.addImage(profile.photoUrl, "JPEG", photoX, photoY, photoW, photoH);
+  //       } catch {
+  //         doc.setFillColor(240, 240, 240);
+  //         doc.rect(photoX, photoY, photoW, photoH, "F");
+  //       }
+  //     } else {
+  //       doc.setFillColor(240, 240, 240);
+  //       doc.rect(photoX, photoY, photoW, photoH, "F");
+  //     }
+
+  //     doc.setTextColor(30, 41, 59);
+  //     doc.setFont("helvetica", "bold");
+  //     doc.setFontSize(9);
+  //     doc.text((profile.name || profile.nama || "—").toUpperCase(), x + 27, y + 22, { maxWidth: 50 });
+
+  //     doc.setFont("helvetica", "normal");
+  //     doc.setFontSize(7);
+  //     doc.setTextColor(100, 116, 139);
+
+  //     if (isStudent) {
+  //       doc.text(`NIS : ${profile.nis || "—"}`, x + 27, y + 28);
+  //       doc.text(`NISN: ${profile.nisn || "—"}`, x + 27, y + 32);
+  //     } else {
+  //       doc.text(`NIP : ${profile.nip || profile.id || "—"}`, x + 27, y + 28);
+  //       doc.text(`Mapel: ${profile.mapel || "—"}`, x + 27, y + 32);
+  //     }
+
+  //     const qrData = profile.qrCodeData;
+  //     if (qrData) {
+  //       const qrUrl = await QRCode.toDataURL(qrData, { margin: 1, width: 150 });
+  //       doc.addImage(qrUrl, "PNG", x + 63, y + 32, 18, 18);
+  //     }
+
+  //     doc.setDrawColor(200, 200, 200);
+  //     doc.setLineWidth(0.1);
+  //     doc.rect(x, y, cardWidth, cardHeight, "D");
+
+  //     let barcodeValue = "";
+  //     if (isStudent) {
+  //       barcodeValue = profile.nis || profile.nisn || "";
+  //     } else {
+  //       barcodeValue = profile.nip || profile.id || "";
+  //     }
+
+  //     if (barcodeValue) {
+  //       const barcodeImg = generateBarcodeImage(barcodeValue);
+  //       const barcodeWidth = 40;
+  //       const barcodeHeight = 8;
+  //       const barcodeX = x + 6;
+  //       const barcodeY = y + cardHeight - 10;
+
+  //       doc.addImage(barcodeImg, "PNG", barcodeX, barcodeY, barcodeWidth, barcodeHeight);
+  //     }
+
+  //     const fileName = `Kartu_${isStudent ? "Siswa" : "Guru"}_${(profile.name || "").replace(/\s+/g, "_")}.pdf`;
+  //     doc.save(fileName);
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Gagal membuat PDF kartu.");
+  //   }
+  // };
+
+ const generateCustomCardPDF = async () => {
+  if (!profile) return;
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const cardWidth = 86;
+  const cardHeight = 54;
+  const x = (210 - cardWidth) / 2;
+  const y = 20;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 860;
+  canvas.height = 540;
+  const ctx = canvas.getContext("2d");
+
+  // Bentuk object student agar kompatibel dengan drawFront/drawBack
+  const s = {
+    name:       profile.name || profile.nama || "",
+    nis:        profile.nis  || profile.nip  || String(profile.id) || "",
+    class:      profile.class || profile.role || "",
+    rfidUid:    profile.rfidUid || "-",
+    photoUrl:   profile.photoUrl || "",
+    qrCodeData: profile.qrCodeData || "",
+    nisn:       profile.nisn || "",
+  };
+
+  try {
+    // ── HALAMAN 1: DEPAN ──
+    await drawFront(doc, s, x, y, cardConfig, canvas, ctx);
+
+    // ── HALAMAN 2: BELAKANG ──
+    doc.addPage();
+    await drawBack(doc, s, x, y, cardConfig, canvas, ctx);
+
+    const fileName = `Kartu_${isStudent ? "Siswa" : "Guru"}_${s.name.replace(/\s+/g, "_")}.pdf`;
+    doc.save(fileName);
+
+  } catch (err) {
+    console.error(err);
+    alert("Gagal membuat PDF kartu.");
+  }
+};
+
   const downloadExcel = async () => {
-    // ... fungsi export Excel tetap sama seperti sebelumnya ...
     try {
       setIsExporting(true);
       const response = await fetch(
@@ -199,7 +276,6 @@ export default function DetailUser() {
     }
   };
 
-  // Preset background (sesuaikan path sesuai struktur project Anda)
   const bgPresets = Array.from({ length: 12 }, (_, i) => `/bg${i + 1}.png`);
 
   return (
@@ -284,7 +360,6 @@ export default function DetailUser() {
           </div>
         </div>
 
-        {/* Konten utama (profile + stats + table) tetap sama seperti kode awal */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* LEFT: Profile Card */}
           <div className="lg:col-span-4 space-y-6">
@@ -295,7 +370,7 @@ export default function DetailUser() {
             >
               <div className="flex flex-col items-center">
                 <div className="relative mb-6">
-                  <div className="h-32 w-32 rounded-[2.5rem] overflow-hidden border-2 border-blue-500/30 p-1">
+                  <div className="h-44 w-44 rounded-[2.5rem] overflow-hidden border-2 border-blue-500/30 p-1">
                     <div className="h-full w-full rounded-[2.2rem] overflow-hidden bg-zinc-900 flex items-center justify-center">
                       {profile.photoUrl ? (
                         <img src={profile.photoUrl} className="h-full w-full object-cover" alt="Profile" />
@@ -319,19 +394,125 @@ export default function DetailUser() {
                 </div>
 
                 <div className="w-full space-y-1">
-                  <InfoItem icon={<Hash size={14} />} label="ID Number" value={isStudent ? profile.nis : (profile.nip || profile.id)} />
-                  <InfoItem icon={<Mail size={14} />} label="Email Address" value={profile.email || "—"} />
-                  <InfoItem icon={<IdCard size={14} />} label="NIP" value={profile.nip || "—"} />
-                  <InfoItem icon={<MapPin size={14} />} label="Jurusan" value={profile.jurusan || "—"} />
-                  {isStudent ? (
+                  {/* <InfoItem icon={<Hash size={14} />} label="ID Number" value={isStudent ? profile.nis : (profile.nip || profile.id)} /> */}
+                  {!isStudent && (
+                    <InfoItem icon={<Mail size={14} />} label="Email Address" value={profile.email || "—"} />
+                  )}
+                  {!isStudent && (
+                    <InfoItem icon={<IdCard size={14} />} label="NIP" value={profile.nip || "—"} />
+                  )}
+                  {!isStudent && (
+                    <InfoItem icon={<MapPin size={14} />} label="Jurusan" value={profile.jurusan || "—"} />
+                  )}
+                  {/* {isStudent && (
                     <InfoItem icon={<FileText size={14} />} label="NISN" value={profile.nisn || "—"} />
-                  ) : (
-                    <InfoItem icon={<BookOpen size={14} />} label="Specialist" value={profile.mapel || "General"} />
+                  )} */}
+                  {isStudent && profile?.parent && (
+                    <>
+                      <InfoItem 
+                        icon={<Users size={14} />} 
+                        label="Orang Tua" 
+                        value={profile.parent.name || "—"} 
+                      />
+                      <InfoItem 
+                        icon={<Phone size={14} />} 
+                        label="No. HP" 
+                        value={profile.parent.phoneNumber || "—"} 
+                      />
+                      <InfoItem 
+                        icon={<User size={14} />} 
+                        label="Hubungan" 
+                        value={`${profile.parent.relationStatus || "—"} (${profile.parent.type || "—"})`} 
+                      />
+                    </>
+                  )}
+                  {isStudent && !profile?.parent && (
+                    <InfoItem 
+                      icon={<Users size={14} />} 
+                      label="Orang Tua" 
+                      value="Tidak terdaftar" 
+                    />
+                  )}
+                </div>
+
+                <div className="w-full flex flex-col items-center mt-4">
+                  {role === "student" && profile?.nis && (
+                    <div className="mb-4 w-full flex flex-col items-center">
+                      <p className="text-sm text-gray-500 text-center">NIS</p>
+                      <div className="w-full flex justify-center cursor-pointer hover:brightness-90 active:scale-[0.97]" onClick={() => setZoomBarcode({ label: "NIS", value: profile.nis })}>
+                        <Barcode
+                          value={profile.nis}
+                          height={60}
+                          width={2.5}
+                          fontSize={14}
+                          displayValue
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {role === "student" && profile?.nisn && (
+                    <div className="mb-4 w-full flex flex-col items-center">
+                      <p className="text-sm text-gray-500 text-center">NISN</p>
+                      <div className="w-full flex justify-center cursor-pointer hover:brightness-90 active:scale-[0.97]" onClick={() => setZoomBarcode({ label: "NISN", value: profile.nisn })}>
+                        <Barcode
+                          value={profile.nisn}
+                          height={60}
+                          width={2.2}
+                          fontSize={14}
+                          displayValue
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {role !== "student" && profile?.nip && (
+                    <div className="mb-4 w-full flex flex-col items-center">
+                      <p className="text-sm text-gray-500 text-center">NIP</p>
+                      <div className="w-full flex justify-center cursor-pointer hover:brightness-90 active:scale-[0.97]" onClick={() => setZoomBarcode({ label: "NIP", value: profile.nip })}>
+                        <Barcode
+                          value={profile.nip}
+                          height={60}
+                          width={2}
+                          fontSize={14}
+                          displayValue
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
             </motion.div>
           </div>
+
+          {zoomBarcode && (
+            <div
+              className="fixed inset-0 z-[999999999] bg-black/30 backdrop-blur-2xl flex items-center justify-center"
+              onClick={() => setZoomBarcode(null)}
+            >
+              <div
+                className="bg-white p-8 rounded-xl flex flex-col items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-lg font-semibold mb-4">{zoomBarcode.label}</p>
+
+                <Barcode
+                  value={zoomBarcode.value}
+                  height={120}
+                  width={4}
+                  fontSize={20}
+                  margin={10}
+                />
+
+                <button
+                  onClick={() => setZoomBarcode(null)}
+                  className="mt-6 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* RIGHT: Stats & History */}
           <div className="lg:col-span-8 space-y-6">
@@ -432,7 +613,7 @@ export default function DetailUser() {
                                     : log.status === "Alpha"
                                     ? "bg-red-500"
                                     : log.status === "Sakit"
-                                    ? "bg-blue-500"   // atau bg-amber-400 kalau pakai kuning
+                                    ? "bg-blue-500"
                                     : "bg-violet-500"
                                 }`}
                               />
@@ -486,9 +667,7 @@ export default function DetailUser() {
         </div>
       </div>
 
-      {/* ──────────────────────────────────────────────── */}
-      {/*         CARD DESIGNER MODAL (mirip StudentManager)         */}
-      {/* ──────────────────────────────────────────────── */}
+      {/* CARD DESIGNER MODAL */}
       <AnimatePresence>
         {showCardDesigner && (
           <>
@@ -532,7 +711,6 @@ export default function DetailUser() {
                       backgroundPosition: "center",
                     }}
                   >
-                    {/* Header Accent */}
                     <div
                       className="h-10 flex flex-col items-center justify-center"
                       style={{ backgroundColor: cardConfig.accentColor }}
@@ -551,9 +729,7 @@ export default function DetailUser() {
                       </div>
                     </div>
 
-                    {/* Content */}
                     <div className="p-4 flex gap-4 h-[calc(100%-40px)] relative">
-                      {/* Foto Placeholder */}
                       <div className="w-20 h-24 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 overflow-hidden shrink-0 shadow-sm">
                         {profile.photoUrl ? (
                           <img src={profile.photoUrl} alt="Foto" className="w-full h-full object-cover" />
@@ -562,7 +738,6 @@ export default function DetailUser() {
                         )}
                       </div>
 
-                      {/* Info Teks */}
                       <div className="flex-1 space-y-1.5 pt-1">
                         <div className="leading-tight">
                           <div className="text-[5px] text-zinc-400 font-bold uppercase tracking-tighter">Nama Lengkap</div>
@@ -584,7 +759,6 @@ export default function DetailUser() {
                         </div>
                       </div>
 
-                      {/* QR Placeholder */}
                       <div className="absolute bottom-4 right-4 w-12 h-12 border border-slate-200 flex items-center justify-center p-1 bg-white rounded-md shadow-sm">
                         <div className="text-[5px] font-bold text-slate-300">QR CODE</div>
                       </div>
@@ -592,7 +766,6 @@ export default function DetailUser() {
                   </div>
                 </div>
 
-                {/* Controls */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Warna Judul</label>
@@ -620,7 +793,7 @@ export default function DetailUser() {
                       className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500"
                     />
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Warna Aksen</label>
                     <input
                       type="color"
@@ -628,10 +801,35 @@ export default function DetailUser() {
                       onChange={(e) => setCardConfig({ ...cardConfig, accentColor: e.target.value })}
                       className="w-full h-14 bg-transparent border-none cursor-pointer"
                     />
+                  </div> */}
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Warna Aksen</label>
+                    
+                    <div className="flex w-full items-center gap-3">
+                      <input
+                        type="color"
+                        value={cardConfig.accentColor}
+                        onChange={(e) => setCardConfig({ ...cardConfig, accentColor: e.target.value })}
+                        className="w-14 h-14 bg-transparent border-none cursor-pointer rounded shadow-sm"
+                      />
+                      
+                      <button
+                        type="button"
+                        onClick={() => setCardConfig({ ...cardConfig, accentColor: "transparent" })}
+                          className={`flex-1 h-14 rounded-xl border-2 text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-all ${
+                            cardConfig.accentColor === "transparent"
+                              ? "border-blue-500 bg-blue-500/10 text-blue-400 shadow-blue-500/20"
+                              : "border-white/20 hover:border-white/40 bg-white/5 text-zinc-400 hover:text-zinc-200"
+                          }`}
+                        title="Transparent"
+                      >
+                        <span className="text-zinc-400">{cardConfig.accentColor === "transparent" ? "✓ Transparent" : "No Color / Transparent"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Background Presets */}
                 <div className="space-y-4">
                   <label className="text-[10px] font-bold text-white/40 uppercase ml-1">Pilih Background Preset</label>
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
@@ -647,7 +845,6 @@ export default function DetailUser() {
                       </button>
                     ))}
 
-                    {/* Upload Custom */}
                     <label className="aspect-video rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/5 hover:border-white/30 transition-all">
                       <Upload size={16} className="text-zinc-500" />
                       <input
@@ -669,7 +866,6 @@ export default function DetailUser() {
                   </div>
                 </div>
 
-                {/* Tombol Cetak */}
                 <button
                   onClick={() => {
                     generateCustomCardPDF();
@@ -691,29 +887,23 @@ export default function DetailUser() {
 }
 
 // ────────────────────────────────────────────────
-// Sub-components (InfoItem, MetricCard, CompactStat, LoadingState, NotFoundState)
-// tetap sama seperti kode awal Anda – tidak diubah
+// Sub-components tetap sama
 // ────────────────────────────────────────────────
 
 const getStatusTheme = (log: any) => {
-  // Prioritas: Terlambat lebih tinggi dari status biasa
   if (log.isLate) {
     return "bg-amber-500/10 border-amber-500/30 text-amber-400 font-semibold";
   }
 
-  switch (log.status) {   // case-insensitive agar lebih aman
+  switch (log.status) {
     case "Hadir":
       return "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-semibold";
-
     case "Alpha":
       return "bg-red-500/10 border-red-500/30 text-red-400 font-semibold";
-
     case "Izin":
       return "bg-violet-500/10 border-violet-500/30 text-violet-400 font-semibold";
-
     case "Sakit":
       return "bg-blue-500/10 border-blue-500/30 text-blue-400 font-semibold";
-
     default:
       return "bg-zinc-600/10 border-zinc-600/30 text-zinc-400";
   }

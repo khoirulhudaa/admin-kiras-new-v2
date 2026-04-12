@@ -373,65 +373,95 @@ export default function OrangTuaMain() {
           <tbody className="divide-y divide-white/5">
             {isLoading ? (
               <tr><td colSpan={5} className="px-2 py-20 text-center text-zinc-600 tracking-widest uppercase">Memuat Data Wali...</td></tr>
-            ) : parentData?.map(p => (
-              <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
-                <td className="py-6 pl-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-11 w-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                      <User className="text-blue-500" size={20}/>
+            ) : parentData?.map(p => {
+              const children = p.children || [];
+              const showNames = children.length < 2;   // tampilkan nama hanya jika 1 atau 2 anak
+              const maxVisible = showNames ? children.length : 2; // max 3 foto jika banyak
+              const visibleChildren = children.slice(0, maxVisible);
+              const remaining = children.length - maxVisible;
+
+              return (
+                <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
+                  <td className="py-6 pl-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-11 w-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                        <User className="text-blue-500" size={20}/>
+                      </div>
+                      <div>
+                        <div className="font-bold text-white tracking-tight">{p.name}</div>
+                        <div className="text-[9px] text-zinc-500 font-bold uppercase">{p.gender} • {p.type}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-bold text-white tracking-tight">{p.name}</div>
-                      <div className="text-[9px] text-zinc-500 font-bold uppercase">{p.gender} • {p.type}</div>
+                  </td>
+                  <td className="py-6">
+                    <div className="flex items-center gap-2 text-zinc-300">
+                      <Heart size={14} className="text-red-500" />
+                      <span className="font-mono text-sm uppercase">{p.relationStatus}</span>
                     </div>
-                  </div>
-                </td>
-                <td className="py-6">
-                   <div className="flex items-center gap-2 text-zinc-300">
-                     <Heart size={14} className="text-red-500" />
-                     <span className="font-mono text-sm uppercase">{p.relationStatus}</span>
-                   </div>
-                </td>
-                <td className="py-6">
-                   <div className="flex items-center gap-2 text-blue-400 font-mono text-sm">
-                     <Phone size={14} />
-                     {p.phoneNumber}
-                   </div>
-                </td>
-                <td className="py-6">
-                   <div className="flex -space-x-2">
-                     {p.children && p.children.length > 0 ? (
-                        p.children.map((child: any) => (
-                          <div className='flex items-center gap-2'>
-                            <div key={child.id} className="h-8 w-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden" title={child.name}>
-                              {child.photoUrl ? <img src={child.photoUrl} className="object-cover" /> : <User size={12}/>}
+                  </td>
+                  <td className="py-6">
+                    <div className="flex items-center gap-2 text-blue-400 font-mono text-sm">
+                      <Phone size={14} />
+                      {p.phoneNumber}
+                    </div>
+                  </td>
+                  <td className="py-6">
+                    <div className={`flex items-center ${showNames ? 'space-x-2' : '-space-x-3'}`}>
+                      {children.length > 0 ? (
+                        <>
+                          {visibleChildren.map((child: any) => (
+                            <div
+                              key={child.id}
+                              className="h-8 w-8 rounded-full bg-white/10 border-2 border-[#0B1220] flex items-center justify-center overflow-hidden shadow-sm"
+                              title={child.name}
+                            >
+                              {child.photoUrl ? (
+                                <img src={child.photoUrl} alt={child.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <User size={12} className="text-zinc-400" />
+                              )}
                             </div>
-                            <span className='text-xs text-slate-300'>
+                          ))}
+
+                          {/* Tampilkan nama hanya jika <= 2 anak */}
+                          {showNames && visibleChildren.map((child: any) => (
+                            <span key={child.id} className="text-xs truncate text-slate-300">
                               {child.name}
                             </span>
-                          </div>
-                        ))
-                     ) : (
-                       <span className="text-[10px] text-zinc-600 italic">Belum terhubung</span>
-                     )}
-                   </div>
-                </td>
-                <td className="py-6 text-left gap-2.5 flex">
-                  <button 
-                    onClick={() => { setSelected(p); setModals({...modals, edit: true}); }} 
-                    className="p-3 bg-white/5 hover:bg-blue-500/20 rounded-xl hover:text-blue-400 transition-all"
-                  >
-                    <Edit size={16}/>
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(p.id, p.name)} 
-                    className="p-3 bg-white/5 hover:bg-red-500/20 rounded-xl hover:text-red-400 transition-all"
-                  >
-                    <Trash2 size={16}/>
-                  </button>
-                </td>
-              </tr>
-            ))}
+                          ))}
+
+                          {/* Jika > 2 anak, tampilkan badge +sisa */}
+                          {!showNames && remaining > 0 && (
+                            <div
+                              className="h-8 w-8 rounded-full bg-white/5 border-2 border-[#0B1220] flex items-center justify-center text-[10px] font-bold text-zinc-300 shadow-sm ml-1"
+                              title={`${remaining} anak lainnya`}
+                            >
+                              +{remaining}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-zinc-600 italic">Belum terhubung</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-6 text-left gap-2.5 flex">
+                    <button 
+                      onClick={() => { setSelected(p); setModals({...modals, edit: true}); }} 
+                      className="p-3 bg-white/5 hover:bg-blue-500/20 rounded-xl hover:text-blue-400 transition-all"
+                    >
+                      <Edit size={16}/>
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(p.id, p.name)} 
+                      className="p-3 bg-white/5 hover:bg-red-500/20 rounded-xl hover:text-red-400 transition-all"
+                    >
+                      <Trash2 size={16}/>
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

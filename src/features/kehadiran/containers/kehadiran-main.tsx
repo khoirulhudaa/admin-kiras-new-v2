@@ -92,22 +92,23 @@ export default function AttendanceMain() {
   });
   
   const { data: statsResponse, isLoading: statsLoading, refetch: refetchStats, isFetching: isFetchingStats } = useQuery({
-    queryKey: ["todayStats", schoolId, filters.role],
+    queryKey: ["todayStats", schoolId, filters.role, activeTab],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/today-stats?schoolId=${schoolId}&role=${filters.role}`);
       const json = await res.json();
       return json.success ? json.data : null;
     },
     enabled: !!schoolId && activeTab === 'stats',
-    staleTime: 5 * 60 * 1000, 
-    gcTime: 10 * 60 * 1000,
+    // staleTime: 0, 
+    // staleTime: 5 * 60 * 1000, 
+    // gcTime: 10 * 60 * 1000,
   });
 
   // 4. Fetch Early Warning System (Tab Stats - NEW)
   const { data: ewResponse, isLoading: ewLoading } = useQuery({
     queryKey: ["earlyWarning", schoolId],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5005/siswa/early-warning?schoolId=${schoolId}`);
+      const res = await fetch(`https://be-school.kiraproject.id/siswa/early-warning?schoolId=${schoolId}`);
       const json = await res.json();
       return json.success ? json : null;
     },
@@ -211,12 +212,14 @@ export default function AttendanceMain() {
           {['student', 'teacher'].map((r) => (
             <button
               key={r}
-              onClick={() => setFilters({
-                ...filters, 
-                role: r, 
-                page: 1, 
-                class: "" 
-              })}
+              onClick={() => {
+                setFilters({
+                  ...filters, 
+                  role: r, 
+                  page: 1, 
+                  class: "" 
+                });
+              }}
               className={`h-full px-8 flex items-center gap-2 justify-center font-black rounded-xl uppercase text-[12px] tracking-widest transition-all ${
                 filters.role === r ? 'bg-blue-700 text-white' : 'text-zinc-300'
               }`}
@@ -327,6 +330,7 @@ export default function AttendanceMain() {
                         <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Waktu Scan</th>
                         <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Informasi User</th>
                         <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Kelas/Jabatan</th>
+                        <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Durasi (menit)</th>
                         <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 text-center">Status</th>
                       </tr>
                     </thead>
@@ -334,7 +338,11 @@ export default function AttendanceMain() {
                       {loading ? (
                         <tr><td colSpan={4} className="p-32 text-center"><Loader className="animate-spin mx-auto text-blue-500" size={40} /></td></tr>
                       ) : data.length === 0 ? (
-                        <tr><td colSpan={4} className="p-32 text-center opacity-30 font-black uppercase tracking-widest">No Data Found</td></tr>
+                        <tr><td colSpan={4} className=" p-32 text-center opacity-30 font-black uppercase tracking-widest">
+                          <p className="relative left-20">
+                            Tidak ada kehadiran
+                          </p>
+                        </td></tr>
                       ) : (
                         data.map((item: any, idx: number) => (
                           <motion.tr 
@@ -346,19 +354,43 @@ export default function AttendanceMain() {
                               <div className="text-[10px] text-zinc-500 font-mono">TIME: {moment(item.createdAt).format("HH:mm:ss")}</div>
                             </td>
                             <td className="p-6">
-                              <div className="font-bold text-sm text-white uppercase">{item.student?.name || item.guru?.nama}</div>
+                              <div className="font-bold text-sm text-white uppercase">{item.student?.name || item.guru?.name || '-'}</div>
                               <div className="text-[10px] text-zinc-500 font-black tracking-widest uppercase">
-                                {item.userRole === 'student' ? `NIS: ${item.student?.nis}` : `ROLE: ${item.guru?.role}`}
+                                {item.userRole === 'student' ? `NIS: ${item?.student?.nis || '-'}` : `ROLE: ${item?.guru?.role || '-'}`}
                               </div>
                             </td>
                             <td className="p-6 text-sm font-bold text-zinc-400 italic uppercase">
                               {item.userRole === 'student' ? item.currentClass : (item.guru?.mapel || "Staff")}
                             </td>
-                            <td className="p-6 text-center">
+                            {/* <td className="p-6 text-center">
                               <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest ${
                                 item.status === 'Hadir' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
                               }`}>
                                 {item.status}
+                              </span>
+                            </td> */}
+                            {/* KOLOM BARU: DURASI KETERLAMBATAN */}
+                            <td className="p-6">
+                              {item.isLate ? (
+                                <div className="flex items-center gap-2 text-red-400">
+                                  <Clock size={12} />
+                                  <span className="text-[11px] font-black uppercase">{item.lateDuration}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">-</span>
+                              )}
+                            </td>
+
+                            <td className="p-6 text-center">
+                              {/* LOGIC STATUS: Jika isLate true, tampilkan "TELAT" dengan styling Emerald */}
+                             <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest ${
+                                item.isLate 
+                                  ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' // PRIORITAS 1: Telat (Emerald)
+                                  : item.status === 'Hadir' 
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'      // PRIORITAS 2: Hadir Tepat Waktu (Blue)
+                                    : 'bg-red-500/10 text-red-400 border-red-500/20'         // PRIORITAS 3: Selain itu/Alpha (Red)
+                              }`}>
+                                {item.isLate ? 'Telat' : item.status}
                               </span>
                             </td>
                           </motion.tr>

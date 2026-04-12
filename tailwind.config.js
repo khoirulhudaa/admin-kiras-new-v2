@@ -194,6 +194,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -218,6 +222,7 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "shimmer": 'shimmer 2s infinite linear',
         "caret-blink": "caret-blink 1.25s ease-out infinite",
       },
     },

@@ -78,12 +78,14 @@ const PengumumanModal = ({
   initialData,
   onSubmit,
   loading,
+  schoolId
 }: {
   open: boolean;
   onClose: () => void;
   initialData: Announcement;
   onSubmit: (formData: FormData) => Promise<void>;
   loading: boolean;
+  schoolId: number | undefined;
 }) => {
   const [form, setForm] = useState<Announcement>(initialData);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -95,7 +97,7 @@ const PengumumanModal = ({
       setSelectedFile(null);
       setPreviewUrl(initialData.imageUrl || null);
     }
-  }, [open, initialData]);
+  }, [open, initialData, schoolId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -117,14 +119,20 @@ const PengumumanModal = ({
       return;
     }
 
+    if (!schoolId) {
+      alert("School ID tidak ditemukan. Silakan refresh halaman.");
+      return;
+    }
+
     const formPayload = new FormData();
     formPayload.append("title", form.title.trim());
     formPayload.append("content", form.content.trim());
-    formPayload.append("schoolId", form.schoolId.toString());
+    formPayload.append("schoolId", schoolId.toString());  // ← WAJIB ditambahkan di sini
+    
     if (form.publishDate) formPayload.append("publishDate", form.publishDate);
     if (form.category) formPayload.append("category", form.category);
     if (form.source) formPayload.append("source", form.source);
-    if (selectedFile) formPayload.append("imageUrl", selectedFile);
+    if (selectedFile) formPayload.append("imageUrl", selectedFile);  // nama field sesuai backend
 
     await onSubmit(formPayload);
     onClose();
@@ -523,6 +531,7 @@ export default function PengumumanPage() {
         initialData={editingItem || DEFAULT_ANNOUNCEMENT}
         onSubmit={handleSubmit}
         loading={loading}
+        schoolId={schoolId}
       />
     </div>
   );

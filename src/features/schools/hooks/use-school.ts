@@ -90,26 +90,22 @@ export const useSchool = () => {
   // Ambil data dari useProfile yang sudah kita buat sebelumnya
   const { user, query, isLoading: profileLoading } = useProfile();
 
-  console.log(user)
-
-  // Kita bungkus data sekolah dari profil ke dalam array []
-  // Karena HomePage lama mengharapkan output berupa array: const school = schools?.[0];
   const data = useMemo(() => {
     if (!user || !user.sekolah) return [];
-    
+
     // Sesuaikan mapping agar nama field dari backend localhost pas dengan UI
     return [{
-      id: user.sekolah.id,
-      namaSekolah: user.sekolah.namaSekolah,
+      id: user.schoolId || user.sekolah.id,
+      namaSekolah: user.nama || user.sekolah.namaSekolah,
       npsn: user.sekolah.npsn,
-      adminName: user.name,
+      adminName: user.username || user.name,
       email: user.email,
       address: user.sekolah.address,
       nameProvince: user.sekolah.nameProvince || "DKI Jakarta", // dummy jika null
       file: user.sekolah.file // Logo URL
     }];
   }, [user]);
-
+  
   return {
     data,
     isLoading: profileLoading,
@@ -117,6 +113,7 @@ export const useSchool = () => {
     refetch: query.refetch
   };
 };
+
 
 // Versi Card (biasanya digunakan di sidebar atau list)
 export const useSchoolForCard = () => {

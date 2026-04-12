@@ -129,6 +129,7 @@ import { DetailUserLanding } from "../detailUser/pages/detailUser-landing.js";
 import { MappingSekolahLanding } from "../mappingSekolah/pages/mappingSekolah-landing.js";
 import { TugasLanding } from "../tugas/pages/tugas-landing.js";
 import { OrangTuaLanding } from "../orangTua/index.js";
+import { AdminManagementLanding } from "../adminManagement/index.js";
 const router = createBrowserRouter(
   [
     {
@@ -147,6 +148,10 @@ const router = createBrowserRouter(
         {
           path: "library",
           element: <LibraryHomePage />,
+        },
+        {
+          path: "manajemen-admin",
+          element: <AdminManagementLanding />,
         },
         {
           path: "library/visit",

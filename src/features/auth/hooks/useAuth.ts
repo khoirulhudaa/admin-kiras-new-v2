@@ -32,13 +32,14 @@
 // };
 
 
-// hooks/useAuth.ts
-// hooks/useAuth.ts
+
+
+import { storage } from "@itokun99/secure-storage"; // IMPORT INI WAJIB
 import axios from 'axios';
 import { useCallback, useState } from 'react';
 import { getToken, saveToken } from '../utils'; // IMPORT INI WAJIB
-import { storage } from "@itokun99/secure-storage"; // IMPORT INI WAJIB
 
+// const API_AUTH = "http://localhost:5010/auth";
 const API_AUTH = "https://be-school.kiraproject.id/auth";
 
 export const useAuth = () => {
@@ -55,6 +56,7 @@ export const useAuth = () => {
       // Sesuai respon login Anda: res.data.token
       const token = res.data.token;
       const user = res.data.user;
+      console.log('res', res.data)
 
       if (token) {
         // GUNAKAN saveToken agar terbaca oleh Vokadash
@@ -62,6 +64,7 @@ export const useAuth = () => {
         
         // Simpan user ke localStorage jika Vokadash membutuhkannya
         localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('user_profile', JSON.stringify(user));
         // Opsional: duplikasi ke key 'token' biasa jika perlu
         localStorage.setItem('token', token);
       }
@@ -119,6 +122,7 @@ export const useSchoolCreation = () => {
     }
 
     return await axios.post("https://be-school.kiraproject.id/auth/register", formData, {
+    // return await axios.post("http://localhost:5005/auth/register", formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   };

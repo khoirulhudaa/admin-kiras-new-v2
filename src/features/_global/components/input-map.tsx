@@ -1,10 +1,6 @@
 import {
-  FormControl,
-  FormItem,
-  FormLabel,
-  Input,
   Label,
-  lang,
+  lang
 } from "@/core/libs";
 import { Icon, LatLngLiteral, Map } from "leaflet";
 import React, { useCallback, useEffect, useState } from "react";
@@ -81,34 +77,34 @@ export const InputMap = React.memo(
       }
     }, [value?.lat, value?.lng, map, position?.lat, position.lng]);
 
-    const renderInput = () => {
-      return (
-        <div className="grid grid-cols-2 gap-4 mb-4 mt-4 pb-6">
-          <FormItem>
-            <FormLabel>{lang.text("latitude")}</FormLabel>
-            <FormControl>
-              <Input
-                name="lat"
-                placeholder={lang.text("latitude")}
-                value={position.lat}
-                disabled
-              />
-            </FormControl>
-          </FormItem>
-          <FormItem>
-            <FormLabel>{lang.text("longitude")}</FormLabel>
-            <FormControl>
-              <Input
-                name="lon"
-                placeholder={lang.text("longitude")}
-                value={position.lng}
-                disabled
-              />
-            </FormControl>
-          </FormItem>
-        </div>
-      );
-    };
+    // const renderInput = () => {
+    //   return (
+    //     <div className="grid grid-cols-2 gap-4 mb-4 mt-4 pb-6">
+    //       <FormItem>
+    //         <FormLabel>{lang.text("latitude")}</FormLabel>
+    //         <FormControl>
+    //           <Input
+    //             name="lat"
+    //             placeholder={lang.text("latitude")}
+    //             value={position.lat}
+    //             disabled
+    //           />
+    //         </FormControl>
+    //       </FormItem>
+    //       <FormItem>
+    //         <FormLabel>{lang.text("longitude")}</FormLabel>
+    //         <FormControl>
+    //           <Input
+    //             name="lon"
+    //             placeholder={lang.text("longitude")}
+    //             value={position.lng}
+    //             disabled
+    //           />
+    //         </FormControl>
+    //       </FormItem>
+    //     </div>
+    //   );
+    // };
 
     const renderMap = () => {
       return (
@@ -141,7 +137,7 @@ export const InputMap = React.memo(
     return (
       <div className="relative w-full pt-4">
         {renderMap()}
-        {renderInput()}
+        {/* {renderInput()} */}
       </div>
     );
   },

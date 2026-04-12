@@ -140,16 +140,47 @@ export function ProfileSekolahMain() {
         achievementCount: profile.achievementCount?.toString() || "0",
         photoHeadmasterUrl: null, // Reset file input
         heroImage: null,
-        logo: null
+        logo: null,
+        latitude: profile.latitude?.toString() || "",
+        longitude: profile.longitude?.toString() || "",
       });
+      // if (profile.latitude && profile.longitude) {
+      //   setMarkerPos([parseFloat(profile.latitude), parseFloat(profile.longitude)]);
+      //   setMapCenter([parseFloat(profile.latitude), parseFloat(profile.longitude)]);
+      // }
       if (profile.latitude && profile.longitude) {
-        setMarkerPos([parseFloat(profile.latitude), parseFloat(profile.longitude)]);
-        setMapCenter([parseFloat(profile.latitude), parseFloat(profile.longitude)]);
+        const lat = parseFloat(profile.latitude);
+        const lng = parseFloat(profile.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMarkerPos([lat, lng]);
+          setMapCenter([lat, lng]);
+        }
       }
     } else {
         setFormData(DEFAULT_PROFILE);
     }
     setIsModalOpen(true);
+  };
+
+  // Tambahkan handler untuk input manual
+  const handleManualLocationChange = (field: 'latitude' | 'longitude', value: string) => {
+    // Hanya izinkan angka, titik, dan tanda minus
+    const regex = /^-?\d*\.?\d*$/;
+    if (value === '' || regex.test(value)) {
+      setFormData(prev => {
+        const newData = { ...prev, [field]: value };
+        
+        // Update marker jika kedua koordinat valid secara angka
+        const lat = parseFloat(field === 'latitude' ? value : prev.latitude);
+        const lng = parseFloat(field === 'longitude' ? value : prev.longitude);
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMarkerPos([lat, lng]);
+          setMapCenter([lat, lng]);
+        }
+        return newData;
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -210,7 +241,12 @@ export function ProfileSekolahMain() {
   };
 
   const handleMapClick = (lat: number, lng: number) => {
-    setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
+    setFormData((prev) => ({ 
+      ...prev, 
+      // Sesuaikan dengan DECIMAL(10,8)
+      latitude: lat.toFixed(8), 
+      longitude: lng.toFixed(8)  
+    }));
     setMarkerPos([lat, lng]);
   };
 
@@ -387,18 +423,45 @@ export function ProfileSekolahMain() {
                     </div>
 
                     {/* MAP */}
-                    <Field label="Geolokasi Sekolah">
-                      <div className="h-64 rounded-2xl overflow-hidden border border-white/10 grayscale brightness-75">
-                        <MapContainer center={mapCenter} zoom={13} style={{ height: "100%" }}>
+                    <Field label="Geolokasi Sekolah (Klik Map atau Isi Manual)">
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Latitude</label>
+                          <Input 
+                            placeholder="-6.123456" 
+                            value={formData.latitude} 
+                            onChange={(e) => handleManualLocationChange('latitude', e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Longitude</label>
+                          <Input 
+                            placeholder="106.123456" 
+                            value={formData.longitude} 
+                            onChange={(e) => handleManualLocationChange('longitude', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <br />
+
+                      <div className="h-[360px] rounded-2xl overflow-hidden border border-white/10 grayscale brightness-75 transition-all focus-within:grayscale-0 focus-within:brightness-100">
+                        <MapContainer 
+                          center={mapCenter} 
+                          zoom={13} 
+                          style={{ height: "100%" }}
+                          // Key ditambahkan agar map re-render saat center berubah dari input manual
+                          key={`${mapCenter[0]}-${mapCenter[1]}`} 
+                        >
                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                           <LocationPicker onLocationChange={handleMapClick} />
                           {markerPos && <Marker position={markerPos} />}
                         </MapContainer>
                       </div>
-                      <div className="flex gap-4 text-[10px] text-zinc-500 font-mono">
-                          <span>LAT: {formData.latitude || "-"}</span>
-                          <span>LNG: {formData.longitude || "-"}</span>
-                      </div>
+                      
+                      <p className="mt-2 text-[9px] text-blue-500 italic font-medium">
+                        * Gunakan format desimal (contoh: -6.2088). Data disimpan dengan presisi 8 digit.
+                      </p>
                     </Field>
 
                     {/* ASSETS */}

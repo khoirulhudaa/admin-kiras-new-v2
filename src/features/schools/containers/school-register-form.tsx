@@ -1,358 +1,3 @@
-// // /* eslint-disable @typescript-eslint/no-explicit-any */
-// import { zodResolver } from "@hookform/resolvers/zod"
-// import {
-//   Button,
-//   Card,
-//   CardContent,
-//   CardDescription,
-//   CardHeader,
-//   CardTitle,
-//   Form,
-//   FormControl,
-//   FormField,
-//   FormItem,
-//   FormLabel,
-//   FormMessage,
-//   Input,
-// } from "@/core/libs"
-// import { Link, useNavigate } from "react-router-dom"
-// import { SchoolCreationFormSchema, schoolCreationFormSchema } from "../utils"
-// import { useForm } from "react-hook-form"
-// import { FileUploader, InputMap, useAlert } from "@/features/_global"
-// import { useSchoolCreation } from "../hooks"
-// import { lang, simpleEncode } from "@/core/libs"
-// import { z } from "zod"
-// import { useEffect, useState } from "react"
-// import { getCoordinates, requestLocationPermission } from "@/core/utils"
-// import { Eye, EyeOff } from "lucide-react"
-
-// export function SchoolRegisterForm() {
-//   const schoolCreation = useSchoolCreation()
-//   const navigate = useNavigate()
-//   const [showPassword, setShowPassword] = useState(false)
-//   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-//   const alert = useAlert()
-
-//   const form = useForm<z.infer<SchoolCreationFormSchema>>({
-//     resolver: zodResolver(schoolCreationFormSchema),
-//     mode: "onBlur",
-//     defaultValues: {
-//       alamatSekolah: "",
-//       schoolName: "",
-//       schoolNPSN: "",
-//       schoolLogo: null,
-//       schoolFile: null,
-//       schoolStatus: "0",
-//       schoolAdmin: "",
-//       moodleApiUrl: "",
-//       tokenMoodle: "",
-//       libraryServer: "",
-//       location: {
-//         lat: 0,
-//         lng: 0,
-//       },
-//     },
-//   })
-
-//   async function onSubmit(data: z.infer<SchoolCreationFormSchema>) {
-//     console.log("data", data)
-//     try {
-//       await schoolCreation.register({
-//         namaSekolah: data.schoolName,
-//         npsn: data.schoolNPSN,
-//         namaAdmin: data.schoolAdmin,
-//         latitude: data.location.lat,
-//         longitude: data.location.lng,
-//         tokenModel: data.tokenMoodle,
-//         email: data.email,
-//         password: data.password,
-//         modelApiUrl: data.moodleApiUrl,
-//         file: data.schoolFile,
-//       })
-
-//       const otpZ = JSON.stringify({
-//         email: data.email,
-//         navigateTo: "/auth/login",
-//       })
-
-//       const encodedOtpZ = simpleEncode(otpZ)
-
-//       navigate(`/otp?z=${encodedOtpZ}`, { replace: true })
-//     } catch (err: any) {
-//       console.log("err =>", err)
-//       alert.error(
-//         err?.message ||
-//           lang.text("failed", {
-//             context: lang.text("addSchool"),
-//           })
-//       )
-//     }
-//   }
-
-//   useEffect(() => {
-//     requestLocationPermission().then(() => {
-//       getCoordinates()
-//         .then((res) => {
-//           form.setValue("location", {
-//             lat: res.latitude,
-//             lng: res.longitude,
-//           })
-//         })
-//         .catch((err: any) => {
-//           alert.error(err?.message || lang.text("errSystem"))
-//         })
-//     })
-//   }, [alert, form])
-
-//   return (
-//     <Form {...form}>
-//       <form onSubmit={form.handleSubmit(onSubmit)}>
-//         <Card className="mx-auto max-w-xl w-full">
-//           <CardHeader>
-//             <CardTitle className="text-2xl">
-//               {lang.text("registerYourSchool")}
-//             </CardTitle>
-//             <CardDescription>
-//               {lang.text("registerYourSchoolDesc")}
-//             </CardDescription>
-//           </CardHeader>
-//           <CardContent>
-//             <div className="grid gap-4">
-//               <div className="grid grid-cols-2 gap-4">
-//                 <FormField
-//                   control={form.control}
-//                   name="schoolName"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("schoolName")}</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder={lang.text("inputSchoolName")}
-//                           {...field}
-//                         />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <FormField
-//                   control={form.control}
-//                   name="schoolNPSN"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("npsn")}</FormLabel>
-//                       <FormControl>
-//                         <Input placeholder="Masukan nama sekolah" {...field} />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <div className="col-span-2">
-//                   <FormField
-//                     control={form.control}
-//                     name="location"
-//                     render={({ field }) => (
-//                       <InputMap
-//                         label="Pilih Lokasi Peta"
-//                         onChange={(v) => field.onChange(v)}
-//                         value={field.value}
-//                       />
-//                     )}
-//                   />
-//                 </div>
-//                 <FormField
-//                   control={form.control}
-//                   name="schoolAdmin"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("adminName")}</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder={lang.text("inputAdminName")}
-//                           {...field}
-//                         />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <FormField
-//                   control={form.control}
-//                   name="alamatSekolah"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("alamatSekolah")}</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder="Masukkan alamat sekolah"
-//                           {...field}
-//                         />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-
-//                 <FormField
-//                   control={form.control}
-//                   name="email"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("adminEmail")}</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           type="email"
-//                           placeholder={lang.text("inputAdminEmail")}
-//                           {...field}
-//                         />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <>
-//                   <FormField
-//                     control={form.control}
-//                     name="password"
-//                     render={({ field, fieldState }) => (
-//                       <FormItem>
-//                         <FormLabel>{lang.text("password")}</FormLabel>
-//                         <FormControl>
-//                           <div className="relative">
-//                             <Input
-//                               type={showPassword ? "text" : "password"}
-//                               autoComplete="off"
-//                               placeholder={lang.text("inputPassword")}
-//                               {...field}
-//                               className="pr-10"
-//                             />
-//                             <button
-//                               type="button"
-//                               className="absolute inset-y-0 right-0 flex items-center px-3"
-//                               onClick={() => setShowPassword(!showPassword)}
-//                             >
-//                               {showPassword ? (
-//                                 <EyeOff size={20} />
-//                               ) : (
-//                                 <Eye size={20} />
-//                               )}
-//                             </button>
-//                           </div>
-//                         </FormControl>
-//                         <FormMessage>{fieldState.error?.message}</FormMessage>
-//                       </FormItem>
-//                     )}
-//                   />
-//                   {/* Input Confirm Password */}
-//                   <FormField
-//                     control={form.control}
-//                     name="confirmPassword"
-//                     render={({ field, fieldState }) => (
-//                       <FormItem>
-//                         <FormLabel>{lang.text("confirmPassword")}</FormLabel>
-//                         <FormControl>
-//                           <div className="relative">
-//                             <Input
-//                               type={showConfirmPassword ? "text" : "password"}
-//                               autoComplete="off"
-//                               placeholder={lang.text("inputConfirmPassword")}
-//                               {...field}
-//                               className="pr-10"
-//                             />
-//                             <button
-//                               type="button"
-//                               className="absolute inset-y-0 right-0 flex items-center px-3"
-//                               onClick={() =>
-//                                 setShowConfirmPassword(!showConfirmPassword)
-//                               }
-//                             >
-//                               {showConfirmPassword ? (
-//                                 <EyeOff size={20} />
-//                               ) : (
-//                                 <Eye size={20} />
-//                               )}
-//                             </button>
-//                           </div>
-//                         </FormControl>
-//                         <FormMessage>{fieldState.error?.message}</FormMessage>
-//                       </FormItem>
-//                     )}
-//                   />
-//                 </>
-//                 <FormField
-//                   control={form.control}
-//                   name="moodleApiUrl"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("moodleApiUrl")}</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder={lang.text("inputMoodleApiUrl")}
-//                           {...field}
-//                         />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <FormField
-//                   control={form.control}
-//                   name="tokenMoodle"
-//                   render={({ field, fieldState }) => (
-//                     <FormItem>
-//                       <FormLabel>{lang.text("tokenMoodle")}</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder={lang.text("inputTokenMoodle")}
-//                           {...field}
-//                         />
-//                       </FormControl>
-//                       <FormMessage>{fieldState.error?.message}</FormMessage>
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <div className="col-span-2">
-//                   <FormField
-//                     control={form.control}
-//                     name="schoolFile"
-//                     render={({ field, fieldState }) => (
-//                       <FormItem>
-//                         <FormLabel>{lang.text("schoollogo")}</FormLabel>
-//                         <FileUploader
-//                           value={field.value}
-//                           onChange={(v) => field.onChange(v)}
-//                           buttonPlaceholder="Upload berkas sekolah"
-//                           onError={(e) =>
-//                             form.setError("schoolFile", { message: e })
-//                           }
-//                           showButton={false}
-//                           error={fieldState.error?.message}
-//                         />
-//                       </FormItem>
-//                     )}
-//                   />
-//                 </div>
-//               </div>
-//               <Button type="submit" className="w-full">
-//                 {lang.text("register")}
-//               </Button>
-//             </div>
-//             <div className="mt-4 text-center text-sm">
-//               {lang.text("needHelp")}{" "}
-//               <Link to="#" className="underline">
-//                 {lang.text("contactUs")}
-//               </Link>
-//             </div>
-//           </CardContent>
-//         </Card>
-//       </form>
-//     </Form>
-//   )
-// }
-
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Button,
@@ -397,9 +42,36 @@ export function SchoolRegisterForm() {
       schoolLogo: null,
       schoolFile: null,
       schoolAdmin: "",
-      location: { lat: 0, lng: 0 },
+      // location: { lat: 0, lng: 0 },
+      location: { lat: "", lng: "" },
     },
   })
+
+  // Fungsi untuk sinkronisasi input manual ke map
+  const handleManualCoordChange = (type: 'lat' | 'lng', val: string) => {
+    const regex = /^-?\d*\.?\d*$/;
+    if (val === "" || regex.test(val)) {
+      const currentLocation = form.getValues("location");
+      const newLocation = { ...currentLocation, [type]: val };
+      
+      form.setValue("location", newLocation);
+    }
+  };
+
+  // Update useEffect untuk mengambil posisi awal (Geolocation)
+  useEffect(() => {
+    requestLocationPermission().then(() => {
+      getCoordinates().then((res) => {
+        // Gunakan toFixed(8) untuk presisi DECIMAL
+        form.setValue("location", { 
+          lat: res.latitude.toFixed(8), 
+          lng: res.longitude.toFixed(8) 
+        })
+      }).catch((err: any) => {
+        alert.error(err?.message || lang.text("errSystem"))
+      })
+    })
+  }, [alert, form])
 
   async function onSubmit(data: z.infer<SchoolCreationFormSchema>) {
     try {
@@ -529,7 +201,7 @@ export function SchoolRegisterForm() {
                 />
 
                 {/* Map Section - Full Width */}
-                <div className="col-span-1 md:col-span-2 space-y-2">
+                {/* <div className="col-span-1 md:col-span-2 space-y-2">
                   <FormField
                     control={form.control}
                     name="location"
@@ -543,6 +215,64 @@ export function SchoolRegisterForm() {
                       </div>
                     )}
                   />
+                </div> */}
+
+                {/* Map & Manual Coordination Section */}
+                <div className="col-span-1 md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormItem>
+                      <FormLabel className="text-blue-100/70 text-[10px] uppercase font-bold tracking-wider">Latitude (Manual)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          className="bg-white/5 border-white/10 text-white rounded-xl focus:border-blue-500" 
+                          placeholder="-6.12345678"
+                          value={form.watch("location.lat")}
+                          onChange={(e) => handleManualCoordChange('lat', e.target.value)}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel className="text-blue-100/70 text-[10px] uppercase font-bold tracking-wider">Longitude (Manual)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          className="bg-white/5 border-white/10 text-white rounded-xl focus:border-blue-500" 
+                          placeholder="106.12345678"
+                          value={form.watch("location.lng")}
+                          onChange={(e) => handleManualCoordChange('lng', e.target.value)}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <div className="rounded-xl overflow-hidden border border-white/10 bg-white/5 p-1 relative group">
+                        <div className="absolute top-4 right-4 z-10 bg-blue-600/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          Klik peta untuk pin poin otomatis
+                        </div>
+                        <InputMap
+                          label="Lokasi Presensi Sekolah"
+                          // Saat map diklik, kita konversi ke string presisi 8 digit
+                          onChange={(v) => {
+                            field.onChange({
+                              lat: v.lat.toFixed(8),
+                              lng: v.lng.toFixed(8)
+                            });
+                          }}
+                          // Konversi kembali ke number hanya untuk visualisasi di Map component
+                          value={{
+                            lat: parseFloat(field.value.lat) || 0,
+                            lng: parseFloat(field.value.lng) || 0
+                          }}
+                        />
+                      </div>
+                    )}
+                  />
+                  <p className="text-[10px] text-blue-400/50 italic px-2">
+                    * Sistem menggunakan koordinat presisi tinggi (8 desimal) untuk akurasi radius presensi.
+                  </p>
                 </div>
 
                 {/* Address */}

@@ -8,9 +8,9 @@ export const RootPage = () => {
   const auth = useAuth();
   const profile = useProfile();
 
-  if (!auth.isAuthenticated() && !profile.query.data?.data?.user?.id) {
-    return <Navigate to="/auth/login" replace />;
-  }
+  // if (!auth.isAuthenticated()) {
+  //   return <Navigate to="/auth/login" replace />;
+  // }
 
   return (
     <DashboardLayout menus={appContext.menus} usermenus={appContext.usermenus}>
