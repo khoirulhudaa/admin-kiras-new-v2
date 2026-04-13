@@ -14,9 +14,7 @@ import {
   Users,
   X,
   Youtube,
-  Zap,
-  RefreshCcw,
-  MapPin
+  Zap
 } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { FaSpinner } from "react-icons/fa";
@@ -36,6 +34,8 @@ const DEFAULT_PROFILE = {
   studentCount: "0",
   teacherCount: "0",
   roomCount: "0",
+  kepalaSekolahPhone: "",
+  kepalaSekolahEmail: "",
   achievementCount: "0",
   latitude: "",
   longitude: "",
@@ -134,6 +134,8 @@ export function ProfileSekolahMain() {
       setFormData({
         ...DEFAULT_PROFILE,
         ...profile,
+        kepalaSekolahPhone: profile.kepalaSekolahPhone || "",
+        kepalaSekolahEmail: profile.kepalaSekolahEmail || "",
         studentCount: profile.studentCount?.toString() || "0",
         teacherCount: profile.teacherCount?.toString() || "0",
         roomCount: profile.roomCount?.toString() || "0",
@@ -192,6 +194,32 @@ export function ProfileSekolahMain() {
       return;
     }
 
+
+    if (!SCHOOL_ID || !formData.heroTitle || !formData.headmasterWelcome || !formData.headmasterName || !formData.schoolName) {
+      showAlert("Field wajib (Hero Title, Sambutan, Nama Kepsek, & Sekolah) harus diisi!");
+      return;
+    }
+
+    // ← Tambah validasi ini
+    if (!formData.kepalaSekolahPhone || !formData.kepalaSekolahEmail) {
+      showAlert("No. WA dan Email Kepala Sekolah wajib diisi untuk fitur kirim rekap!");
+      return;
+    }
+
+    // Validasi format nomor WA
+    const phoneRegex = /^62\d{8,13}$/;
+    if (!phoneRegex.test(formData.kepalaSekolahPhone)) {
+      showAlert("Format No. WA tidak valid. Gunakan format 628xxxxxxxxxx (tanpa + atau 0)");
+      return;
+    }
+
+    // Validasi format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.kepalaSekolahEmail)) {
+      showAlert("Format Email Kepala Sekolah tidak valid");
+      return;
+    }
+
     setIsSubmitting(true);
     const form = new FormData();
 
@@ -201,6 +229,8 @@ export function ProfileSekolahMain() {
     form.append("heroSubTitle", formData.heroSubTitle || "");
     form.append("linkYoutube", formData.linkYoutube || "");
     form.append("headmasterWelcome", formData.headmasterWelcome);
+    form.append("kepalaSekolahPhone", formData.kepalaSekolahPhone || "");
+    form.append("kepalaSekolahEmail", formData.kepalaSekolahEmail || "");
     form.append("headmasterName", formData.headmasterName);
     form.append("schoolName", formData.schoolName);
     form.append("studentCount", formData.studentCount);
@@ -411,6 +441,34 @@ export function ProfileSekolahMain() {
                       <div className="grid grid-cols-2 gap-6">
                         <Field label="Telepon"><Input value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} /></Field>
                         <Field label="Email"><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Field>
+                      </div>
+                    </div>
+
+                    {/* Kontak Kepala Sekolah — untuk kirim rekap WA & Email */}
+                    <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl space-y-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500 flex items-center gap-2">
+                        <Phone size={12} />
+                        Kontak Kepala Sekolah (untuk Rekap WA & Email)
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="No. WA Kepala Sekolah">
+                          <Input 
+                            placeholder="628xxxxxxxxxx" 
+                            value={formData.kepalaSekolahPhone} 
+                            onChange={(e) => setFormData({ ...formData, kepalaSekolahPhone: e.target.value })} 
+                          />
+                          <p className="text-[9px] text-zinc-600 ml-1 mt-1">
+                            Format: 628xxxxxxxxxx (tanpa + atau 0)
+                          </p>
+                        </Field>
+                        <Field label="Email Kepala Sekolah">
+                          <Input 
+                            type="email"
+                            placeholder="kepsek@sekolah.sch.id" 
+                            value={formData.kepalaSekolahEmail} 
+                            onChange={(e) => setFormData({ ...formData, kepalaSekolahEmail: e.target.value })} 
+                          />
+                        </Field>
                       </div>
                     </div>
 

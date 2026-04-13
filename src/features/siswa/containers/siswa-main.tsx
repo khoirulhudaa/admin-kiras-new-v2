@@ -23,8 +23,10 @@ import {
   Printer,
   RefreshCw,
   Search,
+  Send,
   Trash2,
   Upload,
+  MessageCircle, Mail, Share2,
   User,
   X
 } from "lucide-react";
@@ -34,6 +36,7 @@ import * as XLSX from "xlsx";
 import GraduationModal from "../components/graduationModal";
 import { generateStudentCardsPDF } from "../utils/generateStudentCards";
 import { useProfile } from "@/features/profile";
+import moment from "moment";
 
 const BASE_URL = "https://be-school.kiraproject.id/siswa";
 // const BASE_URL = "http://localhost:5005/siswa";
@@ -57,6 +60,35 @@ interface Student {
   isNisDuplicate?: boolean;
   isNisnDuplicate?: boolean;
 }
+
+// Komponen kecil StatusDropdown di dalam file yang sama
+const StatusDropdown = ({ student, onMark }: { student: Student; onMark: (s: Student, status: any) => void }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-zinc-400 hover:text-white transition-all"
+        title="Edit Status"
+      >
+        <Edit size={14} />
+      </button>
+      {open && (
+        <div className="absolute right-0 bottom-9 bg-[#0B1220] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden w-32">
+          {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => (
+            <button
+              key={status}
+              onClick={() => { onMark(student, status); setOpen(false); }}
+              className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-white/10 text-zinc-300 hover:text-white transition-all"
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isProcessing }: any) => {
   if (!open) return null;
@@ -528,6 +560,13 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
     email: "", password: "", // <--- Tambahkan ini
     photo: null as File | null, preview: ""
   });
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileDrop = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setForm(p => ({ ...p, photo: file, preview: URL.createObjectURL(file) }));
+  };
   
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -623,14 +662,46 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
         <form onSubmit={handleSubmit} className="space-y-6 pb-0">
           {/* Foto Section */}
           <div className="space-y-3">
-             <label className="text-[10px] font-black uppercase text-white/30 tracking-widest ml-2">Foto Profil Siswa</label>
-             <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-white/10 rounded-3xl cursor-pointer overflow-hidden relative group hover:border-blue-500/50 transition-all">
-                {form.preview ? <img src={form.preview} className="absolute inset-0 w-full h-full object-cover" /> : <div className="text-center text-zinc-600"><Upload className="mx-auto mb-2" size={32} /><span className="text-[10px] font-bold uppercase">Upload Pas Foto</span></div>}
-                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if(file) setForm(p => ({...p, photo: file, preview: URL.createObjectURL(file)}));
-                }} />
-             </label>
+            <label className="text-[10px] font-black uppercase text-white/30 tracking-widest ml-2">Foto Profil Siswa</label>
+            <div
+              className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-3xl relative overflow-hidden transition-all cursor-pointer
+                ${isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:border-blue-500/50'}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleFileDrop(file);
+              }}
+              onClick={() => document.getElementById('photo-input')?.click()}
+            >
+              {form.preview
+                ? <img src={form.preview} className="absolute inset-0 w-full h-full object-cover" />
+                : (
+                  <div className="text-center text-zinc-600 pointer-events-none">
+                    <Upload className="mx-auto mb-2" size={32} />
+                    <span className="text-[10px] font-bold uppercase block">Upload atau Drag & Drop</span>
+                    <span className="text-[9px] text-zinc-700 mt-1 block">PNG, JPG, WEBP maks 5MB</span>
+                  </div>
+                )
+              }
+              {isDragging && (
+                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center pointer-events-none">
+                  <span className="text-blue-400 font-black text-sm uppercase tracking-widest">Lepaskan untuk Upload</span>
+                </div>
+              )}
+            </div>
+            <input
+              id="photo-input"
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileDrop(file);
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -971,6 +1042,12 @@ export default function StudentManager() {
   // const [manualRFID, setManualRFID] = useState("");
   // const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  const [showWAStatus, setShowWAStatus] = useState(false);
+  const [waStatus, setWaStatus] = useState<{ isReady: boolean; hasQR: boolean } | null>(null);
+  const [waQrImage, setWaQrImage] = useState<string | null>(null);
+
+  const WA_URL = "https://be-school.kiraproject.id/wa";
   
   // Filter tambahan untuk UI (opsional tapi disarankan)
   const [filterClass, setFilterClass] = useState("");
@@ -984,6 +1061,17 @@ export default function StudentManager() {
   const [showMoveClassMenu, setShowMoveClassMenu] = useState(false);
   const [moveClassBatch, setMoveClassBatch] = useState("");
   const [moveClassTarget, setMoveClassTarget] = useState("");
+  const [bulkStatusTarget, setBulkStatusTarget] = useState<string>("");
+  const [isBulkMarking, setIsBulkMarking] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [waRateLimit, setWaRateLimit] = useState<{
+    date: string;
+    sent: number;
+    remaining: number;
+    max: number;
+  } | null>(null);
+
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean;
     title: string;
@@ -1009,6 +1097,50 @@ export default function StudentManager() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDeleteMenu]);
+
+  
+  // Fetch kuota saat share menu dibuka
+  useEffect(() => {
+    if (!showShareMenu) return;
+    
+    const fetchRateLimit = async () => {
+      try {
+        const res = await fetch(`${WA_URL}/wa/send-stats`);
+        const json = await res.json();
+        if (json.success) setWaRateLimit(json.stats);
+      } catch {
+        // silent fail
+      }
+    };
+
+    fetchRateLimit();
+  }, [showShareMenu]);
+
+  useEffect(() => {
+    // Jangan polling kalau panel tidak dibuka
+    if (!showWAStatus) return;
+
+    const checkWAStatus = async () => {
+      try {
+        const res = await fetch(`${WA_URL}/status`);
+        const json = await res.json();
+        setWaStatus(json);
+        if (json.hasQR) {
+          const qrRes = await fetch(`${WA_URL}/qr`);
+          const qrJson = await qrRes.json();
+          if (qrJson.success) setWaQrImage(qrJson.qrImage);
+        } else if (json.isReady) {
+          setWaQrImage(null);
+        }
+      } catch {
+        setWaStatus(null);
+      }
+    };
+
+    checkWAStatus(); // fetch pertama langsung
+    const interval = setInterval(checkWAStatus, 10000); // polling hanya saat panel buka
+    return () => clearInterval(interval); // cleanup saat panel tutup
+  }, [showWAStatus]);
 
   useEffect(() => {
     if (!showMoveClassMenu) return;
@@ -1036,9 +1168,6 @@ export default function StudentManager() {
   // Tambahkan baris ini di bagian deklarasi state
   const [showDuplicateOnly, setShowDuplicateOnly] = useState(false);
   const [prefilledRfid, setPrefilledRfid] = useState("");
-
-
-  console.log('schppl', profile.user.visionMission)
 
   const [cardConfig, setCardConfig] = useState<any>({
     title: "KARTU PELAJAR",
@@ -1121,6 +1250,41 @@ export default function StudentManager() {
     []
   );
 
+  const handleBulkMarkStatus = async (status: string) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkMarking(true);
+    try {
+      const payload = selectedIds.map(id => {
+        const student = students.find(s => s.id === id);
+        return {
+          studentId: id,
+          schoolId,
+          status,
+          currentClass: student?.class,
+          userRole: 'student'
+        };
+      });
+
+      const res = await fetch(`${BASE_URL}/mark-absence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload) // backend sudah support array
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`${selectedIds.length} siswa ditandai ${status}`);
+        setSelectedIds([]);
+        queryClient.invalidateQueries({ queryKey: ['students'] });
+      } else {
+        toast.error(json.message);
+      }
+    } catch {
+      toast.error("Gagal bulk mark");
+    } finally {
+      setIsBulkMarking(false);
+    }
+  };
+
   // Jalankan debounce saat input berubah
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -1176,6 +1340,18 @@ export default function StudentManager() {
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['students'] });
   };
+
+  useEffect(() => {
+    if (!showShareMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.share-menu-wrapper')) {
+        setShowShareMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showShareMenu]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -1382,35 +1558,61 @@ export default function StudentManager() {
   reader.readAsBinaryString(file);
 };
 
-const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'Alpha') => {
-    if (!window.confirm(`Tandai ${student.name} sebagai ${status} hari ini?`)) return;
+// const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'Alpha') => {
+//     if (!window.confirm(`Tandai ${student.name} sebagai ${status} hari ini?`)) return;
 
-    try {
-      const res = await fetch(`${BASE_URL}/mark-absence`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: student.id,
-          schoolId: schoolId,
-          status,
-          currentClass: student.class,
-          userRole: 'student'
-        })
-      });
+//     try {
+//       const res = await fetch(`${BASE_URL}/mark-absence`, {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           studentId: student.id,
+//           schoolId: schoolId,
+//           status,
+//           currentClass: student.class,
+//           userRole: 'student'
+//         })
+//       });
 
-      const json = await res.json();
+//       const json = await res.json();
 
-      if (res.ok && json.success) {
-        toast.success(`${student.name} ditandai sebagai ${status} hari ini.`);
-        queryClient.invalidateQueries({ queryKey: ['students'] });
-      } else {
-        toast.error(json.message || "Gagal mencatat kehadiran");
-      }
-    } catch (err: any) {
-      toast.error("Gagal mencatat ketidakhadiran", {
-      });
+//       if (res.ok && json.success) {
+//         toast.success(`${student.name} ditandai sebagai ${status} hari ini.`);
+//         queryClient.invalidateQueries({ queryKey: ['students'] });
+//       } else {
+//         toast.error(json.message || "Gagal mencatat kehadiran");
+//       }
+//     } catch (err: any) {
+//       toast.error("Gagal mencatat ketidakhadiran", {
+//       });
+//     }
+//   };
+
+const handleMarkAbsence = async (student: Student, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpha') => {
+  // Hapus window.confirm agar dropdown langsung eksekusi
+  try {
+    const res = await fetch(`${BASE_URL}/mark-absence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentId: student.id,
+        schoolId,
+        status,
+        currentClass: student.class,
+        userRole: 'student'
+      })
+    });
+    const json = await res.json();
+    if (res.ok && json.success) {
+      toast.success(`${student.name} → ${status}`);
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+    } else {
+      toast.error(json.message || "Gagal");
     }
-  };
+  } catch {
+    toast.error("Gagal mencatat kehadiran");
+  }
+};
 
 const handleProcessGraduation = async () => {
   if (selectedIds.length === 0) {
@@ -1580,6 +1782,57 @@ const handleGeneratePDF = async () => {
       }
     };
 
+    // Tambah helper function di StudentManager
+    const handleMarkPresent = async (student: Student) => {
+      try {
+        const res = await fetch(`${BASE_URL}/mark-absence`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: student.id,
+            schoolId,
+            status: 'Hadir',
+            currentClass: student.class,
+            userRole: 'student'
+          })
+        });
+        const json = await res.json();
+        if (json.success) {
+          toast.success(`${student.name} ditandai Hadir`);
+          queryClient.invalidateQueries({ queryKey: ['students'] });
+        } else {
+          toast.error(json.message);
+        }
+      } catch {
+        toast.error("Gagal menandai kehadiran");
+      }
+    };
+
+   const handleShare = async (via: 'wa' | 'email' | 'all') => {
+      setShowShareMenu(false);
+      setIsSharing(true);
+
+      try {
+        const date = moment().format('YYYY-MM-DD');
+        const res = await fetch(
+          `${BASE_URL}/share-rekap?schoolId=${schoolId}&date=${date}&via=${via}`
+        );
+        const json = await res.json();
+
+        if (json.success) {
+          toast.success(json.message);
+          // Update kuota dari response
+          if (json.rateLimit) setWaRateLimit(json.rateLimit);
+        } else {
+          toast.error(json.message || "Gagal mengirim rekap");
+        }
+      } catch (err) {
+        toast.error("Gagal mengirim rekap. Cek koneksi internet.");
+      } finally {
+        setIsSharing(false);
+      }
+    };
+
 const statusStyles: Record<string, string> = {
   Hadir: "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20",
   Izin: "bg-amber-500/10 text-amber-500 border border-amber-500/20",
@@ -1604,15 +1857,137 @@ const navigate = useNavigate();
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {/* <button
-            onClick={handleSimulateRFID}
-            className="h-14 px-5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-2xl flex items-center gap-2 hover:bg-purple-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
-          >
-            📡 Simulasi RFID
-          </button> */}
           <button onClick={handleDownloadTemplate} className="h-14 px-5 bg-white/5 text-zinc-400 border border-white/10 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-black uppercase text-[12px] tracking-widest">
             <Download size={16}/>
           </button>
+          <div className="relative share-menu-wrapper">
+            <button
+              onClick={() => setShowShareMenu(!showShareMenu)}
+              disabled={isSharing}
+              className="h-14 px-5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-2xl flex items-center gap-2 hover:bg-green-500/20 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {/* Dot indikator status WA */}
+              <div className={`w-2 h-2 rounded-full shrink-0 ${
+                waStatus?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              }`} />
+              <Send size={16} />
+              {isSharing ? "Mengirim..." : ""}
+            </button>
+
+            {showShareMenu && !isSharing && (
+              <div className="absolute right-0 top-[calc(100%+8px)] w-64 bg-[#0B1220] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[9999]">
+                
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-white/5">
+                  <div className="flex items-center justify-between">
+                    
+                    {/* Badge WA status */}
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                      waStatus?.isReady 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      WA {waStatus?.isReady ? 'ON' : 'OFF'}
+                    </span>
+
+                    {/* Kuota — selalu tampil di samping badge */}
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                      !waRateLimit
+                        ? ' text-zinc-500 '
+                        : waRateLimit.remaining <= 10
+                        ? ' text-red-400 '
+                        : waRateLimit.remaining <= 20
+                        ? ' text-amber-400 '
+                        : ' text-blue-400 '
+                    }`}>
+                      {waRateLimit 
+                        ? `${waRateLimit.remaining}/${waRateLimit.max} KUOTA`
+                        : '0/50 — KUOTA'
+                      }
+                    </span>
+
+                  </div>
+
+                  {/* Progress bar */}
+                  {waRateLimit && (
+                    <div className="mt-2">
+                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            waRateLimit.remaining <= 10 ? 'bg-red-500' :
+                            waRateLimit.remaining <= 20 ? 'bg-amber-500' : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${(waRateLimit.sent / waRateLimit.max) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Menu items — sama seperti sebelumnya */}
+                <button
+                  onClick={() => handleShare('wa')}
+                  disabled={!waStatus?.isReady || (waRateLimit?.remaining ?? 1) <= 0}
+                  className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-white/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                    <MessageCircle size={16} className="text-green-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">Via WhatsApp</div>
+                    <div className="text-[10px] text-zinc-500">Kepsek + Seluruh Wali Kelas</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleShare('email')}
+                  className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <Mail size={16} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">Via Email</div>
+                    <div className="text-[10px] text-zinc-500">Kepsek + Seluruh Wali Kelas</div>
+                  </div>
+                </button>
+
+                <div className="h-px bg-white/5 mx-4" />
+
+                <button
+                  onClick={() => handleShare('all')}
+                  disabled={!waStatus?.isReady || (waRateLimit?.remaining ?? 1) <= 0}
+                  className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-white/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                    <Share2 size={16} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-purple-400">Kirim Semua</div>
+                    <div className="text-[10px] text-zinc-500">WhatsApp + Email sekaligus</div>
+                  </div>
+                </button>
+
+                <div className="h-px bg-white/5 mx-4" />
+
+                <button
+                  onClick={() => { setShowShareMenu(false); setShowWAStatus(true); }}
+                  className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-zinc-500/10 flex items-center justify-center shrink-0">
+                    <MessageCircle size={16} className="text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-zinc-300">Setup WhatsApp</div>
+                    <div className="text-[10px] text-zinc-500">
+                      {waStatus?.isReady ? 'WA terhubung — klik untuk kelola' : 'Scan QR untuk hubungkan WA'}
+                    </div>
+                  </div>
+                </button>
+
+              </div>
+            )}
+          </div>
           <label className="h-14 px-5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-emerald-500/20 transition-all font-black uppercase text-[12px] tracking-widest">
             <FileSpreadsheet size={16}/>
             <input type="file" hidden accept=".xlsx, .xls" onChange={handleBulkUpload} />
@@ -1695,7 +2070,7 @@ const navigate = useNavigate();
                         }}
                         className="h-14 px-5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-2xl flex items-center gap-2 hover:bg-blue-500/20 transition-all font-black uppercase text-[12px] tracking-widest"
                       >
-                        <ArrowLeftRight size={16}/> Pindah Kelas
+                        <ArrowLeftRight size={16}/> 
                       </button>
                   
 
@@ -1817,9 +2192,44 @@ const navigate = useNavigate();
               <GraduationCap size={18}/> Lulus ({selectedIds.length})
             </button>
           )}
+
+          {/* Bulk Action Bar - muncul saat selectedIds.length > 0 */}
+          {selectedIds.length > 0 && (
+            <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex flex-wrap items-center gap-3">
+              <span className="text-blue-400 font-black text-xs uppercase tracking-widest">
+                {selectedIds.length} siswa dipilih →
+              </span>
+              <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest">Tandai sebagai:</span>
+              {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => {
+                const colors: Record<string, string> = {
+                  Hadir:  'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/40',
+                  Izin:   'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/40',
+                  Sakit:  'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/40',
+                  Alpha:  'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/40',
+                };
+                return (
+                  <button
+                    key={status}
+                    disabled={isBulkMarking}
+                    onClick={() => handleBulkMarkStatus(status)}
+                    className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 ${colors[status]}`}
+                  >
+                    {isBulkMarking ? '...' : status}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setSelectedIds([])}
+                className="ml-auto text-zinc-500 hover:text-white text-xs font-bold"
+              >
+                Batal Pilih
+              </button>
+            </div>
+          )}
+
           {
             selectedIds.length === 0 && (
-              <button onClick={() => setModals({ ...modals, add: true })} className="h-14 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-blue-600/30">
+              <button onClick={() => setModals({ ...modals, add: true })} className="h-14 px-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest shadow-xl shadow-blue-600/30">
                 <PlusCircle size={16}/>
                 Tambah
               </button>
@@ -1991,10 +2401,27 @@ const navigate = useNavigate();
                     </div>
                   </div>
                 </td>
-                <td className="py-6">
+                {/* <td className="py-6">
                    <span className={`px-4 py-1.5 w-max flex rounded-full text-[8px] font-black uppercase tracking-widest ${statusStyles[s.statusKehadiran] || statusStyles["Belum Hadir"]}`}>
                       {s.statusKehadiran || "Belum Hadir"}
                    </span>
+                </td> */}
+
+                <td className="py-6">
+                  <div className="flex flex-col gap-2">
+                    <span className={`px-3 py-1.5 w-max flex rounded-full text-[8px] font-black uppercase tracking-widest ${statusStyles[s.statusKehadiran] || statusStyles["Belum Hadir"]}`}>
+                      {s.statusKehadiran || "Belum Hadir"}
+                    </span>
+                    {/* Tombol Hadir hanya muncul kalau belum absen */}
+                    {s.statusKehadiran === 'Belum Hadir' && (
+                      <button
+                        onClick={() => handleMarkPresent(s)}
+                        className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-500/30 transition-all w-max"
+                      >
+                        ✓ Hadir
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="py-6">
                   <div className="flex flex-col gap-3">
@@ -2027,6 +2454,7 @@ const navigate = useNavigate();
                     <Eye size={16}/>
                   </button>
                   <button onClick={() => { setSelected(s); setModals({...modals, edit: true}); }} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Edit size={16}/></button>
+                  <StatusDropdown student={s} onMark={handleMarkAbsence} />
                   <button onClick={() => handleDelete(s.id, s.name)} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Trash2 size={16}/></button>
                 </td>
               </tr>
@@ -2043,22 +2471,17 @@ const navigate = useNavigate();
             {/* <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Tampilkan</span> */}
             <select 
               value={limit} 
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1); // Reset ke hal 1 jika limit berubah
-              }}
-             className="bg-white/5 border border-white/10 w-max pr-7 pl-3 h-10 rounded-xl text-[10px] font-black text-white outline-none appearance-none cursor-pointer"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 10px center',
-                backgroundSize: '14px'
-              }}
+              onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              className="bg-white/5 border border-white/10 w-max pr-7 pl-3 h-10 rounded-xl text-[10px] font-black text-white outline-none appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', backgroundSize: '14px' }}
             >
               <option className="text-black" value={10}>10 Baris</option>
               <option className="text-black" value={20}>20 Baris</option>
               <option className="text-black" value={50}>50 Baris</option>
               <option className="text-black" value={100}>100 Baris</option>
+              <option className="text-black" value={250}>250 Baris</option>
+              <option className="text-black" value={500}>500 Baris</option>
+              <option className="text-black" value={1000}>1000 Baris</option>
             </select>
           </div>
           <div className="h-4 w-px bg-white/10 mx-2 hidden md:block" />
@@ -2213,6 +2636,134 @@ const navigate = useNavigate();
           </div>
         </div>
       )}
+
+      {/* WA Status Drawer */}
+      <AnimatePresence>
+        {showWAStatus && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000]"
+              onClick={() => setShowWAStatus(false)}
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-[#0B1220] border-l border-white/10 z-[100001] p-8 overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-2xl font-black uppercase tracking-tight text-white">
+                    WA Gateway
+                  </h3>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
+                    Koneksi WhatsApp untuk kirim rekap
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowWAStatus(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-zinc-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Status Card */}
+              <div className={`rounded-2xl border p-5 mb-6 flex items-center gap-4 ${
+                waStatus?.isReady
+                  ? 'bg-green-500/10 border-green-500/20'
+                  : 'bg-red-500/10 border-red-500/20'
+              }`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  waStatus?.isReady ? 'bg-green-500/20' : 'bg-red-500/20'
+                }`}>
+                  <MessageCircle
+                    size={24}
+                    className={waStatus?.isReady ? 'text-green-400' : 'text-red-400'}
+                  />
+                </div>
+                <div>
+                  <div className={`font-black uppercase text-sm tracking-tight ${
+                    waStatus?.isReady ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {waStatus?.isReady ? '✅ Terhubung' : '❌ Tidak Aktif'}
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-0.5">
+                    {waStatus?.isReady
+                      ? 'WhatsApp siap kirim pesan otomatis'
+                      : waStatus?.hasQR
+                        ? 'Scan QR di bawah untuk login'
+                        : 'Menunggu QR dari server...'
+                    }
+                  </div>
+                </div>
+                {/* Dot animasi */}
+                {waStatus?.isReady && (
+                  <div className="ml-auto w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </div>
+
+              {/* QR Code Section */}
+              {!waStatus?.isReady && (
+                <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-center">
+                  {waQrImage ? (
+                    <>
+                      <p className="text-sm text-zinc-400 mb-4">
+                        Scan QR ini dengan WhatsApp di HP
+                      </p>
+                      <div className="inline-block p-4 bg-white rounded-2xl shadow-xl mb-4">
+                        <img src={waQrImage} alt="WA QR Code" className="w-48 h-48" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-zinc-500">
+                          1. Buka WhatsApp di HP
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          2. Ketuk ⋮ → <strong className="text-white">Linked Devices</strong>
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          3. Ketuk <strong className="text-white">Link a Device</strong>
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          4. Scan QR di atas
+                        </p>
+                      </div>
+                      <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-zinc-600">
+                        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        QR otomatis refresh setiap beberapa detik
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-10 text-zinc-600">
+                      <div className="w-12 h-12 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-sm">Menunggu QR dari server...</p>
+                      <p className="text-xs mt-1">Pastikan server sudah berjalan</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Info jika sudah terhubung */}
+              {waStatus?.isReady && (
+                <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 space-y-3">
+                  <p className="text-xs font-black uppercase text-zinc-500 tracking-widest">Info Koneksi</p>
+                  <p className="text-sm text-zinc-300">
+                    WhatsApp sudah terhubung. Kamu bisa langsung kirim rekap kehadiran via tombol <strong className="text-green-400">Share Rekap</strong>.
+                  </p>
+                  <div className="h-px bg-white/5" />
+                  <p className="text-[11px] text-zinc-600">
+                    ⚠️ Jangan logout dari WA di HP yang dipakai, karena akan memutus koneksi ini.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Side Modals */}
       <StudentModal 

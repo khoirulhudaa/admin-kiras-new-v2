@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   GraduationCap,
   Loader,
+  Pin,
   Plus,
   RefreshCw,
   Save,
@@ -28,6 +29,9 @@ export default function KelasMain() {
   const [classNameInput, setClassNameInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [waliKelasInput, setWaliKelasInput] = useState("");
+  const [waliKelasPhoneInput, setWaliKelasPhoneInput] = useState("");
+  const [waliKelasEmailInput, setWaliKelasEmailInput] = useState("");
 
   // State baru untuk menampilkan hasil import
   const [importResult, setImportResult] = useState<{
@@ -177,13 +181,22 @@ export default function KelasMain() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolId, className: classNameInput }),
+        body: JSON.stringify({ 
+          schoolId, 
+          className: classNameInput,
+          waliKelas:      waliKelasInput.trim()      || null,
+          waliKelasPhone: waliKelasPhoneInput.trim() || null,
+          waliKelasEmail: waliKelasEmailInput.trim() || null,
+        }),
       });
 
       if (res.ok) {
         setModalOpen(false);
         setEditingItem(null);
         setClassNameInput("");
+        setWaliKelasInput("");
+        setWaliKelasPhoneInput("");
+        setWaliKelasEmailInput("");
         queryClient.invalidateQueries({ queryKey: ["classes"] });
         toast.success("Kelas berhasil disimpan");
       } else {
@@ -217,6 +230,9 @@ export default function KelasMain() {
   const handleEdit = (item: any) => {
     setEditingItem(item);
     setClassNameInput(item.className);
+    setWaliKelasInput(item.waliKelas || "");
+    setWaliKelasPhoneInput(item.waliKelasPhone || "");
+    setWaliKelasEmailInput(item.waliKelasEmail || "");
     setModalOpen(true);
   };
 
@@ -271,6 +287,9 @@ export default function KelasMain() {
             onClick={() => {
               setEditingItem(null);
               setClassNameInput("");
+              setWaliKelasInput("");
+              setWaliKelasPhoneInput("");
+              setWaliKelasEmailInput("");
               setModalOpen(true);
             }}
             className="h-14 px-8 bg-blue-600 hover:bg-blue-500 rounded-2xl flex items-center gap-3 font-black uppercase tracking-widest text-sm shadow-xl transition-all"
@@ -401,30 +420,55 @@ export default function KelasMain() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
           {classes.map((item: any) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="group bg-white/[0.03] border border-white/8 rounded-3xl p-6 hover:border-blue-500/50 transition-all shadow-xl"
+              className="group bg-white/[0.03] flex flex-col justify-between border border-white/8 rounded-3xl p-6 hover:border-blue-500/50 transition-all shadow-xl"
             >
-              <div className="w-12 h-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 mb-4">
-                <GraduationCap size={24} />
+              <div>
+                <div className="w-max px-3.5 h-12 flex items-center gap-3 rounded-2xl bg-blue-600/40 flex items-center justify-center text-blue-500 ml-[-3px] mb-4">
+                  <GraduationCap size={24} className="text-white" />
+                  <h3 className="text-white relative top-[1.4px]">
+                    {item.className}
+                  </h3>
+                </div>
+
+                {/* Info wali kelas — tampil jika ada */}
+                {item.waliKelas && (
+                  <p className="w-max flex items-center gap-1.5 text-xs text-slate-400 font-medium mb-1 truncate" title={item.waliKelas}>
+                    <Pin size={13}/> {item.waliKelas}
+                  </p>
+                )}
+                {item.waliKelasPhone && (
+                  <p className="w-max flex items-center gap-1.5 text-xs text-slate-400 font-mono mb-1">
+                    <Pin size={13}/> +{item.waliKelasPhone}
+                  </p>
+                )}
+                {item.waliKelasEmail && (
+                  <p className="w-max flex items-center gap-1.5 text-xs text-slate-400 truncate mb-4" title={item.waliKelasEmail}>
+                    <Pin size={13}/> {item.waliKelasEmail}
+                  </p>
+                )}
+                {!item.waliKelas && !item.waliKelasPhone && !item.waliKelasEmail && (
+                  <p className="text-xs text-slate-500 mb-4">
+                    ? ? ? 
+                  </p>
+                )}
               </div>
-              <h3 className="text-xl font-black text-white mb-6 uppercase tracking-tight">
-                {item.className}
-              </h3>
-              <div className="flex gap-2">
+
+              <div className="flex gap-2 mt-auto">
                 <button
                   onClick={() => handleEdit(item)}
-                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all text-xs font-bold uppercase tracking-widest"
+                  className="w-[84%] py-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all text-xs font-bold uppercase tracking-widest"
                 >
                   Perbarui
                 </button>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
+                  className="p-2 w-[16%] flex items-center justify-center rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -449,10 +493,10 @@ export default function KelasMain() {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-[#0B1220] border-l border-white/10 z-[10000] p-10 flex flex-col shadow-2xl"
+              className="fixed right-0 top-0 h-full w-full overflow-auto max-w-lg bg-[#0B1220] border-l border-white/10 z-[10000] p-10 flex flex-col shadow-2xl"
             >
               <div className="flex justify-between items-center mb-10">
-                <h3 className="text-2xl font-black text-white uppercase italic">
+                <h3 className="text-2xl font-black text-white uppercase">
                   {editingItem ? "Perbarui" : "Tambah"} Kelas
                 </h3>
                 <button
@@ -464,9 +508,10 @@ export default function KelasMain() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Nama Kelas */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 italic">
-                    Nama Kelas
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    Nama Kelas <span className="text-red-400">*</span>
                   </label>
                   <input
                     required
@@ -477,16 +522,76 @@ export default function KelasMain() {
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-blue-500 outline-none transition-all font-bold"
                   />
                 </div>
+
+                <div className="h-px bg-white/5" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                  Info Wali Kelas <span className="text-zinc-700">(Opsional)</span>
+                </p>
+
+                {/* Nama Wali Kelas */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    Nama Wali Kelas
+                  </label>
+                  <input
+                    value={waliKelasInput}
+                    onChange={(e) => setWaliKelasInput(e.target.value)}
+                    placeholder="Contoh: Budi Santoso, S.Pd"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* No WA Wali Kelas */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    No. WA Wali Kelas
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-bold">
+                      +62
+                    </span>
+                    <input
+                      value={waliKelasPhoneInput.startsWith('62') 
+                        ? waliKelasPhoneInput.slice(2) 
+                        : waliKelasPhoneInput}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        const normalized = raw.startsWith('0') ? raw.slice(1) : raw;
+                        setWaliKelasPhoneInput(normalized ? `62${normalized}` : '');
+                      }}
+                      placeholder="8123456789"
+                      maxLength={13}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 pl-14 text-white focus:border-blue-500 outline-none transition-all font-mono"
+                    />
+                  </div>
+                  <p className="text-[9px] text-zinc-600 ml-1">
+                    Digunakan untuk kirim rekap otomatis via WhatsApp
+                  </p>
+                </div>
+
+                {/* Email Wali Kelas */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    Email Wali Kelas
+                  </label>
+                  <input
+                    type="email"
+                    value={waliKelasEmailInput}
+                    onChange={(e) => setWaliKelasEmailInput(e.target.value)}
+                    placeholder="wali@sekolah.sch.id"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-blue-500 outline-none transition-all"
+                  />
+                  <p className="text-[9px] text-zinc-600 ml-1">
+                    Digunakan untuk kirim rekap otomatis via Email
+                  </p>
+                </div>
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-xl transition-all disabled:opacity-50"
                 >
-                  {isSubmitting ? (
-                    <Loader className="animate-spin" size={18} />
-                  ) : (
-                    <Save size={18} />
-                  )}
+                  {isSubmitting ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
                   Simpan Kelas
                 </button>
               </form>
