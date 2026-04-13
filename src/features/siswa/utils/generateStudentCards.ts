@@ -266,8 +266,10 @@ export async function drawFront(doc, s, x, y, config, canvas, ctx) {
 
   // TEXT
   doc.setTextColor(30, 41, 59);
+  doc.setFont("helvetica", "bold");   // ← tambah
   doc.setFontSize(8);
   doc.text((s.name || "").toUpperCase(), x + 27, y + 21, { maxWidth: 50 });
+  doc.setFont("helvetica", "normal"); // ← reset
 
   doc.setFontSize(7);
   doc.text(`NIS: ${s.nis || "-"}`, x + 27, y + 27);
@@ -371,7 +373,8 @@ export async function drawBack(doc, s, x, y, config, canvas, ctx) {
     const fontSize = config.vmMissionFontSize || 5.5;
 
     // Konversi font size pt → mm (1pt = 0.3528mm), lalu kali multiplier
-    const lineHeightMm = (fontSize * 0.3528) * missionSpacing;
+    const baseLineHeight = fontSize * 0.3528;
+    const lineHeightMm = baseLineHeight + (missionSpacing - 2) * 0.6;
 
     for (let i = 0; i < maxMisi; i++) {
       if (cursorY > y + cardHeight - 5) break;

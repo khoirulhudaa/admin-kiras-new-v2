@@ -190,7 +190,7 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
                           className="font-black uppercase mb-1 tracking-wider"
                           style={{ 
                             color: config.vmTitleColor || "#000000",
-                            fontSize: `${config.vmTitleFontSize || 7}px`
+                            fontSize: `${(config.vmTitleFontSize || 7) * 1.333}px`
                           }}
                         >
                           VISI
@@ -199,7 +199,7 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
                           className="leading-tight"
                           style={{ 
                             color: config.vmTextColor || "#1e293b",
-                            fontSize: `${config.vmVisionFontSize || 6}px`
+                            fontSize: `${(config.vmVisionFontSize || 6) * 1.333}px`
                           }}
                         >
                           {config.visionMission?.vision || 
@@ -214,7 +214,7 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
                           className="font-black uppercase mb-1 tracking-wider"
                           style={{ 
                             color: config.vmTitleColor || "#000000",
-                            fontSize: `${config.vmTitleFontSize || 7}px`
+                            fontSize: `${(config.vmTitleFontSize || 7) * 1.333}px`
                           }}
                         >
                           MISI
@@ -230,10 +230,11 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
                               }
                             };
 
-                            const fontSize = config.vmMissionFontSize || 5.5;
+                            const fontSizePt = config.vmMissionFontSize || 5.5;
+                            const fontSizePx = fontSizePt * 1.333;          // pt → px untuk preview
                             const missionSpacing = config.missionSpacing ?? 2.6;
-                            // Sama persis: font size px * multiplier = line height px
-                            const lineHeightPx = fontSize * missionSpacing;
+                            const baseLineHeight = fontSizePx;
+                            const lineHeightPx = baseLineHeight + (missionSpacing - 2) * 8;
 
                             return config.visionMission?.missions?.slice(0, 5).map((m: string, i: number) => (
                               <div
@@ -241,9 +242,9 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
                                 className="leading-tight"
                                 style={{
                                   color: config.vmTextColor || "#1e293b",
-                                  fontSize: `${fontSize}px`,
-                                  marginBottom: `${lineHeightPx * 0.15}px`, // sedikit gap antar item
-                                  lineHeight: `${lineHeightPx}px`,           // line height konsisten
+                                  fontSize: `${fontSizePx}px`,
+                                  marginBottom: `${(missionSpacing - 2) * 8 * 0.5}px`,
+                                  lineHeight: `${fontSizePx * 1.2}px`,
                                 }}
                               >
                                 {getBullet(i)}{m}
@@ -1049,7 +1050,7 @@ export default function StudentManager() {
     logoSchool: null,
     logoDinas: null,
     bgImage: null,
-    visionMission: profile?.user?.visionMission || null, // ← tambahkan ini
+    visionMission: null, // ← tambahkan ini
     vmTitleColor: "#000000",   // ← warna judul VISI / MISI
     vmTextColor: "#1e293b",
     vmTitleFontSize: 7,
@@ -1057,14 +1058,24 @@ export default function StudentManager() {
     vmMissionFontSize: 5.5,
     bgOpacityFront: 0.40,
     bgOpacityBack: 0.40, 
-    missionSpacing: 2.6,       // ← BARU: jarak antar misi (mm)
+    missionSpacing: 2.6,       
     missionBulletStyle: "number",
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Tambahkan useEffect ini setelah deklarasi cardConfig
+  useEffect(() => {
+    if (profile?.user?.visionMission || profile?.sekolah?.namaSekolah) {
+      setCardConfig((prev: any) => ({
+        ...prev,
+        subtitle: profile?.sekolah?.namaSekolah || prev.subtitle,
+        visionMission: profile?.user?.visionMission || null,
+      }));
+    }
+  }, [profile?.user?.visionMission, profile?.sekolah?.namaSekolah]);
+
   // --- GANTI DENGAN LODASH DEBOUNCE ---
-  
   useEffect(() => {
     let buffer = "";
     let lastKeyTime = Date.now();

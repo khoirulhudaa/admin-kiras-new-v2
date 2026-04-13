@@ -43,7 +43,11 @@ export const HomePage = () => {
   const school = schools?.[0];
 
   // 1. State Filter
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDate, setFilterDate] = useState(() => {
+    const now = new Date();
+    const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    return wib.toISOString().split('T')[0];
+  });
   const [selectedClass, setSelectedClass] = useState("all");
   const [selectedClassDetail, setSelectedClassDetail] = useState<any | null>(null);
   const [showGlobalStats, setShowGlobalStats] = useState(false);
@@ -159,7 +163,7 @@ export const HomePage = () => {
     queryKey: ['ew-low-attendance', schoolId, lowPage],
     queryFn: async () => {
       const res = await fetch(
-        `https://be-school.kiraproject.id/siswa/early-warning/low-attendance?schoolId=${schoolId}&threshold=80&page=${lowPage}&limit=${limit2}`,
+        `https://be-school.kiraproject.id/siswa/early-warning/low-attendance?schoolId=${schoolId}&threshold=75&page=${lowPage}&limit=${limit2}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -168,7 +172,9 @@ export const HomePage = () => {
         }
       );
       if (!res.ok) throw new Error('Gagal mengambil data');
-      return res.json();
+      const json = await res.json();
+      console.log('lowAttendance response:', json.data?.[0]); // ← cek field di sini
+      return json;
     },
     enabled: !!schoolId && showEarlyWarning && !!token,
     staleTime: 1000 * 60 * 5,
@@ -232,8 +238,6 @@ export const HomePage = () => {
     staleTime:        1000 * 60 * 2,
     placeholderData:  (prev) => prev, // ganti keepPreviousData di TanStack v5
   });
-
-  console.log('globalResponse:', globalResponse)
 
   const globalData = globalResponse?.data || { 
     absentStudents: [], 
@@ -348,7 +352,7 @@ export const HomePage = () => {
               { 
                 label: "Cek Detail", 
                 sub: 'Lihat detail',
-                val: "Cek detail", 
+                val: "Kedisiplinan", 
                 color: "text-white",
                 isAction: true,
                 action: () => setShowGlobalStats(true)
@@ -374,7 +378,7 @@ export const HomePage = () => {
                   </p>
                     {
                       m.val !== undefined && (
-                        <div className={cx(`uppercase ${m?.val === 'Pengawasan' || m?.val === 'Cek detail' ? 'text-3xl' : 'text-4xl'} text-3xl ml-[-1px] font-normal tracking-tighter`, m?.color)}>{m?.val}</div>
+                        <div className={cx(`uppercase ${m?.val === 'Pengawasan' || m?.val === 'Kedisiplinan' ? 'text-3xl' : 'text-4xl'} text-3xl ml-[-1px] font-normal tracking-tighter`, m?.color)}>{m?.val}</div>
                       )
                     }
                     <p className="w-full bg-slate-100/5 mt-3 flex justify-between items-center text-slate-400 text-[14px]">
@@ -1074,9 +1078,10 @@ export const HomePage = () => {
                         ))
                       ) : (
                         <>
-                          {lowAttendanceData?.period && (
-                            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-2 px-1">
-                              Periode: {lowAttendanceData.period.start} — {lowAttendanceData.period.end} ({lowAttendanceData.totalWorkdays} hari kerja)
+                          {lowAttendanceData?.data?.length > 0 && (
+                            <p className="text-[10px] text-white uppercase tracking-widest mb-2 px-1">
+                              Periode: {lowAttendanceData.data[0].rangeLabel} &nbsp;•&nbsp;
+                              {lowAttendanceData.data[0].passedWorkdays}/{lowAttendanceData.data[0].totalWorkdays} hari kerja berlalu
                             </p>
                           )}
 
@@ -1086,7 +1091,7 @@ export const HomePage = () => {
                                 <div className="p-3 rounded-full bg-zinc-900/50">
                                   <CheckCircle2 className="w-6 h-6 text-emerald-500/50" />
                                 </div>
-                                <p>Semua siswa kehadiran &gt;= 80%</p>
+                                <p>Semua siswa kehadiran &gt;= 75%</p>
                               </div>
                             ) : (
                               lowAttendanceData?.data?.map((std: any) => (
@@ -1101,11 +1106,11 @@ export const HomePage = () => {
                                     </div>
                                     <div>
                                       <p className="text-sm font-black text-white uppercase">{std.name}</p>
-                                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">
+                                      <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">
                                         {std.class} • NIS: {std.nis}
                                       </p>
                                       <p className="text-[9px] text-amber-400 mt-0.5">
-                                        Hadir {std.hadirCount}/{std.totalWorkdays} hari ({std.rangeLabel})
+                                        Hadir {std.hadirCount}/{std.totalWorkdays} hari • {std.passedWorkdays} hari kerja berlalu ({std.rangeLabel})
                                       </p>
                                     </div>
                                   </div>
