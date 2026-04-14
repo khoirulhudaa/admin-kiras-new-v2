@@ -74,6 +74,7 @@
     "dompurify": "^3.2.5",
     "embla-carousel-react": "^8.5.1",
     "file-saver": "^2.0.5",
+    "firebase": "^12.12.0",
     "framer-motion": "^11.18.1",
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",

@@ -362,14 +362,6 @@ export default function AttendanceMain() {
                             <td className="p-6 text-sm font-bold text-zinc-400 italic uppercase">
                               {item.userRole === 'student' ? item.currentClass : (item.guru?.mapel || "Staff")}
                             </td>
-                            {/* <td className="p-6 text-center">
-                              <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest ${
-                                item.status === 'Hadir' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
-                              }`}>
-                                {item.status}
-                              </span>
-                            </td> */}
-                            {/* KOLOM BARU: DURASI KETERLAMBATAN */}
                             <td className="p-6">
                               {item.isLate ? (
                                 <div className="flex items-center gap-2 text-red-400">
@@ -383,15 +375,19 @@ export default function AttendanceMain() {
 
                             <td className="p-6 text-center">
                               {/* LOGIC STATUS: Jika isLate true, tampilkan "TELAT" dengan styling Emerald */}
-                             <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest ${
-                                item.isLate 
-                                  ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' // PRIORITAS 1: Telat (Emerald)
-                                  : item.status === 'Hadir' 
-                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'      // PRIORITAS 2: Hadir Tepat Waktu (Blue)
-                                    : 'bg-red-500/10 text-red-400 border-red-500/20'         // PRIORITAS 3: Selain itu/Alpha (Red)
-                              }`}>
-                                {item.isLate ? 'Telat' : item.status}
-                              </span>
+                            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest ${
+                              item.isLate 
+                                ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'           // Telat (Orange)
+                                : item.status === 'Hadir' 
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'     // Hadir (Emerald)
+                                  : item.status === 'Izin'
+                                    ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'      // Izin (Yellow)
+                                    : item.status === 'Sakit'
+                                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'    // Sakit (Indigo)
+                                      : 'bg-red-500/10 text-red-400 border-red-500/20'             // Alpha/Lainnya (Red)
+                            }`}>
+                              {item.isLate ? 'Telat' : item.status}
+                            </span>
                             </td>
                           </motion.tr>
                         ))

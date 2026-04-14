@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import debounce from 'lodash/debounce'; // Import debounce
 import { Toaster, toast } from "sonner"; // Pastikan sudah install: npm i sonner
 
+import { useProfile } from "@/features/profile";
 import {
   AlertCircle,
   AlertTriangle,
@@ -19,24 +20,25 @@ import {
   FileText,
   GraduationCap,
   IdCard,
+  List,
+  MessageCircle,
   PlusCircle,
   Printer,
   RefreshCw,
+  RotateCw,
   Search,
   Send,
   Trash2,
   Upload,
-  MessageCircle, Mail, Share2,
   User,
   X
 } from "lucide-react";
+import moment from "moment";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import GraduationModal from "../components/graduationModal";
 import { generateStudentCardsPDF } from "../utils/generateStudentCards";
-import { useProfile } from "@/features/profile";
-import moment from "moment";
 
 const BASE_URL = "https://be-school.kiraproject.id/siswa";
 // const BASE_URL = "http://localhost:5005/siswa";
@@ -62,28 +64,55 @@ interface Student {
 }
 
 // Komponen kecil StatusDropdown di dalam file yang sama
-const StatusDropdown = ({ student, onMark }: { student: Student; onMark: (s: Student, status: any) => void }) => {
-  const [open, setOpen] = useState(false);
+const StatusDropdown = ({ 
+  student, 
+  onMark, 
+  isOpen, 
+  onToggle 
+}: { 
+  student: Student; 
+  onMark: (s: Student, status: any) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}) => {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(p => !p)}
-        className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-zinc-400 hover:text-white transition-all"
+        onClick={(e) => {
+          e.stopPropagation(); // Mencegah bubbling
+          onToggle();
+        }}
+        className="p-3 bg-blue-600 hover:bg-white/20 hover:text-white rounded-xl text-white transition-all"
         title="Edit Status"
       >
-        <Edit size={14} />
+        <List size={16} />
       </button>
-      {open && (
-        <div className="absolute right-0 bottom-9 bg-[#0B1220] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden w-32">
-          {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => (
-            <button
-              key={status}
-              onClick={() => { onMark(student, status); setOpen(false); }}
-              className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-white/10 text-zinc-300 hover:text-white transition-all"
-            >
-              {status}
-            </button>
-          ))}
+
+      {isOpen && (
+        <div className="absolute right-full mr-2 top-0 bg-blue-800 space-y-2 p-1.5 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden w-32">
+          {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => {
+            // Mapping Emoji berdasarkan status
+            const emojis: Record<string, string> = {
+              Hadir: '✅',
+              Izin: '📝',
+              Sakit: '🤒',
+              Alpha: '❌'
+            };
+
+            return (
+              <button
+                key={status}
+                onClick={() => { 
+                  onMark(student, status); // Value yang dikirim tetap string asli
+                  onToggle(); 
+                }}
+                className="w-full flex items-center justify-between px-3 rounded-lg py-3 bg-blue-400/40 border border-blue-400 text-xs font-bold hover:bg-white/30 text-white hover:text-blue-100 transition-all"
+              >
+                <span>{status}</span>
+                <span>{emojis[status]}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -185,9 +214,22 @@ const CardDesignerModal = ({ open, onClose, config, setConfig, onGenerate, isPro
                         <User size={32} className="text-slate-300"/>
                       </div>
                       <div className="flex-1 space-y-1 pt-1">
-                        <div className="text-[9px] font-black text-slate-800 uppercase truncate">NAMA SISWA LENGKAP</div>
+                        <div className="text-[9px] font-black text-slate-800 uppercase truncate">
+                          NAMA SISWA LENGKAP
+                        </div>
+                        
                         <div className="text-[7px] font-bold text-slate-600">NIS: 123456789</div>
+                        <div className="text-[7px] font-bold text-slate-600">NISN: 123456789012</div>
+                        
                         <div className="text-[7px] font-semibold text-slate-500">KLS: 10-RPL-1</div>
+                        <div className="text-[7px] font-semibold text-slate-500">
+                          JK: Laki-laki
+                        </div>
+                        
+                        <div className="text-[6.5px] text-slate-500 leading-tight line-clamp-2">
+                          Alamat: Jl. Contoh No. 123, Kel. ABC, Kec. XYZ
+                        </div>
+
                         <div className="text-[7px] font-semibold text-slate-500">RFID: A1 B2 C3 D4</div>
                       </div>
                       <div className="absolute bottom-3 right-3 w-10 h-10 border border-slate-200 flex items-center justify-center bg-white rounded-md shadow-sm">
@@ -557,6 +599,7 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
     birthPlace: "", birthDate: "", 
     class: "", batch: "",
     rfidUid: "", 
+    address: "", 
     email: "", password: "", // <--- Tambahkan ini
     photo: null as File | null, preview: ""
   });
@@ -589,6 +632,7 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
         gender: initialData?.gender || "Laki-laki",
         birthPlace: initialData?.birthPlace || "",
         birthDate: initialData?.birthDate || "",
+        address: initialData?.address || "",
         class: initialData?.class || "", 
         batch: initialData?.batch || "",
         email: initialData?.email || "",    
@@ -600,7 +644,43 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
     }
   }, [open, initialData]);   // ← Hapus prefilledRfid dari dependency
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault(); 
+  //   setSaving(true);
+  //   try {
+  //     if (!schoolId) throw new Error("ID Sekolah tidak ditemukan");
+      
+  //     const fd = new FormData();
+  //     Object.entries(form).forEach(([k, v]) => { 
+  //       if (k === 'preview' || k === 'photo') return;
+        
+  //       // Khusus field opsional: skip kalau kosong
+  //       const optionalFields = ['rfidUid', 'nisn', 'nik', 'birthPlace', 'birthDate', 'email', 'password'];
+  //       if (optionalFields.includes(k) && (v === null || v === undefined || v === '')) return;
+        
+  //       if (v !== null && v !== undefined) {
+  //         fd.append(k, v.toString()); 
+  //       }
+  //     });
+      
+  //     fd.append("schoolId", schoolId.toString());
+  //     if (form.photo) fd.append("photo", form.photo);
+
+  //     // Menunggu eksekusi onSubmit. Jika di sana ada 'throw Error', 
+  //     // maka eksekusi akan langsung lompat ke blok catch di bawah ini.
+  //     await onSubmit(fd); 
+      
+  //     onClose(); // Hanya tutup modal jika onSubmit berhasil (tidak throw error)
+  //   } catch (err: any) { 
+  //     // Alert ini sekarang akan menampilkan pesan spesifik: 
+  //     // "NIS 12345 sudah terdaftar atas nama Budi"
+  //     toast.error("Gagal Menyimpan: " + err.message); 
+  //   } finally { 
+  //     setSaving(false); 
+  //   }
+  // };
+
+   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setSaving(true);
     try {
@@ -610,8 +690,8 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
       Object.entries(form).forEach(([k, v]) => { 
         if (k === 'preview' || k === 'photo') return;
         
-        // Khusus field opsional: skip kalau kosong
-        const optionalFields = ['rfidUid', 'nisn', 'nik', 'birthPlace', 'birthDate', 'email', 'password'];
+        // Tambahkan 'address' ke optional fields jika ingin di-skip saat kosong
+        const optionalFields = ['rfidUid', 'nisn', 'nik', 'birthPlace', 'birthDate', 'email', 'password', 'address'];
         if (optionalFields.includes(k) && (v === null || v === undefined || v === '')) return;
         
         if (v !== null && v !== undefined) {
@@ -622,14 +702,9 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
       fd.append("schoolId", schoolId.toString());
       if (form.photo) fd.append("photo", form.photo);
 
-      // Menunggu eksekusi onSubmit. Jika di sana ada 'throw Error', 
-      // maka eksekusi akan langsung lompat ke blok catch di bawah ini.
       await onSubmit(fd); 
-      
-      onClose(); // Hanya tutup modal jika onSubmit berhasil (tidak throw error)
+      onClose();
     } catch (err: any) { 
-      // Alert ini sekarang akan menampilkan pesan spesifik: 
-      // "NIS 12345 sudah terdaftar atas nama Budi"
       toast.error("Gagal Menyimpan: " + err.message); 
     } finally { 
       setSaving(false); 
@@ -826,6 +901,16 @@ const StudentModal = ({ open, onClose, prefilledRfid, title, initialData, onSubm
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase ml-2">Alamat</label>
+              <input 
+                type="text"
+                value={form.address} 
+                onChange={e => setForm({...form, address: e.target.value})} 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-blue-500" 
+                placeholder="Jl. cipendey no.33"
+              />
             </div>
           </div>
 
@@ -1029,7 +1114,7 @@ export default function StudentManager() {
   const [modals, setModals] = useState<any>({ add: false, edit: false, designer: false });
   const [selected, setSelected] = useState<Student | null>(null);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(50); // Default 20 data per halaman
+  const [limit, setLimit] = useState(40); // Default 20 data per halaman
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0); // Tambahan untuk info total
   const [classList, setClassList] = useState<any[]>([]);
@@ -1052,7 +1137,14 @@ export default function StudentManager() {
   // Filter tambahan untuk UI (opsional tapi disarankan)
   const [filterClass, setFilterClass] = useState("");
   const [filterBatch, setFilterBatch] = useState("");
-  const [bulkNotifs, setBulkNotifs] = useState<{id: number, type: 'warning' | 'error', title: string, list: string[]}[]>([]);
+  const [bulkNotifs, setBulkNotifs] = useState<{id: number, type: 'warning' | 'error', title: string, list: string[]}[]>(() => {
+    try {
+      const saved = localStorage.getItem('kira_bulk_notifs');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [showDeleteMenu, setShowDeleteMenu] = useState(false);
   const [deleteBatch, setDeleteBatch] = useState("");
   const [changeClassModal, setChangeClassModal] = useState(false);
@@ -1061,10 +1153,19 @@ export default function StudentManager() {
   const [showMoveClassMenu, setShowMoveClassMenu] = useState(false);
   const [moveClassBatch, setMoveClassBatch] = useState("");
   const [moveClassTarget, setMoveClassTarget] = useState("");
-  const [bulkStatusTarget, setBulkStatusTarget] = useState<string>("");
+  // const [bulkStatusTarget, setBulkStatusTarget] = useState<string>("");
   const [isBulkMarking, setIsBulkMarking] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+  const [shareProgress, setShareProgress] = useState<{
+    status: 'idle' | 'start' | 'progress' | 'done';
+    message: string;
+    current: number;
+    total: number;
+    label?: string;
+    isError?: boolean;
+  } | null>(null);
   const [waRateLimit, setWaRateLimit] = useState<{
     date: string;
     sent: number;
@@ -1117,30 +1218,38 @@ export default function StudentManager() {
   }, [showShareMenu]);
 
   useEffect(() => {
-    // Jangan polling kalau panel tidak dibuka
-    if (!showWAStatus) return;
+    const closeAll = () => setActiveDropdownId(null);
+    window.addEventListener('click', closeAll);
+    return () => window.removeEventListener('click', closeAll);
+  }, []);
 
+  // Polling global — jalan terus di background, tidak perlu buka panel
+  useEffect(() => {
     const checkWAStatus = async () => {
       try {
         const res = await fetch(`${WA_URL}/status`);
         const json = await res.json();
         setWaStatus(json);
-        if (json.hasQR) {
-          const qrRes = await fetch(`${WA_URL}/qr`);
-          const qrJson = await qrRes.json();
-          if (qrJson.success) setWaQrImage(qrJson.qrImage);
-        } else if (json.isReady) {
-          setWaQrImage(null);
+
+        // Auto-fetch QR hanya kalau panel sedang dibuka
+        if (showWAStatus) {
+          if (json.hasQR) {
+            const qrRes = await fetch(`${WA_URL}/qr`);
+            const qrJson = await qrRes.json();
+            if (qrJson.success) setWaQrImage(qrJson.qrImage);
+          } else if (json.isReady) {
+            setWaQrImage(null);
+          }
         }
       } catch {
         setWaStatus(null);
       }
     };
 
-    checkWAStatus(); // fetch pertama langsung
-    const interval = setInterval(checkWAStatus, 10000); // polling hanya saat panel buka
-    return () => clearInterval(interval); // cleanup saat panel tutup
-  }, [showWAStatus]);
+    checkWAStatus();
+    const interval = setInterval(checkWAStatus, 15000); // poll tiap 15 detik
+    return () => clearInterval(interval);
+  }, [showWAStatus]); // showWAStatus tetap di deps agar QR-fetch ikut saat panel dibuka
 
   useEffect(() => {
     if (!showMoveClassMenu) return;
@@ -1154,13 +1263,28 @@ export default function StudentManager() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMoveClassMenu]);
 
+  // Ganti addBulkNotif yang lama
   const addBulkNotif = (type: 'warning' | 'error', title: string, list: string[]) => {
     const id = Date.now();
-    setBulkNotifs(prev => [...prev, { id, type, title, list }]);
+    setBulkNotifs(prev => {
+      // Kalau title sudah ada, replace — bukan tambah duplikat
+      const exists = prev.find(n => n.title === title);
+      const updated = exists
+        ? prev.map(n => n.title === title ? { ...n, id, type, list } : n)
+        : [...prev, { id, type, title, list }];
+      
+      localStorage.setItem('kira_bulk_notifs', JSON.stringify(updated));
+      return updated;
+    });
   };
 
+  // Ganti removeBulkNotif yang lama
   const removeBulkNotif = (id: number) => {
-    setBulkNotifs(prev => prev.filter(n => n.id !== id));
+    setBulkNotifs(prev => {
+      const updated = prev.filter(n => n.id !== id);
+      localStorage.setItem('kira_bulk_notifs', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const [progress, setProgress] = useState(0);
@@ -1365,15 +1489,15 @@ export default function StudentManager() {
         console.error("Gagal mengambil daftar kelas:", err);
       }
     };
-
+    
     // if (open) { // Hanya fetch saat modal terbuka
     //   fetchClasses();
     // }
-    if (modals.add || modals.edit || showMoveClassMenu) {
+    if (schoolId || modals.add || modals.edit || showMoveClassMenu) {
       fetchClasses();
     }
   }, [modals.add, modals.edit, showMoveClassMenu, schoolId]);
-
+  
   const handleDownloadTemplate = () => {
     const templateData = [
       { Nama: "Ahmad Fauzi", Gender: "Laki-laki", NIK: "3201010101010001", NISN: "0012345678", NIS: "2425001", TempatLahir: "Jakarta", TanggalLahir: "2008-05-12", Kelas: "10-RPL-1", Angkatan: "2024", Email: "xxx@gmail.com", Password: 'sekolah123' },
@@ -1558,36 +1682,6 @@ export default function StudentManager() {
   reader.readAsBinaryString(file);
 };
 
-// const handleMarkAbsence = async (student: Student, status: 'Izin' | 'Sakit' | 'Alpha') => {
-//     if (!window.confirm(`Tandai ${student.name} sebagai ${status} hari ini?`)) return;
-
-//     try {
-//       const res = await fetch(`${BASE_URL}/mark-absence`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({
-//           studentId: student.id,
-//           schoolId: schoolId,
-//           status,
-//           currentClass: student.class,
-//           userRole: 'student'
-//         })
-//       });
-
-//       const json = await res.json();
-
-//       if (res.ok && json.success) {
-//         toast.success(`${student.name} ditandai sebagai ${status} hari ini.`);
-//         queryClient.invalidateQueries({ queryKey: ['students'] });
-//       } else {
-//         toast.error(json.message || "Gagal mencatat kehadiran");
-//       }
-//     } catch (err: any) {
-//       toast.error("Gagal mencatat ketidakhadiran", {
-//       });
-//     }
-//   };
-
 const handleMarkAbsence = async (student: Student, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpha') => {
   // Hapus window.confirm agar dropdown langsung eksekusi
   try {
@@ -1596,7 +1690,7 @@ const handleMarkAbsence = async (student: Student, status: 'Hadir' | 'Izin' | 'S
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         studentId: student.id,
-        schoolId,
+        schoolId: schoolId,
         status,
         currentClass: student.class,
         userRole: 'student'
@@ -1611,6 +1705,40 @@ const handleMarkAbsence = async (student: Student, status: 'Hadir' | 'Izin' | 'S
     }
   } catch {
     toast.error("Gagal mencatat kehadiran");
+  }
+};
+
+const handleBulkMarkAbsence = async (status: string) => {
+  if (selectedIds.length === 0) return;
+
+  // Ubah array ID menjadi format yang diminta backend
+  const payload = students
+    .filter(s => selectedIds.includes(s.id))
+    .map(s => ({
+      studentId: s.id,
+      schoolId: schoolId,
+      status: status,
+      currentClass: s.class,
+      userRole: 'student'
+    }));
+
+  try {
+    const res = await fetch(`${BASE_URL}/mark-absence`, { // Tetap pakai endpoint yang sama
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload) // Kirim Array
+    });
+
+    const json = await res.json();
+    if (res.ok && json.success) {
+      toast.success(`${payload.length} Siswa berhasil ditandai sebagai ${status}`);
+      setSelectedIds([]); // Bersihkan checkbox
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+    } else {
+      toast.error(json.message || "Gagal memproses");
+    }
+  } catch (err) {
+    toast.error("Gagal mencatat kehadiran masal");
   }
 };
 
@@ -1686,6 +1814,8 @@ const handleGeneratePDF = async () => {
         toast.warning("Tidak ada data siswa untuk dicetak");
         return;
       }
+
+      console.log('addrees', allStudents)
 
       await generateStudentCardsPDF(allStudents, cardConfig, (pct) => setProgress(pct));
 
@@ -1811,25 +1941,59 @@ const handleGeneratePDF = async () => {
    const handleShare = async (via: 'wa' | 'email' | 'all') => {
       setShowShareMenu(false);
       setIsSharing(true);
+      setShareProgress({ status: 'start', message: 'Menghubungkan...', current: 0, total: 0 });
+
+      // Buka SSE dulu sebelum trigger kirim
+      const sse = new EventSource(
+        `https://be-school.kiraproject.id/siswa/share-rekap-progress?schoolId=${schoolId}`
+      );
+
+      sse.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setShareProgress(data);
+
+          if (data.status === 'done') {
+            sse.close();
+            setIsSharing(false);
+            if (data.results?.wa?.length > 0) {
+              toast.success(data.message);
+            } else {
+              toast.warning(data.message);
+            }
+          }
+        } catch {}
+      };
+
+      sse.onerror = () => {
+        sse.close();
+        setIsSharing(false);
+      };
 
       try {
         const date = moment().format('YYYY-MM-DD');
         const res = await fetch(
-          `${BASE_URL}/share-rekap?schoolId=${schoolId}&date=${date}&via=${via}`
+          `https://be-school.kiraproject.id/siswa/share-rekap?schoolId=${schoolId}&date=${date}&via=${via}`
         );
         const json = await res.json();
 
-        if (json.success) {
-          toast.success(json.message);
-          // Update kuota dari response
-          if (json.rateLimit) setWaRateLimit(json.rateLimit);
-        } else {
-          toast.error(json.message || "Gagal mengirim rekap");
+        if (!json.success) {
+          toast.error(json.message || 'Gagal mengirim rekap');
+          sse.close();
+          setIsSharing(false);
+          setShareProgress(null);
         }
-      } catch (err) {
-        toast.error("Gagal mengirim rekap. Cek koneksi internet.");
-      } finally {
+
+        if (json.warnings?.length > 0) {
+          json.warnings.forEach((w: any) => addBulkNotif('warning', w.message, w.list));
+        }
+        if (json.rateLimit) setWaRateLimit(json.rateLimit);
+
+      } catch {
+        toast.error('Gagal mengirim rekap. Cek koneksi internet.');
+        sse.close();
         setIsSharing(false);
+        setShareProgress(null);
       }
     };
 
@@ -1864,12 +2028,8 @@ const navigate = useNavigate();
             <button
               onClick={() => setShowShareMenu(!showShareMenu)}
               disabled={isSharing}
-              className="h-14 px-5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-2xl flex items-center gap-2 hover:bg-green-500/20 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`h-14 px-5 ${waStatus?.isReady ? 'hover:bg-green-500/20 border-green-500/20 bg-green-500/10 text-green-400' : 'hover:bg-red-500/20 border-red-500/20 bg-red-500/10 text-red-400'} border rounded-2xl flex items-center gap-2 transition-all font-black uppercase text-[12px] tracking-widest disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {/* Dot indikator status WA */}
-              <div className={`w-2 h-2 rounded-full shrink-0 ${
-                waStatus?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-              }`} />
               <Send size={16} />
               {isSharing ? "Mengirim..." : ""}
             </button>
@@ -1878,10 +2038,8 @@ const navigate = useNavigate();
               <div className="absolute right-0 top-[calc(100%+8px)] w-64 bg-[#0B1220] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[9999]">
                 
                 {/* Header */}
-                <div className="px-4 py-3 border-b border-white/5">
-                  <div className="flex items-center justify-between">
-                    
-                    {/* Badge WA status */}
+                <div className="px-4 overflow-hidden py-3 border-b border-white/5">
+                  <div className="flex overflow-hidden items-center justify-between">
                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                       waStatus?.isReady 
                         ? 'bg-green-500/20 text-green-400' 
@@ -1890,38 +2048,17 @@ const navigate = useNavigate();
                       WA {waStatus?.isReady ? 'ON' : 'OFF'}
                     </span>
 
-                    {/* Kuota — selalu tampil di samping badge */}
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                      !waRateLimit
-                        ? ' text-zinc-500 '
-                        : waRateLimit.remaining <= 10
-                        ? ' text-red-400 '
-                        : waRateLimit.remaining <= 20
-                        ? ' text-amber-400 '
-                        : ' text-blue-400 '
+                    {/* ← TAMBAHKAN: tombol reconnect saat WA mati */}
+
+                    <span className={`text-[9px] font-black pl-2 py-0.5 rounded-full ${
+                      !waRateLimit ? 'text-zinc-500' 
+                        : waRateLimit.remaining <= 10 ? 'text-red-400'
+                        : waRateLimit.remaining <= 20 ? 'text-amber-400'
+                        : 'text-blue-400'
                     }`}>
-                      {waRateLimit 
-                        ? `${waRateLimit.remaining}/${waRateLimit.max} KUOTA`
-                        : '0/50 — KUOTA'
-                      }
+                      {waRateLimit ? `${waRateLimit.remaining}/${waRateLimit.max} KUOTA` : '0/50 — KUOTA'}
                     </span>
-
                   </div>
-
-                  {/* Progress bar */}
-                  {waRateLimit && (
-                    <div className="mt-2">
-                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            waRateLimit.remaining <= 10 ? 'bg-red-500' :
-                            waRateLimit.remaining <= 20 ? 'bg-amber-500' : 'bg-blue-500'
-                          }`}
-                          style={{ width: `${(waRateLimit.sent / waRateLimit.max) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Menu items — sama seperti sebelumnya */}
@@ -1936,35 +2073,6 @@ const navigate = useNavigate();
                   <div>
                     <div className="text-sm font-bold text-white">Via WhatsApp</div>
                     <div className="text-[10px] text-zinc-500">Kepsek + Seluruh Wali Kelas</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleShare('email')}
-                  className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                    <Mail size={16} className="text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white">Via Email</div>
-                    <div className="text-[10px] text-zinc-500">Kepsek + Seluruh Wali Kelas</div>
-                  </div>
-                </button>
-
-                <div className="h-px bg-white/5 mx-4" />
-
-                <button
-                  onClick={() => handleShare('all')}
-                  disabled={!waStatus?.isReady || (waRateLimit?.remaining ?? 1) <= 0}
-                  className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-white/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-                    <Share2 size={16} className="text-purple-400" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-purple-400">Kirim Semua</div>
-                    <div className="text-[10px] text-zinc-500">WhatsApp + Email sekaligus</div>
                   </div>
                 </button>
 
@@ -1984,6 +2092,40 @@ const navigate = useNavigate();
                     </div>
                   </div>
                 </button>
+                {!waStatus?.isReady && (
+                  <>
+                    <div className="h-px bg-white/5 mx-4" />
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${WA_URL}/reconnect`, { method: 'POST' });
+                          const json = await res.json();
+                          if (json.success) {
+                            toast.success('Tunggu, mencoba reconnect WA...');
+                          } else {
+                            // Fallback: buka panel QR
+                            setShowShareMenu(false);
+                            setShowWAStatus(true);
+                          }
+                        } catch {
+                          setShowShareMenu(false);
+                          setShowWAStatus(true);
+                        }
+                      }}
+                    className="w-full px-4 py-3.5 flex items-center gap-3 text-amber-400 hover:bg-white/5 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 bg-zinc-500/10 rounded-xl flex items-center justify-center shrink-0">
+                        <RotateCw size={16} className="text-zinc-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm  font-bold text-white">Reconnect</div>
+                        <div className="text-[10px] text-wbite">
+                          {waStatus?.isReady ? 'WA terhubung — klik untuk kelola' : 'Scan QR untuk hubungkan WA'}
+                        </div>
+                      </div>
+                    </button>
+                  </>
+                )}
 
               </div>
             )}
@@ -2194,7 +2336,7 @@ const navigate = useNavigate();
           )}
 
           {/* Bulk Action Bar - muncul saat selectedIds.length > 0 */}
-          {selectedIds.length > 0 && (
+          {/* {selectedIds.length > 0 && (
             <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex flex-wrap items-center gap-3">
               <span className="text-blue-400 font-black text-xs uppercase tracking-widest">
                 {selectedIds.length} siswa dipilih →
@@ -2225,7 +2367,7 @@ const navigate = useNavigate();
                 Batal Pilih
               </button>
             </div>
-          )}
+          )} */}
 
           {
             selectedIds.length === 0 && (
@@ -2333,7 +2475,43 @@ const navigate = useNavigate();
         </div>
       )}
       {/* Tabel dengan Status Kehadiran */}
-      <div className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+      <div className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] backdrop-blur-xl shadow-2xl">
+
+        {selectedIds.length > 0 && (
+          <div className="mb-4 mt-6 w-[95.4%] mx-auto p-4 bg-blue-600/10 border border-blue-500/30 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                {selectedIds.length}
+              </div>
+              <p className="text-xs font-bold text-blue-100 uppercase tracking-widest">Siswa Terpilih</p>
+            </div>
+            
+            <div className="flex gap-2">
+              {[
+                { label: 'Hadir', color: 'bg-emerald-500', icon: '✅' },
+                { label: 'Izin', color: 'bg-amber-500', icon: '📝' },
+                { label: 'Sakit', color: 'bg-indigo-500', icon: '🤒' },
+                { label: 'Alpha', color: 'bg-red-500', icon: '❌' }
+              ].map((btn) => (
+                <button
+                  key={btn.label}
+                  onClick={() => handleBulkMarkAbsence(btn.label as any)}
+                  className={`px-4 py-2 ${btn.color} text-white rounded-xl text-[10px] font-black uppercase hover:opacity-80 transition-all flex items-center gap-2`}
+                >
+                  <span>{btn.icon}</span>
+                  {btn.label}
+                </button>
+              ))}
+              <button 
+                onClick={() => setSelectedIds([])}
+                className="px-4 py-2 bg-white/5 text-zinc-400 rounded-xl text-[10px] font-black uppercase hover:bg-white/10"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
         <table className="w-full text-left">
           <thead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 border-b border-white/5 bg-white/[0.03]">
             <tr>
@@ -2343,7 +2521,7 @@ const navigate = useNavigate();
               <th className="py-6 text-zinc-500 w-[15%]">Kelas</th>
               <th className="py-6 text-zinc-500 w-[15%]">NIS / NISN</th>
               <th className="py-6 text-zinc-500 w-[12%]">Kehadiran</th>
-              <th className="py-6 text-zinc-500 w-[15%]">Status</th>
+              {/* <th className="py-6 text-zinc-500 w-[15%]">Status</th> */}
               
               {/* Checkbox dan Aksi harus sempit */}
               <th className="pl-6 p-6 w-[50px]">
@@ -2359,7 +2537,7 @@ const navigate = useNavigate();
           </thead>
           <tbody className="divide-y divide-white/5">
             {loading ? (
-              <tr><td colSpan={4} className="px-2 py-20 text-center text-zinc-600 tracking-widest uppercase">Loading...</td></tr>
+              <tr><td colSpan={4} className="px-2 relative left-32 py-20 text-center text-zinc-600 tracking-widest uppercase">Sedang memuat...</td></tr>
             ) : students.map(s => {
               const isRowDuplicate = s.isNisDuplicate || s.isNisnDuplicate;
               
@@ -2413,26 +2591,25 @@ const navigate = useNavigate();
                       {s.statusKehadiran || "Belum Hadir"}
                     </span>
                     {/* Tombol Hadir hanya muncul kalau belum absen */}
-                    {s.statusKehadiran === 'Belum Hadir' && (
+                    {/* {s.statusKehadiran === 'Belum Hadir' && (
                       <button
                         onClick={() => handleMarkPresent(s)}
                         className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-500/30 transition-all w-max"
                       >
                         ✓ Hadir
                       </button>
-                    )}
+                    )} */}
                   </div>
                 </td>
-                <td className="py-6">
+                {/* <td className="py-6">
                   <div className="flex flex-col gap-3">
-                    {/* Tombol Cepat Mark Absence jika belum hadir */}
                     <div className="flex gap-3 justify-start">
                       <button onClick={() => handleMarkAbsence(s, 'Izin')} className="px-2 py-1 bg-amber-500/10 text-amber-500 rounded text-[10px] font-bold hover:bg-amber-500/20">IZIN</button>
                       <button onClick={() => handleMarkAbsence(s, 'Sakit')} className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-[10px] font-bold hover:bg-blue-500/20">SAKIT</button>
                       <button onClick={() => handleMarkAbsence(s, 'Alpha')} className="px-2 py-1 bg-red-500/10 text-red-500 rounded text-[10px] font-bold hover:bg-red-500/20">ALPHA</button>
                     </div>
                   </div>
-                </td>
+                </td> */}
                 <td className="pl-6">
                   <input 
                     type="checkbox" 
@@ -2454,8 +2631,14 @@ const navigate = useNavigate();
                     <Eye size={16}/>
                   </button>
                   <button onClick={() => { setSelected(s); setModals({...modals, edit: true}); }} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Edit size={16}/></button>
-                  <StatusDropdown student={s} onMark={handleMarkAbsence} />
                   <button onClick={() => handleDelete(s.id, s.name)} className="p-3 bg-white/5 hover:bg-white/20 rounded-xl hover:text-white"><Trash2 size={16}/></button>
+                  <StatusDropdown 
+                    student={s} 
+                    onMark={handleMarkAbsence} 
+                    isOpen={activeDropdownId === s.id}
+                    onToggle={() => setActiveDropdownId(activeDropdownId === s.id ? null : s.id
+                    )} 
+                  />
                 </td>
               </tr>
             )})}
@@ -2477,7 +2660,7 @@ const navigate = useNavigate();
             >
               <option className="text-black" value={10}>10 Baris</option>
               <option className="text-black" value={20}>20 Baris</option>
-              <option className="text-black" value={50}>50 Baris</option>
+              <option className="text-black" value={40}>40 Baris</option>
               <option className="text-black" value={100}>100 Baris</option>
               <option className="text-black" value={250}>250 Baris</option>
               <option className="text-black" value={500}>500 Baris</option>
@@ -2652,7 +2835,7 @@ const navigate = useNavigate();
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-[#0B1220] border-l border-white/10 z-[100001] p-8 overflow-y-auto"
+              className="fixed right-0 top-0 h-full w-full max-w-lg bg-[#0B1220] border-l border-white/10 z-[100001] p-8 overflow-y-auto"
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-8">
@@ -2666,9 +2849,9 @@ const navigate = useNavigate();
                 </div>
                 <button
                   onClick={() => setShowWAStatus(false)}
-                  className="p-2 hover:bg-white/5 rounded-xl text-zinc-400 hover:text-white transition-colors"
+                  className="p-2 relative top-[-5px] hover:bg-white/5 rounded-xl text-red-400 hover:text-red-500 active:scale-[0.98] transition-colors"
                 >
-                  <X size={24} />
+                  <X size={28} />
                 </button>
               </div>
 
@@ -2811,47 +2994,59 @@ const navigate = useNavigate();
       )}
 
       {/* Bulk Import Notifications — bottom right, persistent */}
-      {
-        bulkNotifs.length > 0 && (
-          <div className="fixed bottom-12 right-6 z-[99999] h-[40vh] flex flex-col gap-3 max-w-sm w-full">
-            {bulkNotifs.map(notif => (
-              <div
-                key={notif.id}
-                className={`rounded-2xl border p-4 shadow-2xl backdrop-blur-xl ${
-                  notif.type === 'warning'
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : 'bg-red-500/10 border-red-500/30'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle
-                      size={14}
-                      className={notif.type === 'warning' ? 'text-amber-400' : 'text-red-400'}
-                    />
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${
-                      notif.type === 'warning' ? 'text-amber-400' : 'text-red-400'
-                    }`}>
-                      {notif.title}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => removeBulkNotif(notif.id)}
-                    className="active:scale-[0.98] hover:text-white/60 text-white hover:text-white transition-colors shrink-0"
-                  >
-                    <X size={18} />
-                  </button>
+     {
+      bulkNotifs.length > 0 && (
+        <div className="fixed bottom-12 right-6 z-[99999] flex flex-col gap-3 max-w-sm w-full">
+          
+          {/* Tombol hapus semua */}
+          <button
+            onClick={() => {
+              setBulkNotifs([]);
+              localStorage.removeItem('kira_bulk_notifs');
+            }}
+            className="self-end text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-red-400 transition-colors px-2"
+          >
+            Hapus Semua
+          </button>
+
+          {bulkNotifs.map(notif => (
+            <div
+              key={notif.id}
+              className={`rounded-2xl border p-4 shadow-2xl backdrop-blur-xl ${
+                notif.type === 'warning'
+                  ? 'bg-amber-500/10 border-amber-500/30'
+                  : 'bg-red-500/10 border-red-500/30'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle
+                    size={14}
+                    className={notif.type === 'warning' ? 'text-amber-400' : 'text-red-400'}
+                  />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${
+                    notif.type === 'warning' ? 'text-amber-400' : 'text-red-400'
+                  }`}>
+                    {notif.title}
+                  </span>
                 </div>
-                <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
-                  {notif.list.map((item, i) => (
-                    <div key={i} className="text-[11px] text-zinc-300 font-medium">{item}</div>
-                  ))}
-                </div>
+                {/* Tombol X per notif */}
+                <button
+                  onClick={() => removeBulkNotif(notif.id)}
+                  className="p-1 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
               </div>
-            ))}
-          </div>
-        )
-      }
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                {notif.list.map((item, i) => (
+                  <div key={i} className="text-[11px] text-zinc-300 font-medium">{item}</div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <BulkChangeClassModal
         open={changeClassModal}
@@ -2865,6 +3060,82 @@ const navigate = useNavigate();
         onSubmit={handleBulkChangeClass}
         isProcessing={isChangingClass}
       />
+
+      {shareProgress && shareProgress.status !== 'idle' && (
+        <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0B1220] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl">
+
+            {/* Icon */}
+            <div className={`h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6 transition-all ${
+              shareProgress.status === 'done'
+                ? 'bg-green-500/20'
+                : 'bg-blue-600/20 animate-pulse'
+            }`}>
+              {shareProgress.status === 'done'
+                ? <CheckCircle2 className="text-green-400" size={36} />
+                : <Send className="text-blue-400" size={32} />
+              }
+            </div>
+
+            <h3 className="text-xl font-black uppercase tracking-tighter text-white text-center mb-1">
+              {shareProgress.status === 'done' ? 'Pengiriman Selesai' : 'Mengirim Rekap PDF'}
+            </h3>
+
+            <p className={`text-sm text-center mb-6 ${
+              shareProgress.isError ? 'text-red-400' : 'text-zinc-500'
+            }`}>
+              {shareProgress.message}
+            </p>
+
+            {/* Progress Bar */}
+            <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden border border-white/10 mb-3">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ease-out ${
+                  shareProgress.status === 'done' ? 'bg-green-500' : 'bg-blue-600'
+                }`}
+                style={{
+                  width: shareProgress.total > 0
+                    ? `${(shareProgress.current / shareProgress.total) * 100}%`
+                    : shareProgress.status === 'start' ? '5%' : '0%'
+                }}
+              />
+            </div>
+
+            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-6">
+              <span className="text-blue-400">
+                {shareProgress.total > 0
+                  ? `${Math.round((shareProgress.current / shareProgress.total) * 100)}%`
+                  : '...'
+                }
+              </span>
+              <span className="text-zinc-500">
+                {shareProgress.current}/{shareProgress.total} Penerima
+              </span>
+            </div>
+
+            {/* Label penerima terakhir */}
+            {shareProgress.label && (
+              <div className={`rounded-xl px-4 py-4 text-[11px] mb-6 text-center font-bold ${
+                shareProgress.isError
+                  ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                  : 'bg-white/5 border border-white/10 text-zinc-300'
+              }`}>
+                {shareProgress.isError ? '❌' : '✓'} {shareProgress.label}
+              </div>
+            )}
+
+            {/* Tutup — hanya saat done */}
+            {shareProgress.status === 'done' && (
+              <button
+                onClick={() => setShareProgress(null)}
+                className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black uppercase tracking-widest text-white transition-all"
+              >
+                Tutup
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

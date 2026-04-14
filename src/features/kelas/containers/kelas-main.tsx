@@ -64,20 +64,22 @@ export default function KelasMain() {
   // ─── DOWNLOAD TEMPLATE ───────────────────────────────────────
   const handleDownloadTemplate = () => {
     const templateData = [
-      { NamaKelas: "X RPL 1" },
-      { NamaKelas: "X RPL 2" },
-      { NamaKelas: "XI TKJ 1" },
-      { NamaKelas: "XII AKL 3" },
-      { NamaKelas: "XII RPL 1" },
+      { 
+        NamaKelas: "XII RPL 1", 
+        WaliKelas: "Budi Santoso, S.Pd", 
+        NoWA: "81234567890", 
+        Email: "budi@school.id" 
+      }
     ];
 
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Kelas");
-    ws["!cols"] = [{ wch: 25 }];
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    
+    // Atur lebar kolom agar rapi
+    ws["!cols"] = [{ wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 20 }];
 
-    XLSX.writeFile(wb, "Template_Kelas.xlsx");
-    toast.success("Template Excel berhasil diunduh");
+    XLSX.writeFile(wb, "Template_Kelas_Xpresensi.xlsx");
   };
 
   // ─── IMPORT EXCEL ────────────────────────────────────────────
@@ -86,7 +88,7 @@ export default function KelasMain() {
     if (!file || !schoolId) return;
 
     setIsImporting(true);
-    setImportResult(null); // reset hasil sebelumnya
+    setImportResult(null);
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -101,70 +103,61 @@ export default function KelasMain() {
           defval: "",
         });
 
-        let successCount = 0;
-        const failedItems: { className: string; reason: string }[] = [];
-
-        for (const row of jsonData) {
-          const className = (
-            row["NamaKelas"] ||
-            row["nama_kelas"] ||
-            row["Kelas"] ||
-            ""
-          ).trim();
-
-          if (!className) {
-            failedItems.push({
-              className: "(kosong)",
-              reason: "Nama kelas tidak ditemukan",
-            });
-            continue;
+        // Map & Normalisasi Data
+        const preparedData = jsonData.map((row) => {
+          // Normalisasi Nama Kelas
+          const className = (row["NamaKelas"] || row["Kelas"] || row["nama_kelas"] || "").toString().trim();
+          
+          // Normalisasi Nomor Telepon (Hanya angka, awalan 62)
+          const phoneRaw = (row["NoWA"] || row["NomorWA"] || row["Telepon"] || "").toString();
+          const phoneClean = phoneRaw.replace(/\D/g, '');
+          let normalizedPhone = null;
+          if (phoneClean) {
+            normalizedPhone = phoneClean.startsWith('0') 
+              ? `62${phoneClean.slice(1)}` 
+              : phoneClean.startsWith('62') ? phoneClean : `62${phoneClean}`;
           }
 
-          try {
-            const res = await fetch(API_BASE, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                schoolId,
-                className,
-              }),
-            });
+          return {
+            className,
+            waliKelas: row["WaliKelas"] || row["NamaWali"] || null,
+            waliKelasPhone: normalizedPhone,
+            waliKelasEmail: row["Email"] || row["EmailWali"] || null,
+          };
+        }).filter(item => item.className !== ""); // Buang baris kosong
 
-            const result = await res.json();
-
-            if (res.ok && result.success) {
-              successCount++;
-            } else {
-              const errorMsg = result.message || "Gagal menyimpan (server error)";
-              failedItems.push({ className, reason: errorMsg });
-            }
-          } catch (err: any) {
-            failedItems.push({
-              className,
-              reason: err.message || "Koneksi gagal",
-            });
-          }
+        if (preparedData.length === 0) {
+          toast.error("File kosong atau format kolom tidak sesuai");
+          return;
         }
 
-        // Refresh data kelas
-        queryClient.invalidateQueries({ queryKey: ["classes"] });
-
-        // Simpan hasil ke state
-        setImportResult({
-          success: successCount,
-          failed: failedItems,
+        // Kirim Batch ke Backend
+        const res = await fetch(`${API_BASE}/bulk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            schoolId,
+            classes: preparedData,
+          }),
         });
 
-        // Tampilkan toast ringkas
-        toast[failedItems.length === 0 ? "success" : "warning"](
-          `${successCount} kelas berhasil • ${failedItems.length} gagal`,
-          { duration: 5000 }
-        );
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+          queryClient.invalidateQueries({ queryKey: ["classes"] });
+          setImportResult(result.data); // result.data berisi {success: x, failed: []}
+          
+          toast[result.data.failed.length === 0 ? "success" : "warning"](
+            `Berhasil: ${result.data.success} • Gagal: ${result.data.failed.length}`
+          );
+        } else {
+          toast.error(result.message || "Gagal memproses data");
+        }
       } catch (err: any) {
-        toast.error("Gagal membaca file Excel: " + err.message);
+        toast.error("Gagal membaca file: " + err.message);
       } finally {
         setIsImporting(false);
-        e.target.value = "";
+        e.target.value = ""; // Reset input file
       }
     };
 
@@ -237,7 +230,7 @@ export default function KelasMain() {
   };
 
   return (
-    <div className="min-h-screen" style={{ color: "#f8fafc" }}>
+    <div className="min-h-screen pb-8" style={{ color: "#f8fafc" }}>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 border-b border-white/5 pb-10">
         <div className="space-y-2">
@@ -300,110 +293,79 @@ export default function KelasMain() {
       </div>
 
       {/* HASIL IMPORT - muncul setelah proses import selesai */}
-    {importResult && (
-  <motion.div
-    initial={{ opacity: 0, y: -10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    className="mb-8 rounded-2xl border border-zinc-700/60 bg-zinc-900/70 backdrop-blur-sm shadow-lg overflow-hidden"
-  >
-    {/* Header */}
-    <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800/70 bg-zinc-950/40">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-blue-900/40 flex items-center justify-center">
-          <FileSpreadsheet className="text-blue-400" size={18} />
-        </div>
-        <h4 className="text-base font-semibold text-white tracking-tight">
-          Hasil Import Kelas
-        </h4>
-      </div>
+      {importResult && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="mb-8 rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden"
+        >
+          {/* Header & Stats Terpadu */}
+          <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-3 bg-white/[0.02]">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${importResult.failed.length > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">
+                  Laporan Import
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-4 text-[11px] font-medium uppercase tracking-wider">
+                <div className="text-emerald-400/80">
+                  {importResult.success} Berhasil
+                </div>
+                {importResult.failed.length > 0 && (
+                  <div className="text-amber-400/80">
+                    {importResult.failed.length} Gagal
+                  </div>
+                )}
+              </div>
+            </div>
 
-      <button
-        onClick={() => setImportResult(null)}
-        className="p-2 rounded-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 transition-colors"
-      >
-        <X size={18} />
-      </button>
-    </div>
-
-    {/* Summary Stats */}
-    <div className="px-6 py-4 flex items-center gap-8 border-b border-zinc-800/50 bg-zinc-950/20">
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-full bg-emerald-900/30 flex items-center justify-center">
-          <CheckCircle2 className="text-emerald-400" size={18} />
-        </div>
-        <div className="w-max flex items-center gap-4">
-          <p className="text-xs text-zinc-400 uppercase tracking-wider">Berhasil</p>
-          <p className="text-xl font-bold text-emerald-400">
-            {importResult.success}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-full bg-amber-900/30 flex items-center justify-center">
-          <AlertTriangle className="text-amber-400" size={18} />
-        </div>
-        <div className="w-max flex items-center gap-4">
-          <p className="text-xs text-zinc-400 uppercase tracking-wider">Gagal</p>
-          <p className="text-xl font-bold text-amber-400">
-            {importResult.failed.length}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    {/* Content */}
-    <div className="p-6">
-      {importResult.failed.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-zinc-800">
-          <table className="min-w-full divide-y divide-zinc-800">
-            <thead className="bg-zinc-950/60">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-300"
-                >
-                  Nama Kelas
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-300"
-                >
-                  Alasan Gagal
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
-              {importResult.failed.map((item, index) => (
-                <tr
-                  key={index}
-                  className="hover:bg-zinc-800/60 transition-colors duration-150"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                    {item.className}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-amber-300/90">
-                    {item.reason}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="py-10 text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-4 bg-emerald-950/30 border border-emerald-800/40 rounded-xl">
-            <CheckCircle2 className="text-emerald-400" size={24} />
-            <p className="text-lg font-medium text-emerald-300">
-              Semua kelas berhasil diimport dengan sukses
-            </p>
+            <button
+              onClick={() => setImportResult(null)}
+              className="text-red-400 flex items-center gap-1 hover:text-red-500 active:scale-[0.99] transition-colors"
+            >
+              <X size={18} />
+            </button>
           </div>
-        </div>
+
+          {/* Content: Hanya muncul jika ada yang gagal */}
+          {importResult.failed.length > 0 && (
+            <div className="border-t border-white/5 bg-black/20">
+              <div className="max-h-48 overflow-y-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[10px] text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                      <th className="px-5 py-2 font-black">Kelas</th>
+                      <th className="px-5 py-2 font-black text-right">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.03]">
+                    {importResult.failed.map((item, index) => (
+                      <tr key={index} className="group hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-2.5 text-[13px] text-zinc-300 font-medium">
+                          {item.className}
+                        </td>
+                        <td className="px-5 py-2.5 text-[12px] text-amber-500/70 text-right">
+                          {item.reason}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Success Minimal State */}
+          {importResult.failed.length === 0 && (
+            <div className="px-5 py-3 text-[12px] text-zinc-500 border-t border-white/5">
+              Semua data berhasil diproses tanpa kendala.
+            </div>
+          )}
+        </motion.div>
       )}
-    </div>
-  </motion.div>
-)}
 
       {/* Loading & Empty State */}
       {loading ? (

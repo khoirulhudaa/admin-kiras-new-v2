@@ -306,7 +306,7 @@ export const HomePage = () => {
       breadcrumbs={[{ label: "Dashboard", url: "/" }]}
     >
       <Toaster position="top-right" richColors  />
-      <div className="space-y-8 pb-12 pt-4">
+      <div className="space-y-0 pb-12 pt-4">
         
         {/* Hero Section & Filters */}
         <section className="relative overflow-hidden">
@@ -329,75 +329,62 @@ export const HomePage = () => {
           </div>
         </div>
 
-          {/* Quick Metrics */}
-          <div className="relative z-10 mt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0">
-            {[
-              // { label: "Siswa", 
-              //   sub: 'Hari ini',
-              //   val: summary.totalAllStudents, color: "text-slate-300" },
-              { label: "Hadir", 
-                sub: 'Hari ini',
-                val: summary.totalAllStudents - summary.totalAllBelumHadir, color: "text-emerald-400" },
-              { label: "Bolos", 
-                sub: 'Hari ini',
-                val: summary.totalAllBelumHadir, color: "text-red-500" },
-              { 
-                label: "Cek data", 
-                // color: "text-yellow-400",
-                sub: 'Lihat detail',
-                val: "Pengawasan", 
-                isAction: true,
-                action: () => setShowEarlyWarning(true)
-              },
-              { 
-                label: "Cek Detail", 
-                sub: 'Lihat detail',
-                val: "Kedisiplinan", 
-                color: "text-white",
-                isAction: true,
-                action: () => setShowGlobalStats(true)
-              }
-            ].map((m, i) => (
-              <div 
-                key={i} 
-                onClick={m.action}
-                className={cx(
-                  "flex items-center justify-between gap-3 border-x border-white/10 p-5 transition-all",
-                  m.isAction 
-                    ? "cursor-pointer active:scale-[0.97] hover:bg-slate-500/5" 
-                    : ""
-                )}
-              >
-                <div className="w-max flex flex-col items-start">
-                  {/* {!m.isAction && <ArrowRight size={15} className="text-zinc-600" />} */}
-                  <p className={cx(
-                    "text-[14px] w-max font-normal uppercase tracking-widest",
-                    m.isAction ? "text-slate-400" : "text-slate-400"
-                  )}>
-                    {m.label}
-                  </p>
-                    {
-                      m.val !== undefined && (
-                        <div className={cx(`uppercase ${m?.val === 'Pengawasan' || m?.val === 'Kedisiplinan' ? 'text-3xl' : 'text-4xl'} text-3xl ml-[-1px] font-normal tracking-tighter`, m?.color)}>{m?.val}</div>
-                      )
-                    }
-                    <p className="w-full bg-slate-100/5 mt-3 flex justify-between items-center text-slate-400 text-[14px]">
-                      {m?.sub}
-                        {
-                          m?.sub !== 'Hari ini' && (
-                              <ArrowRight size={16} />
-                            )
-                          }
-                    </p>
+        {/* Quick Metrics */}
+      <div className="relative z-10 mt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0">
+        {[
+          { label: "Hadir", sub: 'Hari ini', val: summary.totalAllHadir, color: "text-emerald-400" },
+          { label: "Izin", sub: 'Hari ini', val: summary.totalAllIzin, color: "text-yellow-400" },
+          { label: "Sakit", sub: 'Hari ini', val: summary.totalAllSakit, color: "text-indigo-400" },
+          { label: "Alpa/Belum", sub: 'Hari ini', val: (summary.totalAllAlpha || 0) + (summary.totalAllBelumHadir || 0), color: "text-red-500" },
+          { label: "Cek data", sub: 'Lihat detail', val: "Pengawasan", isAction: true, action: () => setShowEarlyWarning(true) },
+          { label: "Cek Detail", sub: 'Lihat detail', val: "Kedisiplinan", color: "text-white", isAction: true, action: () => setShowGlobalStats(true) }
+        ].map((m, i) => (
+          <div 
+            key={i} 
+            onClick={m.action}
+            className={cx(
+              "flex items-center justify-between gap-3 border-t border-white/10 p-5 transition-all",
+              // LOGIKA BORDER CUSTOM:
+              m.label === "Izin" || m.val === "Kedisiplinan" 
+                ? "border-r border-white/10" 
+                : "", 
+              
+              m.label === "Sakit" 
+                ? "" 
+                : (m.label !== "Izin" && m.val !== "Kedisiplinan" ? "border-x border-white/10" : ""),
+
+              m.isAction 
+                ? "lg:col-span-2 border-b border-white/10 cursor-pointer active:scale-[0.97] hover:bg-white/5" 
+                : "lg:col-span-1"
+            )}
+          >
+            <div className="w-full flex flex-col items-start">
+              <p className="text-[14px] w-max font-bold uppercase tracking-widest text-white">
+                {m.label}
+              </p>
+              
+              {m.val !== undefined && (
+                <div className={cx(
+                  `uppercase font-normal tracking-tighter ml-[-1px]`,
+                  m.isAction ? 'text-3xl' : 'text-4xl',
+                  m.color
+                )}>
+                  {m.val}
                 </div>
-                {/* {m.isAction && <ChevronRight size={20} className="text-white/50" />} */}
-              </div>
-            ))}
+              )}
+
+              <p className="w-full bg-white/5 mt-3 px-3 py-1.5 flex justify-between items-center text-slate-400 text-[12px] rounded-lg border border-white/5">
+                {m.sub}
+                {m.isAction && <ArrowRight size={14} className="text-white/30" />}
+              </p>
+            </div>
           </div>
+        ))}
+      </div>
         </section>
 
         {/* Info Institusi Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 w-full border-x border-b border-white/10 px-6 md:grid-cols-2 gap-6 py-6">
           <PremiumCard delay={0.1}>
             <StatItem icon={Building} label="Institusi" value={school?.namaSekolah} />
           </PremiumCard>
@@ -407,19 +394,7 @@ export const HomePage = () => {
         </div>
 
         {/* Section Heading */}
-        <div className="flex items-center justify-between px-2 pt-4">
-          <div className="flex items-center gap-3 relative top-[2px]">
-            <div className="h-10 w-10 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black uppercase tracking-tighter text-white">
-                {selectedClass === "all" ? "Distribusi Per Kelas" : `Detail Kelas ${selectedClass}`}
-              </h2>
-              {/* <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Detail Absensi & Kepatuhan</p> */}
-            </div>
-          </div>
-
+        <div className="flex items-center justify-between w-full pt-6 border-x border-white/10 px-6 pl- pb-4">
           <div className="w-max flex items-center gap-3">
             <div className="flex flex-col sm:flex-row items-center h-max gap-3 w-max">
               {/* Date Input */}
@@ -451,15 +426,16 @@ export const HomePage = () => {
             </div>
             <div 
               onClick={() => handleRefreshAll()}
-              className="cursor-pointer active:scale-[0.97] hover:bg-blue-700 px-4 py-2 h-10 bg-blue-600 text-white rounded-lg"
+              className="ml-auto flex items-center gap-3.5 cursor-pointer active:scale-[0.97] hover:bg-blue-700 px-3.5 py-2 h-10 bg-blue-600 text-white rounded-lg"
             >
+              <RefreshCw size={16} />
               Refresh Data
             </div>
           </div>
         </div>
 
         {/* Class Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full border-x border-white/10 px-6 py-2">
           <AnimatePresence mode="popLayout">
             {recapLoading ? (
                Array.from({ length: 3 }).map((_, i) => (

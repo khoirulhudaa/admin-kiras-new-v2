@@ -194,7 +194,6 @@ export function ProfileSekolahMain() {
       return;
     }
 
-
     if (!SCHOOL_ID || !formData.heroTitle || !formData.headmasterWelcome || !formData.headmasterName || !formData.schoolName) {
       showAlert("Field wajib (Hero Title, Sambutan, Nama Kepsek, & Sekolah) harus diisi!");
       return;
