@@ -26,6 +26,8 @@ import { useEffect, useState } from "react";
 import { toast, Toaster } from "sonner";
 import { PremiumCard, StatItem } from "../components/statCard";
 import { useAuthGuard } from "../hooks/useAuthGuard";
+import { onMessageListener, requestForToken } from "@/features/_global/components/dashboard/lib/firebase";
+import axios from "axios";
 
 const cx = (...classes: any[]) => classes.filter(Boolean).join(" ");
 
@@ -69,6 +71,37 @@ export const HomePage = () => {
   const LIMIT = 10;
 
   const queryClient = useQueryClient();
+  const token = localStorage.getItem('token'); 
+  
+  useEffect(() => {
+    if (!token) return;
+
+    const initFCM = async () => {
+      const fcmToken = await requestForToken();
+      if (fcmToken) {
+        // Kirim ke backend (Cek tab Network, pastikan ini 200 OK)
+        await axios.post('https://be-school.kiraproject.id/scan-qr/update-fcm-token', 
+          { fcmToken }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+    };
+
+    initFCM();
+
+    // Listener yang terus aktif (Foreground)
+    const unsubscribe = onMessageListener((payload) => {
+      toast.success(payload.notification.title, {
+        description: payload.notification.body,
+        icon: '🔔',
+        duration: 8000,
+      });
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe(); // Bersihkan saat pindah halaman
+    };
+  }, [token]);
 
   // Debounce search → reset page
   useEffect(() => {
@@ -134,9 +167,6 @@ export const HomePage = () => {
     staleTime: 1000 * 60 * 5, // Pastikan data langsung dianggap usang
     gcTime: 1000 * 60 * 10,
   });
-
-  // Pastikan Anda mendapatkan token Anda di sini
-  const token = localStorage.getItem('token'); 
 
   const { data: consecutiveData, isLoading: consecutiveLoading, refetch: refetchConsecutive } = useQuery({
     // Tambahkan page ke queryKey

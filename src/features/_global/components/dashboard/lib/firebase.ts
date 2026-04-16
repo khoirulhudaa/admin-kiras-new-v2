@@ -16,23 +16,29 @@ const messaging = getMessaging(app);
 
 export const requestForToken = async () => {
   try {
+    // Tambahkan pendaftaran service worker manual untuk localhost agar tidak timeout
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    
     const currentToken = await getToken(messaging, {
-      vapidKey: "BPYrxky9d6pB5sIsvYco5SbchJB3fpUwNcgipOH3a0fFw1-vrxhNqoQvWs1zKkpIlNqJYWaxy754fWdZgDwTtdU" 
+      vapidKey: "BPYrxky9d6pB5sIsvYco5SbchJB3fpUwNcgipOH3a0fFw1-vrxhNqoQvWs1zKkpIlNqJYWaxy754fWdZgDwTtdU",
+      serviceWorkerRegistration: registration // Sangat penting untuk localhost!
     });
+
     if (currentToken) {
       console.log("Token FCM didapat:", currentToken);
       return currentToken;
     } else {
-      console.log("Izin notifikasi ditolak");
+      console.log("Izin notifikasi ditolak atau token kosong");
     }
   } catch (err) {
-    console.log("Error mengambil token FCM:", err);
+    console.error("Error mengambil token FCM:", err);
   }
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      resolve(payload);
-    });
+// Ubah fungsi ini agar menerima callback
+export const onMessageListener = (callback: (payload: any) => void) => {
+  return onMessage(messaging, (payload) => {
+    console.log("HORE! Pesan sampai di Dashboard:", payload);
+    callback(payload);
   });
+};

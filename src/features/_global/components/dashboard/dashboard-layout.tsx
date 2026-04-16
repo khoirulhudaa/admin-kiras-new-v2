@@ -1,11 +1,9 @@
 import { Button, cn } from '@/core/libs';
 import { useProfile } from '@/features/profile';
-import axios from 'axios';
 import { Maximize, Menu, Minimize } from 'lucide-react';
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom'; // Import ini penting
-import { toast, Toaster } from 'sonner';
-import { onMessageListener, requestForToken } from './lib/firebase';
+import { Toaster } from 'sonner';
 import { Sidebar } from './sidebar';
 import { SidebarProps } from './sidebar/types';
 import { UserMenu, UserMenuProps } from './usermenu';
@@ -24,64 +22,44 @@ export const DashboardLayout = React.memo(({ menus = [], usermenus, children, ..
   const [setSidebarVisible] = useState<any>(false);
   
   const profile = useProfile();
-  const token = localStorage.getItem('token'); 
-  const API_URL = "https://be-school.kiraproject.id/scan-qr";
+  // const token = localStorage.getItem('token'); 
   
   const location = useLocation();
 
   // Logika pengecekan halaman scan
   const isScanPage = location.pathname === '/scan-qrcode';
 
-  useEffect(() => {
-    // 1. Logika Registrasi Token FCM
-    const handleFCMRegistration = async () => {
-      try {
-        if (!token) return; // Jangan jalankan jika belum login
+  // useEffect(() => {
+  //   if (!token) return;
 
-        const fcmToken = await requestForToken();
-        
-        if (fcmToken) {
-          // Gunakan Axios biasa untuk update ke backend
-          await axios.post(`${API_URL}/update-fcm-token`, 
-            { fcmToken }, 
-            {
-              headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          console.log("FCM Token synchronized with server");
-        }
-      } catch (err) {
-        console.error("FCM Registration Error:", err);
-      }
-    };
+  //   const initFCM = async () => {
+  //     const fcmToken = await requestForToken();
+  //     if (fcmToken) {
+  //       // Daftarkan Admin ke Topic agar bisa terima notif
+  //       await axios.post('https://be-school.kiraproject.id/scan-qr/update-fcm-token', 
+  //         { fcmToken }, 
+  //         { headers: { Authorization: `Bearer ${token}` } }
+  //       );
+  //     }
+  //   };
 
-    handleFCMRegistration();
+  //   initFCM();
 
-    // 2. Mendengarkan Notifikasi saat App Terbuka (Foreground)
-    const startNotificationListener = () => {
-      onMessageListener()
-        .then((payload: any) => {
+  //   // LISTENER: Menampilkan Nama & NIS siswa secara real-time
+  //   const startListener = () => {
+  //     onMessageListener().then((payload: any) => {
+  //       // Munculkan Nama & NIS di Toast
+  //       toast.success(payload.notification.title, {
+  //         description: payload.notification.body, // Berisi: "Budi (NIS: 123) baru saja Tap QR"
+  //         icon: '🔔',
+  //         duration: 8000,
+  //       });
+  //       startListener(); // Pasang lagi pendengarnya
+  //     }).catch(() => setTimeout(startListener, 3000));
+  //   };
 
-          toast.info(payload.notification.title, {
-            description: payload.notification.body, // Akan muncul: "Budi Santoso (12345) baru saja Tap QR..."
-            icon: '🔔',
-            duration: 8000,
-        });
-          
-          startNotificationListener();
-        })
-        .catch((err) => {
-          console.error('Notification listener error:', err);
-          setTimeout(startNotificationListener, 3000);
-        });
-    };
-
-    startNotificationListener();
-    
-  }, [token]); 
+  //   startListener();
+  // }, [token]);
 
   useEffect(() => {
     if (isScanPage) {
